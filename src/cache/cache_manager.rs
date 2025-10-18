@@ -27,7 +27,7 @@ pub struct CacheManager {
     caches: Arc<RwLock<HashMap<String, Arc<PolicyStoreCache>>>>,
     
     /// Repository para persistencia
-    repository: Arc<dyn PolicyRepository>,
+    pub(crate) repository: Arc<dyn PolicyRepository>,
 }
 
 impl CacheManager {

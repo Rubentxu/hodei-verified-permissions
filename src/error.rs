@@ -68,6 +68,18 @@ impl From<cedar_policy::SchemaError> for AuthorizationError {
     }
 }
 
+impl From<cedar_policy::ContextJsonError> for AuthorizationError {
+    fn from(err: cedar_policy::ContextJsonError) -> Self {
+        AuthorizationError::CedarParseError(format!("Context error: {:?}", err))
+    }
+}
+
+impl From<cedar_policy::RequestValidationError> for AuthorizationError {
+    fn from(err: cedar_policy::RequestValidationError) -> Self {
+        AuthorizationError::ValidationFailed(err.to_string())
+    }
+}
+
 impl From<AuthorizationError> for tonic::Status {
     fn from(err: AuthorizationError) -> Self {
         match err {
