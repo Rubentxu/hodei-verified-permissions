@@ -47,6 +47,9 @@ clap = { version = "4.5", features = ["derive"] }
 # Async trait support
 async-trait = "0.1"
 
+# Configuration
+toml = "0.8"
+
 [dev-dependencies]
 testcontainers = "0.25.0"
 tokio-test = "0.4"
