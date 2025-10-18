@@ -1,0 +1,31 @@
+[package]
+name = "hodei-permissions-sdk"
+version = "0.1.0"
+edition = "2024"
+authors = ["Hodei Team"]
+description = "Client SDK for Hodei Verified Permissions authorization service"
+license = "MIT"
+
+[dependencies]
+# gRPC client
+tonic = "0.14.2"
+tonic-prost = "0.14.2"
+prost = "0.14.1"
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
+
+# Error handling
+thiserror = "2.0.17"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.85"
+
+# Logging
+tracing = "0.1.35"
+
+[build-dependencies]
+tonic-prost-build = "0.14.2"
+
+[dev-dependencies]
+tokio-test = "0.4.0"
