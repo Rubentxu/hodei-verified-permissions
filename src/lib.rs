@@ -5,6 +5,7 @@
 
 pub mod grpc;
 pub mod storage;
+pub mod cache;
 pub mod error;
 pub mod jwt;
 pub mod audit;

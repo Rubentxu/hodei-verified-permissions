@@ -36,9 +36,37 @@ pub enum AuthorizationError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+    
+    #[error("Cedar parse error: {0}")]
+    CedarParseError(String),
+    
+    #[error("Cedar policy set error: {0}")]
+    CedarPolicySetError(String),
+    
+    #[error("Cedar schema error: {0}")]
+    CedarSchemaError(String),
 }
 
 pub type Result<T> = std::result::Result<T, AuthorizationError>;
+
+// Cedar error conversions
+impl From<cedar_policy::ParseErrors> for AuthorizationError {
+    fn from(err: cedar_policy::ParseErrors) -> Self {
+        AuthorizationError::CedarParseError(format!("{:?}", err))
+    }
+}
+
+impl From<cedar_policy::PolicySetError> for AuthorizationError {
+    fn from(err: cedar_policy::PolicySetError) -> Self {
+        AuthorizationError::CedarPolicySetError(err.to_string())
+    }
+}
+
+impl From<cedar_policy::SchemaError> for AuthorizationError {
+    fn from(err: cedar_policy::SchemaError) -> Self {
+        AuthorizationError::CedarSchemaError(err.to_string())
+    }
+}
 
 impl From<AuthorizationError> for tonic::Status {
     fn from(err: AuthorizationError) -> Self {
@@ -75,6 +103,15 @@ impl From<AuthorizationError> for tonic::Status {
             }
             AuthorizationError::Internal(_) => {
                 tonic::Status::internal(err.to_string())
+            }
+            AuthorizationError::CedarParseError(_) => {
+                tonic::Status::invalid_argument(err.to_string())
+            }
+            AuthorizationError::CedarPolicySetError(_) => {
+                tonic::Status::invalid_argument(err.to_string())
+            }
+            AuthorizationError::CedarSchemaError(_) => {
+                tonic::Status::invalid_argument(err.to_string())
             }
         }
     }
