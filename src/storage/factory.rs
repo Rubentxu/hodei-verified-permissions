@@ -2,7 +2,7 @@
 
 use crate::config::{DatabaseConfig, DatabaseProvider};
 use crate::error::Result;
-use crate::storage::{PolicyRepository, Repository};
+use crate::storage::{PolicyRepository, Repository, PostgresRepository, SurrealRepository};
 use std::sync::Arc;
 
 /// Creates a repository instance based on the database configuration
@@ -38,17 +38,13 @@ pub async fn create_repository(config: &DatabaseConfig) -> Result<Arc<dyn Policy
         }
         DatabaseProvider::Postgres => {
             tracing::info!("Creating PostgreSQL repository: {}", config.url);
-            // TODO: Implement PostgreSQL repository
-            Err(crate::error::AuthorizationError::Internal(
-                "PostgreSQL repository not yet implemented".to_string()
-            ))
+            let repo = PostgresRepository::new(&config.url).await?;
+            Ok(Arc::new(repo))
         }
         DatabaseProvider::Surreal => {
             tracing::info!("Creating SurrealDB repository: {}", config.url);
-            // TODO: Implement SurrealDB repository
-            Err(crate::error::AuthorizationError::Internal(
-                "SurrealDB repository not yet implemented".to_string()
-            ))
+            let repo = SurrealRepository::new(&config.url).await?;
+            Ok(Arc::new(repo))
         }
     }
 }
