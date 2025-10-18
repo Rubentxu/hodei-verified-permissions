@@ -44,6 +44,13 @@ reqwest = { version = "0.12", features = ["json"] }
 # CLI (Épica 9.2)
 clap = { version = "4.5", features = ["derive"] }
 
+# Async trait support
+async-trait = "0.1"
+
+[dev-dependencies]
+testcontainers = "0.25.0"
+tokio-test = "0.4"
+
 [build-dependencies]
 tonic-prost-build = "0.14.2"
 
