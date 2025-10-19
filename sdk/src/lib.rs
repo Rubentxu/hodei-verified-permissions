@@ -29,6 +29,10 @@ pub mod client;
 pub mod builders;
 pub mod error;
 
+// Middleware module (optional, requires "middleware" feature)
+#[cfg(feature = "middleware")]
+pub mod middleware;
+
 // Re-export generated proto types
 pub mod proto {
     tonic::include_proto!("authorization");
