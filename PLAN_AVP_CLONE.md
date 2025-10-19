@@ -44,6 +44,14 @@ Transformar Hodei Verified Permissions en un **clon funcional de AWS Verified Pe
 
 **Objetivo**: Centralizar validación JWT y mapeo de identidades en el servidor
 
+**Proveedores de Identidad Soportados**:
+- ✅ **OIDC Genérico**: Cualquier proveedor compatible con OpenID Connect
+- 🎯 **Keycloak**: Open-source IdP con soporte completo de roles y grupos
+- 🎯 **Zitadel**: Modern cloud-native IdP con RBAC avanzado
+- ✅ **AWS Cognito**: Integración nativa con User Pools
+- ✅ **Okta**: Enterprise IdP
+- ✅ **Auth0**: Developer-friendly IdP
+
 ### Fase 1: JWKS Caching y Validación Mejorada
 
 **HU 18.1: Implementar JWKS Cache con Auto-refresh**
@@ -114,13 +122,83 @@ Transformar Hodei Verified Permissions en un **clon funcional de AWS Verified Pe
 
 ---
 
-### Fase 2: Soporte Cognito
+### Fase 2: Integración con IdPs Específicos
 
-**HU 18.4: Implementar Cognito User Pool Integration**
+**HU 18.4: Implementar Keycloak Integration**
 
-**Archivos a modificar**:
-- `verified-permissions/infrastructure/src/jwt/validator.rs`
-- `proto/authorization.proto` (ya tiene CognitoUserPoolConfiguration)
+**Archivos a crear**:
+- `verified-permissions/infrastructure/src/jwt/providers/keycloak.rs`
+- `verified-permissions/infrastructure/src/jwt/providers/mod.rs`
+
+**Tareas**:
+1. Detectar issuer de Keycloak (formato: `https://{host}/realms/{realm}`)
+2. Mapeo de claims específicos de Keycloak:
+   - `realm_access.roles` → roles de realm
+   - `resource_access.{client}.roles` → roles de cliente
+   - `groups` → grupos de Keycloak
+3. Soporte para token introspection endpoint (opcional)
+4. Configuración de realm y client_id
+
+**Criterios de aceptación**:
+- [ ] Auto-detección de Keycloak por issuer
+- [ ] Mapeo de roles de realm y cliente
+- [ ] Mapeo de grupos
+- [ ] Tests con Keycloak testcontainer
+- [ ] Documentación de configuración
+
+**Ejemplo de configuración**:
+```rust
+IdentitySourceConfiguration::Keycloak {
+    issuer: "https://keycloak.example.com/realms/myapp",
+    client_id: "verified-permissions",
+    realm_roles_claim: "realm_access.roles",
+    client_roles_claim: "resource_access.verified-permissions.roles",
+    groups_claim: "groups",
+}
+```
+
+**Estimación**: 2 días
+
+---
+
+**HU 18.5: Implementar Zitadel Integration**
+
+**Archivos a crear**:
+- `verified-permissions/infrastructure/src/jwt/providers/zitadel.rs`
+
+**Tareas**:
+1. Detectar issuer de Zitadel (formato: `https://{instance}.zitadel.cloud`)
+2. Mapeo de claims específicos de Zitadel:
+   - `urn:zitadel:iam:org:project:roles` → roles de proyecto
+   - `urn:zitadel:iam:user:resourceowner:name` → organización
+3. Soporte para project_id y organization_id
+4. Validación de audience específica de Zitadel
+
+**Criterios de aceptación**:
+- [ ] Auto-detección de Zitadel por issuer
+- [ ] Mapeo de roles de proyecto
+- [ ] Mapeo de organización
+- [ ] Tests con Zitadel mock
+- [ ] Documentación de configuración
+
+**Ejemplo de configuración**:
+```rust
+IdentitySourceConfiguration::Zitadel {
+    issuer: "https://myinstance.zitadel.cloud",
+    project_id: "123456789",
+    client_id: "verified-permissions@project",
+    roles_claim: "urn:zitadel:iam:org:project:roles",
+}
+```
+
+**Estimación**: 2 días
+
+---
+
+**HU 18.6: Implementar Cognito User Pool Integration**
+
+**Archivos a crear**:
+- `verified-permissions/infrastructure/src/jwt/providers/cognito.rs`
 
 **Tareas**:
 1. Parsear `user_pool_arn` para extraer región y pool ID
@@ -134,9 +212,9 @@ Transformar Hodei Verified Permissions en un **clon funcional de AWS Verified Pe
 - [ ] Grupos de Cognito mapeados
 - [ ] Tests con tokens de Cognito mock
 
-**Estimación**: 2 días
+**Estimación**: 1 día
 
-**Total Fase 2**: 2 días
+**Total Fase 2**: 5 días
 
 ---
 
@@ -368,11 +446,11 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 | Épica | Fase | Días | Prioridad |
 |-------|------|------|-----------|
 | **18** | Fase 1: JWKS Cache | 4 | ALTA |
-| **18** | Fase 2: Cognito | 2 | MEDIA |
+| **18** | Fase 2: IdP Integration (Keycloak, Zitadel, Cognito) | 5 | ALTA |
 | **11** | Fase 3: SDK Builders | 4 | ALTA |
 | **22** | Fase 4: Middleware | 5 | ALTA |
 | - | Fase 5: Docs | 4 | MEDIA |
-| **TOTAL** | | **19 días** | |
+| **TOTAL** | | **22 días** | |
 
 ---
 
@@ -384,9 +462,11 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 3. ✅ HU 18.3: Test E2E JWT (1 día)
 4. ✅ HU 11.2: Error Handling (1 día)
 
-### Sprint 2 (5 días) - SDK Mejorado
-5. ✅ HU 11.1: Request Builders (3 días)
-6. ✅ HU 18.4: Cognito Support (2 días)
+### Sprint 2 (6 días) - IdP Integration
+5. ✅ HU 18.4: Keycloak Integration (2 días)
+6. ✅ HU 18.5: Zitadel Integration (2 días)
+7. ✅ HU 18.6: Cognito Integration (1 día)
+8. ✅ HU 11.1: Request Builders (inicio - 1 día)
 
 ### Sprint 3 (5 días) - Middleware
 7. ✅ HU 22.1: Extractor Trait (1 día)
@@ -467,6 +547,87 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 
 ---
 
+## Ejemplos de Integración con IdPs
+
+### Keycloak
+```yaml
+# docker-compose.yml
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    command: start-dev
+```
+
+```rust
+// Configuración en Hodei
+let identity_source = CreateIdentitySourceRequest {
+    policy_store_id: "store-123",
+    configuration: Some(IdentitySourceConfiguration::Keycloak {
+        issuer: "http://localhost:8080/realms/myapp",
+        client_id: "verified-permissions",
+        realm_roles_claim: "realm_access.roles",
+        client_roles_claim: "resource_access.verified-permissions.roles",
+        groups_claim: "groups",
+    }),
+    claims_mapping: Some(ClaimsMappingConfiguration {
+        principal_id_claim: "sub",
+        group_claim: Some("groups"),
+        attribute_mappings: vec![
+            ("email", "email"),
+            ("name", "name"),
+            ("department", "department"),
+        ],
+    }),
+};
+```
+
+### Zitadel
+```rust
+let identity_source = CreateIdentitySourceRequest {
+    policy_store_id: "store-123",
+    configuration: Some(IdentitySourceConfiguration::Zitadel {
+        issuer: "https://myinstance.zitadel.cloud",
+        project_id: "123456789",
+        client_id: "verified-permissions@project",
+        roles_claim: "urn:zitadel:iam:org:project:roles",
+    }),
+    claims_mapping: Some(ClaimsMappingConfiguration {
+        principal_id_claim: "sub",
+        group_claim: Some("urn:zitadel:iam:org:project:roles"),
+        attribute_mappings: vec![
+            ("email", "email"),
+            ("org", "urn:zitadel:iam:user:resourceowner:name"),
+        ],
+    }),
+};
+```
+
+### AWS Cognito
+```rust
+let identity_source = CreateIdentitySourceRequest {
+    policy_store_id: "store-123",
+    configuration: Some(IdentitySourceConfiguration::Cognito {
+        user_pool_arn: "arn:aws:cognito-idp:us-east-1:123456789:userpool/us-east-1_ABC123",
+        client_ids: vec!["app-client-id"],
+    }),
+    claims_mapping: Some(ClaimsMappingConfiguration {
+        principal_id_claim: "sub",
+        group_claim: Some("cognito:groups"),
+        attribute_mappings: vec![
+            ("email", "email"),
+            ("department", "custom:department"),
+        ],
+    }),
+};
+```
+
+---
+
 ## Notas de Implementación
 
 ### Patrón de Desarrollo
@@ -474,6 +635,7 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 2. **Iterativo**: Implementar por HU completas
 3. **Documentar**: README por cada feature
 4. **Ejemplos**: Código ejecutable por cada API
+5. **Testcontainers**: Usar contenedores reales para tests de integración
 
 ### Estándares de Código
 - Documentación Rustdoc completa
