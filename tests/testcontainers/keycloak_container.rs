@@ -75,10 +75,10 @@ impl KeycloakContainer {
 
         // Create Keycloak image
         let image = GenericImage::new("quay.io/keycloak/keycloak", "latest")
+            .with_wait_for(WaitFor::message_on_stdout("Listening on:"))
             .with_exposed_port(ContainerPort::Tcp(8080))
             .with_env_var("KEYCLOAK_ADMIN", &config.admin_username)
             .with_env_var("KEYCLOAK_ADMIN_PASSWORD", &config.admin_password)
-            .with_wait_for(WaitFor::message_on_stdout("Listening on:"))
             .with_cmd(vec!["start-dev"]);
 
         // Start container
