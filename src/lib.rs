@@ -12,6 +12,7 @@ pub mod error;
 pub mod jwt;
 pub mod audit;
 pub mod agent;
+pub mod metrics;
 
 // Re-export generated protobuf types
 pub mod proto {
