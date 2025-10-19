@@ -19,6 +19,9 @@ prost.workspace = true
 # Async runtime
 tokio.workspace = true
 
+# Cedar policy engine
+cedar-policy.workspace = true
+
 # CLI
 clap.workspace = true
 

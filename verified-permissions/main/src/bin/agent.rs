@@ -3,7 +3,8 @@
 //! Standalone binary for running the local agent
 
 use clap::Parser;
-use hodei_verified_permissions::agent::{AgentConfig, LocalAgent};
+// TODO: Agent module needs to be updated for new architecture
+// use hodei_verified_permissions::agent::{AgentConfig, LocalAgent};
 use tracing_subscriber;
 
 #[derive(Parser)]
@@ -40,15 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Sync Interval: {}s", args.sync_interval);
     println!("   Local Port: {}", args.local_port);
 
-    let config = AgentConfig {
-        central_service_url: args.central_url,
-        policy_store_id: args.policy_store_id,
-        sync_interval_secs: args.sync_interval,
-        local_port: args.local_port,
-    };
-
-    let agent = LocalAgent::new(config);
-    agent.start().await?;
+    // TODO: Implement agent with new architecture
+    println!("⚠️  Agent functionality not yet implemented in new architecture");
+    println!("   This will be implemented after core refactor is complete");
 
     Ok(())
 }

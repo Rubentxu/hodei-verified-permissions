@@ -3,8 +3,8 @@
 //! Este módulo proporciona tests reutilizables que pueden ejecutarse
 //! contra cualquier implementación de PolicyRepository.
 
-use hodei_verified_permissions::storage::PolicyRepository;
-use hodei_verified_permissions::error::Result;
+use hodei_domain::PolicyRepository;
+use hodei_domain::DomainResult as Result;
 
 /// Suite de tests completa para cualquier implementación de PolicyRepository
 /// 

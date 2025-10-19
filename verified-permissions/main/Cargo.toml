@@ -19,8 +19,14 @@ hodei-application.workspace = true
 hodei-infrastructure.workspace = true
 hodei-api.workspace = true
 
+# gRPC
+tonic.workspace = true
+
 # Async runtime
 tokio.workspace = true
+
+# CLI
+clap.workspace = true
 
 # Logging
 tracing.workspace = true

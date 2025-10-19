@@ -3,7 +3,7 @@
 //! Command-line interface for managing policy stores, schemas, and policies.
 
 use clap::{Parser, Subcommand};
-use hodei_verified_permissions::proto::{
+use hodei_api::proto::{
     authorization_control_client::AuthorizationControlClient,
     policy_definition, CreatePolicyRequest, CreatePolicyStoreRequest, DeletePolicyRequest,
     DeletePolicyStoreRequest, GetPolicyStoreRequest, ListPoliciesRequest,

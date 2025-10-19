@@ -1,11 +1,11 @@
 //! Integration tests for Identity Source functionality
 
-use hodei_verified_permissions::storage::Repository;
+use hodei_infrastructure::SqliteRepository;
 
 #[tokio::test]
 async fn test_identity_source_crud() {
     // Create in-memory database
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
 
     // Create a policy store first
     let store = repo.create_policy_store(Some("Test Store".to_string()))

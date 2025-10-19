@@ -1,10 +1,10 @@
 //! E2E tests for Repository layer
 
-use hodei_verified_permissions::storage::Repository;
+use hodei_infrastructure::SqliteRepository;
 
 /// Helper para crear un repositorio de prueba
-async fn create_test_repo() -> Repository {
-    Repository::new(":memory:").await.expect("Failed to create test repository")
+async fn create_test_repo() -> SqliteRepository {
+    SqliteRepository::new(":memory:").await.expect("Failed to create test repository")
 }
 
 #[tokio::test]

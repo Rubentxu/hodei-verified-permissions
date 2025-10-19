@@ -1,10 +1,10 @@
 //! Integration tests for Policy Template functionality
 
-use hodei_verified_permissions::storage::Repository;
+use hodei_infrastructure::SqliteRepository;
 
 #[tokio::test]
 async fn test_policy_template_crud() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
 
     // Create policy store
     let store = repo.create_policy_store(Some("Test Store".to_string()))

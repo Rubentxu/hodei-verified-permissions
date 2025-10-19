@@ -1,8 +1,9 @@
-use hodei_verified_permissions::grpc::{AuthorizationControlService, AuthorizationDataService};
-use hodei_verified_permissions::proto::authorization_control_server::AuthorizationControlServer;
-use hodei_verified_permissions::proto::authorization_data_server::AuthorizationDataServer;
-use hodei_verified_permissions::storage::Repository;
-use tonic::transport::Server;
+// TODO: Update main.rs to use new architecture with dependency injection
+// use hodei_infrastructure::create_repository;
+// use hodei_api::grpc::{AuthorizationControlService, AuthorizationDataService};
+// use hodei_api::proto::authorization_control_server::AuthorizationControlServer;
+// use hodei_api::proto::authorization_data_server::AuthorizationDataServer;
+// use tonic::transport::Server;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -14,30 +15,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    // Database URL (using SQLite for MVP)
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://authorization.db".to_string());
+    info!("🚀 Hodei Verified Permissions Server");
+    info!("⚠️  Main server functionality not yet implemented in new architecture");
+    info!("   This will be implemented after core refactor is complete");
+    info!("   Use the CLI binary for now: cargo run --bin hodei-cli");
 
-    info!("Connecting to database: {}", database_url);
-    let repository = Repository::new(&database_url).await?;
-
-    // Server address
-    let addr = std::env::var("SERVER_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:50051".to_string())
-        .parse()?;
-
-    info!("Starting Hodei Verified Permissions server on {}", addr);
-
-    // Create services
-    let data_service = AuthorizationDataService::new(repository.clone());
-    let control_service = AuthorizationControlService::new(repository);
-
-    // Start server
-    Server::builder()
-        .add_service(AuthorizationDataServer::new(data_service))
-        .add_service(AuthorizationControlServer::new(control_service))
-        .serve(addr)
-        .await?;
+    // TODO: Implement server with new architecture:
+    // 1. Create repository adapter
+    // 2. Create application use cases
+    // 3. Create gRPC services
+    // 4. Start server
 
     Ok(())
 }

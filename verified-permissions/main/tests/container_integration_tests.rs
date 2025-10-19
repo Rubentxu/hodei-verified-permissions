@@ -6,8 +6,9 @@ mod common;
 use testcontainers_modules::{postgres::Postgres, surrealdb::SurrealDb};
 use testcontainers::{clients, Container};
 
-use hodei_verified_permissions::config::{DatabaseConfig, DatabaseProvider};
-use hodei_verified_permissions::storage::create_repository;
+// TODO: Update container tests for new architecture
+// use hodei_infrastructure::config::{DatabaseConfig, DatabaseProvider};
+// use hodei_infrastructure::create_repository;
 
 use common::*;
 
