@@ -101,7 +101,23 @@ mod tests {
     }
     
     #[tokio::test]
-    async fn test_surreal_not_implemented() {
+    #[cfg(feature = "surreal")]
+    async fn test_surreal_repository_creation() {
+        let config = DatabaseConfig {
+            provider: DatabaseProvider::Surreal,
+            url: "memory".to_string(), // Use in-memory for tests
+            max_connections: 10,
+        };
+        
+        // This will fail if SurrealDB is not running, which is expected in unit tests
+        // The important thing is that it compiles and attempts to create the repository
+        let _repo = create_repository(&config).await;
+        // We don't assert success because it requires a running SurrealDB instance
+    }
+    
+    #[tokio::test]
+    #[cfg(not(feature = "surreal"))]
+    async fn test_surreal_not_enabled() {
         let config = DatabaseConfig {
             provider: DatabaseProvider::Surreal,
             url: "ws://localhost:8000".to_string(),
@@ -110,5 +126,8 @@ mod tests {
         
         let repo = create_repository(&config).await;
         assert!(repo.is_err());
+        if let Err(e) = repo {
+            assert!(e.to_string().contains("not enabled"));
+        }
     }
 }

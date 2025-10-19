@@ -2,6 +2,28 @@
 
 use thiserror::Error;
 
+/// Unified database error that abstracts over different database backends
+#[derive(Error, Debug)]
+pub enum DatabaseError {
+    #[error("Connection error: {0}")]
+    Connection(String),
+    
+    #[error("Query error: {0}")]
+    Query(String),
+    
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Constraint violation: {0}")]
+    ConstraintViolation(String),
+    
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+    
+    #[error("Internal database error: {0}")]
+    Internal(String),
+}
+
 #[derive(Error, Debug)]
 pub enum AuthorizationError {
     #[error("Policy store not found: {0}")]
@@ -29,7 +51,7 @@ pub enum AuthorizationError {
     EvaluationError(String),
 
     #[error("Database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
+    Database(#[from] DatabaseError),
 
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
@@ -80,6 +102,56 @@ impl From<cedar_policy::RequestValidationError> for AuthorizationError {
     }
 }
 
+// SQLx error conversions
+impl From<sqlx::Error> for DatabaseError {
+    fn from(err: sqlx::Error) -> Self {
+        match err {
+            sqlx::Error::RowNotFound => DatabaseError::NotFound("Row not found".to_string()),
+            sqlx::Error::Database(db_err) => {
+                if db_err.is_unique_violation() {
+                    DatabaseError::ConstraintViolation(db_err.to_string())
+                } else {
+                    DatabaseError::Query(db_err.to_string())
+                }
+            }
+            sqlx::Error::PoolTimedOut => DatabaseError::Connection("Pool timeout".to_string()),
+            sqlx::Error::PoolClosed => DatabaseError::Connection("Pool closed".to_string()),
+            _ => DatabaseError::Internal(err.to_string()),
+        }
+    }
+}
+
+impl From<sqlx::Error> for AuthorizationError {
+    fn from(err: sqlx::Error) -> Self {
+        AuthorizationError::Database(DatabaseError::from(err))
+    }
+}
+
+// SurrealDB error conversions
+#[cfg(feature = "surreal")]
+impl From<surrealdb::Error> for DatabaseError {
+    fn from(err: surrealdb::Error) -> Self {
+        // Map SurrealDB errors to our unified DatabaseError
+        let err_str = err.to_string();
+        if err_str.contains("not found") || err_str.contains("no record") {
+            DatabaseError::NotFound(err_str)
+        } else if err_str.contains("connection") {
+            DatabaseError::Connection(err_str)
+        } else if err_str.contains("unique") || err_str.contains("duplicate") {
+            DatabaseError::ConstraintViolation(err_str)
+        } else {
+            DatabaseError::Internal(err_str)
+        }
+    }
+}
+
+#[cfg(feature = "surreal")]
+impl From<surrealdb::Error> for AuthorizationError {
+    fn from(err: surrealdb::Error) -> Self {
+        AuthorizationError::Database(DatabaseError::from(err))
+    }
+}
+
 impl From<AuthorizationError> for tonic::Status {
     fn from(err: AuthorizationError) -> Self {
         match err {
@@ -107,7 +179,7 @@ impl From<AuthorizationError> for tonic::Status {
             AuthorizationError::EvaluationError(_) => {
                 tonic::Status::internal(err.to_string())
             }
-            AuthorizationError::DatabaseError(_) => {
+            AuthorizationError::Database(_) => {
                 tonic::Status::internal(err.to_string())
             }
             AuthorizationError::SerializationError(_) => {

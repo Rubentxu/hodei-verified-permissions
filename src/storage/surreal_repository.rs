@@ -16,7 +16,7 @@ impl SurrealRepository {
     /// Create a new SurrealDB repository
     pub async fn new(connection_string: &str) -> Result<Self> {
         let db = Surreal::new::<Ws>(connection_string).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         // Sign in as root (for development - in production use proper auth)
         db.signin(Root {
@@ -24,11 +24,11 @@ impl SurrealRepository {
             password: "root",
         })
         .await
-        .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+        .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         // Select namespace and database
         db.use_ns("hodei").use_db("permissions").await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Self::run_migrations(&db).await?;
 
@@ -95,7 +95,7 @@ impl SurrealRepository {
 
         for migration in migrations {
             db.query(migration).await
-                .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+                .map_err(|e| AuthorizationError::Database(e.into()))?;
         }
 
         Ok(())
@@ -128,7 +128,7 @@ impl PolicyRepository for SurrealRepository {
         );
 
         self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(PolicyStore {
             id,
@@ -142,20 +142,20 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM policy_stores:{}", id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let store: Option<PolicyStore> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         store.ok_or_else(|| AuthorizationError::PolicyStoreNotFound(id.to_string()))
     }
 
     async fn list_policy_stores(&self) -> Result<Vec<PolicyStore>> {
         let mut result = self.db.query("SELECT * FROM policy_stores ORDER BY created_at DESC").await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let stores: Vec<PolicyStore> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(stores)
     }
@@ -164,10 +164,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("DELETE policy_stores:{}", id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let deleted: Option<PolicyStore> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         if deleted.is_none() {
             return Err(AuthorizationError::PolicyStoreNotFound(id.to_string()));
@@ -186,7 +186,7 @@ impl PolicyRepository for SurrealRepository {
         );
 
         self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(())
     }
@@ -195,10 +195,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM schemas:{}", policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let schema: Option<Schema> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         schema.ok_or_else(|| AuthorizationError::SchemaNotFound(policy_store_id.to_string()))
     }
@@ -207,10 +207,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("DELETE schemas:{}", policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let deleted: Option<Schema> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         if deleted.is_none() {
             return Err(AuthorizationError::SchemaNotFound(policy_store_id.to_string()));
@@ -239,7 +239,7 @@ impl PolicyRepository for SurrealRepository {
         );
 
         self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(Policy {
             policy_store_id: policy_store_id.to_string(),
@@ -256,10 +256,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM {}", record_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let policy: Option<Policy> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         policy.ok_or_else(|| AuthorizationError::PolicyNotFound(format!("{}:{}", policy_store_id, policy_id)))
     }
@@ -268,10 +268,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM policies WHERE policy_store_id = '{}' ORDER BY created_at", policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let policies: Vec<Policy> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(policies)
     }
@@ -295,10 +295,10 @@ impl PolicyRepository for SurrealRepository {
         );
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let updated: Option<Policy> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         updated.ok_or_else(|| AuthorizationError::PolicyNotFound(format!("{}:{}", policy_store_id, policy_id)))
     }
@@ -308,10 +308,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("DELETE {}", record_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let deleted: Option<Policy> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         if deleted.is_none() {
             return Err(AuthorizationError::PolicyNotFound(format!("{}:{}", policy_store_id, policy_id)));
@@ -341,7 +341,7 @@ impl PolicyRepository for SurrealRepository {
         );
 
         self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(IdentitySource {
             id,
@@ -364,10 +364,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM {} WHERE policy_store_id = '{}'", record_id, policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let source: Option<IdentitySource> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         source.ok_or_else(|| AuthorizationError::NotFound(format!("Identity source not found: {}", identity_source_id)))
     }
@@ -376,10 +376,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("SELECT * FROM identity_sources WHERE policy_store_id = '{}' ORDER BY created_at", policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let sources: Vec<IdentitySource> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(sources)
     }
@@ -393,10 +393,10 @@ impl PolicyRepository for SurrealRepository {
         let sql = format!("DELETE {} WHERE policy_store_id = '{}'", record_id, policy_store_id);
 
         let mut result = self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         let deleted: Option<IdentitySource> = result.take(0)
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         if deleted.is_none() {
             return Err(AuthorizationError::NotFound(format!("Identity source not found: {}", identity_source_id)));
@@ -418,7 +418,7 @@ impl PolicyRepository for SurrealRepository {
         );
 
         self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::DatabaseError(sqlx::Error::from(e)))?;
+            .map_err(|e| AuthorizationError::Database(e.into()))?;
 
         Ok(())
     }
