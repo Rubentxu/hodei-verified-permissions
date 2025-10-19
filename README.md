@@ -15,10 +15,20 @@
 - 🔄 **Auto-Reload** - Background cache refresh every 5 minutes
 - 🎯 **Cedar Policy Engine** - AWS-compatible policy language
 - 🔌 **gRPC API** - Low-latency communication
-- 🔐 **JWT Support** - Token-based authorization
+- 🔐 **JWT Support** - Token-based authorization with Identity Sources
+- 🌐 **IdP Integration** - Keycloak, Zitadel, AWS Cognito support
+- 🔌 **Middleware** - Axum/Tower middleware for HTTP services
 - 📝 **Audit Logging** - Complete forensic trail
 - 🎨 **Policy Templates** - Reusable policy patterns
 - 🏢 **Multi-Tenant Ready** - Isolated policy stores
+- 📚 **Complete Documentation** - Guides for users and developers
+
+## 📚 Documentation
+
+- **[SDK Guide](sdk/README.md)** - Complete SDK documentation for users
+- **[Middleware Guide](sdk/docs/MIDDLEWARE_GUIDE.md)** - Axum/Tower middleware integration
+- **[Identity Sources Guide](sdk/docs/IDENTITY_SOURCES.md)** - Keycloak, Zitadel, AWS Cognito integration
+- **[Español](README.es.md)** - Documentación en español
 
 ## 📊 Performance
 
@@ -579,6 +589,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Hodei Team
 
 ## 🙏 Acknowledgments
 
