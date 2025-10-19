@@ -17,7 +17,36 @@ Complete guide for integrating Identity Providers (IdPs) with Hodei Verified Per
 
 ## Overview
 
-Identity Sources allow Hodei Verified Permissions to validate JWT tokens and extract user identity information from external Identity Providers (IdPs). This enables:
+Identity Sources allow Hodei Verified Permissions to validate JWT tokens and extract user identity information from external Identity Providers (IdPs).
+
+### JWT Authorization Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IdP as Identity Provider<br/>(Keycloak/Zitadel/Cognito)
+    participant App as Your Application
+    participant Hodei as Hodei Permissions
+    participant JWKS as JWKS Endpoint
+
+    User->>IdP: Login (username/password)
+    IdP-->>User: JWT Token
+    User->>App: Request + JWT Token
+    App->>Hodei: IsAuthorizedWithToken(token, action, resource)
+    
+    Hodei->>JWKS: Fetch Public Keys (cached)
+    JWKS-->>Hodei: Public Keys
+    Hodei->>Hodei: Validate Token Signature
+    Hodei->>Hodei: Extract Claims (sub, groups, roles)
+    Hodei->>Hodei: Map Claims to Cedar Entities
+    Hodei->>Hodei: Evaluate Cedar Policies
+    Hodei-->>App: Decision (Allow/Deny)
+    App-->>User: Response
+    
+    Note over Hodei,JWKS: JWKS keys cached<br/>for performance
+```
+
+### Key Benefits
 
 - **Centralized Authentication**: Users authenticate with your IdP
 - **Distributed Authorization**: Hodei evaluates Cedar policies

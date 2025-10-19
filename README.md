@@ -40,27 +40,30 @@
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  gRPC Server                                 │
-├─────────────────────────────────────────────────────────────┤
-│  Metrics (Lock-free monitoring)                             │
-│         ↓                                                    │
-│  AuthorizationService (~100μs)                              │
-│         ↓                                                    │
-│  CacheManager (In-Memory)                                   │
-│    - Background Reload Task (5 min)                         │
-│    - PolicyStoreCache (RwLock)                              │
-│         ↓                                                    │
-│  PolicyRepository (Trait)                                   │
-│         ↓                                                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
-│  │ SQLite   │  │Postgres  │  │SurrealDB │                 │
-│  │ ✅ Prod  │  │ ✅ Prod  │  │ ✅ Prod  │                 │
-│  └──────────┘  └──────────┘  └──────────┘                 │
-│         ↓            ↓            ↓                          │
-│  DatabaseError (Unified Abstraction)                        │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "gRPC Server"
+        Client[Client Request] --> Metrics[Metrics Layer<br/>Lock-free monitoring]
+        Metrics --> AuthService[AuthorizationService<br/>~100μs latency]
+        AuthService --> Cache[CacheManager<br/>In-Memory]
+        Cache --> ReloadTask[Background Reload Task<br/>Every 5 minutes]
+        Cache --> PolicyCache[PolicyStoreCache<br/>RwLock protected]
+    end
+    
+    subgraph "Storage Layer"
+        PolicyCache --> Repository[PolicyRepository<br/>Trait]
+        Repository --> SQLite[(SQLite<br/>✅ Production)]
+        Repository --> Postgres[(PostgreSQL<br/>✅ Production)]
+        Repository --> SurrealDB[(SurrealDB<br/>✅ Production)]
+    end
+    
+    subgraph "Cedar Engine"
+        AuthService --> Cedar[Cedar Policy Engine<br/>AWS Compatible]
+    end
+    
+    style AuthService fill:#90EE90
+    style Cache fill:#87CEEB
+    style Cedar fill:#FFD700
 ```
 
 ## 🚀 Quick Start
@@ -121,6 +124,38 @@ export DATABASE_URL=ws://localhost:8000
 
 # Run the server
 ./target/release/hodei-server
+```
+
+## 🔄 Authorization Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SDK
+    participant Server
+    participant Cache
+    participant Cedar
+    participant DB
+
+    Client->>SDK: is_authorized(principal, action, resource)
+    SDK->>Server: gRPC Request
+    Server->>Cache: Check PolicyStore Cache
+    
+    alt Cache Hit
+        Cache-->>Server: Return Policies
+    else Cache Miss
+        Server->>DB: Load Policies
+        DB-->>Server: Return Policies
+        Server->>Cache: Update Cache
+    end
+    
+    Server->>Cedar: Evaluate(policies, request)
+    Cedar-->>Server: Decision (Allow/Deny)
+    Server-->>SDK: gRPC Response
+    SDK-->>Client: Decision
+    
+    Note over Server,Cache: ~100μs with cache
+    Note over Server,DB: ~1-2ms without cache
 ```
 
 ## 📖 Usage Examples

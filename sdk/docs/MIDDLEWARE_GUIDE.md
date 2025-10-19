@@ -15,7 +15,38 @@ Complete guide for using Hodei Permissions middleware with Axum and Tower.
 
 ## Overview
 
-The Hodei Permissions middleware provides automatic authorization checks for HTTP services built with Axum and Tower. It:
+The Hodei Permissions middleware provides automatic authorization checks for HTTP services built with Axum and Tower.
+
+### Middleware Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Middleware
+    participant Extractor
+    participant AuthService
+    participant Handler
+
+    Client->>Middleware: HTTP Request + JWT
+    Middleware->>Extractor: Extract Token
+    Extractor-->>Middleware: Token
+    Middleware->>Extractor: Extract Action & Resource
+    Extractor-->>Middleware: AuthorizationParts
+    
+    Middleware->>AuthService: IsAuthorizedWithToken
+    
+    alt Allow
+        AuthService-->>Middleware: Decision: Allow
+        Middleware->>Handler: Forward Request
+        Handler-->>Middleware: Response
+        Middleware-->>Client: 200 OK + Response
+    else Deny
+        AuthService-->>Middleware: Decision: Deny
+        Middleware-->>Client: 403 Forbidden
+    end
+```
+
+### How It Works
 
 1. Extracts JWT tokens from requests
 2. Maps HTTP methods to actions
