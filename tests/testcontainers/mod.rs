@@ -3,7 +3,9 @@
 pub mod fixtures;
 pub mod server_container;
 pub mod keycloak_container;
+pub mod zitadel_container;
 
 pub use fixtures::*;
 pub use server_container::ServerContainer;
 pub use keycloak_container::{KeycloakContainer, KeycloakConfig, TokenResponse};
+pub use zitadel_container::{ZitadelContainer, ZitadelConfig, ZitadelTokenResponse};
