@@ -36,6 +36,9 @@ pub enum DomainError {
 
     #[error("Business rule violation: {0}")]
     BusinessRuleViolation(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
 }
 
 pub type DomainResult<T> = Result<T, DomainError>;

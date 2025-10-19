@@ -48,15 +48,14 @@ impl AuthorizationEvaluator {
     }
 
     fn build_policy_set(&self, policies: &[Policy]) -> DomainResult<PolicySet> {
+        use std::str::FromStr;
+        
         let mut policy_set = PolicySet::new();
         
         for policy in policies {
             let policy_str = policy.statement.as_str();
-            let cedar_policy = cedar_policy::Policy::parse(
-                Some(policy.policy_id.as_str().to_string()),
-                policy_str,
-            )
-            .map_err(|e| DomainError::InvalidPolicySyntax(e.to_string()))?;
+            let cedar_policy = cedar_policy::Policy::from_str(policy_str)
+                .map_err(|e| DomainError::InvalidPolicySyntax(e.to_string()))?;
             
             policy_set.add(cedar_policy)
                 .map_err(|e| DomainError::PolicyValidationFailed(e.to_string()))?;

@@ -1,9 +1,7 @@
-//! Storage layer for policy stores, schemas, and policies
+//! Repository implementations for persistence layer
 
-pub mod models;
 pub mod repository;
-pub mod repository_trait;
-pub mod factory;
+pub mod adapter;
 
 // Optional DB implementations
 #[cfg(feature = "postgres")]
@@ -11,9 +9,8 @@ pub mod postgres_repository;
 #[cfg(feature = "surreal")]
 pub mod surreal_repository;
 
-pub use repository::Repository;
-pub use repository_trait::{PolicyRepository, AuthorizationLog};
-pub use factory::create_repository;
+pub use repository::SqliteRepository;
+pub use adapter::RepositoryAdapter;
 
 #[cfg(feature = "postgres")]
 pub use postgres_repository::PostgresRepository;

@@ -30,9 +30,9 @@ tracing-subscriber.workspace = true
 anyhow.workspace = true
 
 [dev-dependencies]
-testcontainers.workspace = true
-testcontainers-modules.workspace = true
-tokio-test.workspace = true
+testcontainers = { version = "0.25.0", features = ["blocking"] }
+testcontainers-modules = { version = "0.13.0", features = ["postgres", "surrealdb"] }
+tokio-test = "0.4"
 
 [[bin]]
 name = "hodei-cli"

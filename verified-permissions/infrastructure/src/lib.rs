@@ -4,13 +4,12 @@
 //! and external service integrations (database, cache, JWT, etc.).
 
 pub mod repository;
-pub mod cache;
-pub mod jwt;
-pub mod config;
 pub mod factory;
 
-pub use repository::*;
-pub use cache::*;
-pub use jwt::*;
-pub use config::*;
-pub use factory::*;
+// TODO: Update these modules to use new structure
+// pub mod cache;
+// pub mod jwt;
+// pub mod config;
+
+pub use repository::{RepositoryAdapter, SqliteRepository};
+pub use factory::create_repository;
