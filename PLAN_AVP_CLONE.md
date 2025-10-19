@@ -218,6 +218,86 @@ IdentitySourceConfiguration::Zitadel {
 
 ---
 
+### Fase 2.5: Tests E2E con IdPs Reales (NUEVO)
+
+**HU 18.7: E2E Tests con Keycloak Testcontainer**
+
+**Archivos a crear**:
+- `tests/e2e_keycloak_integration_tests.rs`
+- `tests/testcontainers/keycloak_container.rs`
+- `tests/fixtures/keycloak_setup.rs`
+
+**Tareas**:
+1. Crear Keycloak testcontainer wrapper
+2. Configurar realm, client, users y roles automáticamente
+3. Generar tokens JWT reales desde Keycloak
+4. Test flujo completo: token → validación → autorización
+5. Test con realm roles y client roles
+6. Test con grupos de Keycloak
+
+**Criterios de aceptación**:
+- [ ] Keycloak container inicia correctamente
+- [ ] Realm y client se crean automáticamente
+- [ ] Usuarios con roles se crean vía Admin API
+- [ ] Tokens JWT reales se obtienen vía OAuth2
+- [ ] IsAuthorizedWithToken funciona con token real
+- [ ] Roles mapeados correctamente a Cedar entities
+- [ ] Test completo de Allow y Deny
+
+**Configuración Keycloak**:
+```rust
+KeycloakContainer::new()
+    .with_realm("test-realm")
+    .with_client("test-app", "secret")
+    .with_user("admin", "password", vec!["admin", "user"])
+    .with_user("viewer", "password", vec!["viewer"])
+    .start()
+```
+
+**Estimación**: 1.5 días
+
+---
+
+**HU 18.8: E2E Tests con Zitadel Testcontainer**
+
+**Archivos a crear**:
+- `tests/e2e_zitadel_integration_tests.rs`
+- `tests/testcontainers/zitadel_container.rs`
+- `tests/fixtures/zitadel_setup.rs`
+
+**Tareas**:
+1. Crear Zitadel testcontainer wrapper
+2. Configurar project, application y users
+3. Generar tokens JWT reales desde Zitadel
+4. Test flujo completo con URN claims
+5. Test con project roles
+6. Test con organization context
+
+**Criterios de aceptación**:
+- [ ] Zitadel container inicia correctamente
+- [ ] Project y application se crean vía API
+- [ ] Usuarios con roles se crean automáticamente
+- [ ] Tokens JWT con URN claims se obtienen
+- [ ] Project roles se mapean correctamente
+- [ ] Organization attribute se extrae
+- [ ] Test completo de autorización
+
+**Configuración Zitadel**:
+```rust
+ZitadelContainer::new()
+    .with_project("test-project")
+    .with_application("test-app")
+    .with_user("developer", vec!["developer", "admin"])
+    .with_organization("test-org")
+    .start()
+```
+
+**Estimación**: 1.5 días
+
+**Total Fase 2.5**: 3 días
+
+---
+
 ## ÉPICA 11: SDK Ergonómico Mejorado
 
 **Objetivo**: SDK idiomático con builders y mejor UX
@@ -447,10 +527,11 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 |-------|------|------|-----------|
 | **18** | Fase 1: JWKS Cache | 4 | ALTA |
 | **18** | Fase 2: IdP Integration (Keycloak, Zitadel, Cognito) | 5 | ALTA |
+| **18** | Fase 2.5: E2E Tests con IdPs Reales | 3 | ALTA |
 | **11** | Fase 3: SDK Builders | 4 | ALTA |
 | **22** | Fase 4: Middleware | 5 | ALTA |
 | - | Fase 5: Docs | 4 | MEDIA |
-| **TOTAL** | | **22 días** | |
+| **TOTAL** | | **25 días** | |
 
 ---
 
@@ -462,11 +543,14 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 3. ✅ HU 18.3: Test E2E JWT (1 día)
 4. ✅ HU 11.2: Error Handling (1 día)
 
-### Sprint 2 (6 días) - IdP Integration
+### Sprint 2 (5 días) - IdP Integration
 5. ✅ HU 18.4: Keycloak Integration (2 días)
 6. ✅ HU 18.5: Zitadel Integration (2 días)
 7. ✅ HU 18.6: Cognito Integration (1 día)
-8. ✅ HU 11.1: Request Builders (inicio - 1 día)
+
+### Sprint 2.5 (3 días) - E2E Tests con IdPs Reales
+8. 🔄 HU 18.7: E2E Keycloak Testcontainer (1.5 días)
+9. 🔄 HU 18.8: E2E Zitadel Testcontainer (1.5 días)
 
 ### Sprint 3 (5 días) - Middleware
 7. ✅ HU 22.1: Extractor Trait (1 día)
@@ -511,6 +595,9 @@ let middleware = VerifiedPermissionsMiddleware::builder()
 - `reqwest` para JWKS fetching
 - `tower` y `axum` para middleware
 - `moka` o `cached` para JWKS cache
+- `testcontainers` para tests E2E
+- `testcontainers-modules` para Keycloak
+- Docker para ejecutar containers en tests
 
 ### Riesgos Identificados
 1. **Complejidad JWKS**: Manejo de rotación de claves
