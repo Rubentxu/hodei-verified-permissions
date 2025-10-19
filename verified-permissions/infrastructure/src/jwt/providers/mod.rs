@@ -5,9 +5,11 @@
 
 pub mod keycloak;
 pub mod zitadel;
+pub mod cognito;
 
 pub use keycloak::KeycloakProvider;
 pub use zitadel::ZitadelProvider;
+pub use cognito::CognitoProvider;
 
 use crate::error::Result;
 use crate::jwt::{ClaimsMappingConfig, ValidatedClaims};
@@ -33,7 +35,12 @@ pub trait IdentityProvider {
 
 /// Auto-detect the identity provider from issuer URL
 pub fn detect_provider(issuer: &str) -> Option<Box<dyn IdentityProvider>> {
-    // Try Zitadel first (more specific pattern)
+    // Try Cognito first (most specific pattern)
+    if CognitoProvider::default().matches_issuer(issuer) {
+        return Some(Box::new(CognitoProvider::default()));
+    }
+    
+    // Try Zitadel
     if ZitadelProvider::default().matches_issuer(issuer) {
         return Some(Box::new(ZitadelProvider::default()));
     }
@@ -42,9 +49,6 @@ pub fn detect_provider(issuer: &str) -> Option<Box<dyn IdentityProvider>> {
     if KeycloakProvider::default().matches_issuer(issuer) {
         return Some(Box::new(KeycloakProvider::default()));
     }
-    
-    // Add more providers here as they are implemented
-    // if CognitoProvider::default().matches_issuer(issuer) { ... }
     
     None
 }
@@ -67,6 +71,14 @@ mod tests {
         let provider = detect_provider(issuer);
         assert!(provider.is_some());
         assert_eq!(provider.unwrap().name(), "Zitadel");
+    }
+
+    #[test]
+    fn test_detect_cognito() {
+        let issuer = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ABC123";
+        let provider = detect_provider(issuer);
+        assert!(provider.is_some());
+        assert_eq!(provider.unwrap().name(), "Cognito");
     }
 
     #[test]
