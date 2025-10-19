@@ -50,3 +50,13 @@ pub struct PolicyTemplate {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone)]
+pub struct AuthorizationLog {
+    pub policy_store_id: String,
+    pub principal: String,
+    pub action: String,
+    pub resource: String,
+    pub decision: String,
+    pub timestamp: DateTime<Utc>,
+}

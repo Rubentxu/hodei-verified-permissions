@@ -11,5 +11,6 @@ pub mod repository;
 
 pub use entities::*;
 pub use value_objects::*;
+pub use services::{AuthorizationEvaluator, PolicyValidator};
 pub use errors::{DomainError, DomainResult};
 pub use repository::*;

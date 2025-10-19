@@ -1,13 +1,6 @@
 //! SQLite repository implementation
 
-use hodei_domain::{
-    PolicyRepository, AuthorizationLog,
-    PolicyStore, Policy, Schema, IdentitySource, PolicyTemplate,
-    PolicyStoreId, PolicyId, CedarPolicy, IdentitySourceType,
-    Principal, Action, Resource, AuthorizationDecision,
-    DomainError, DomainResult,
-};
-use async_trait::async_trait;
+use super::models;
 use chrono::Utc;
 use sqlx::{SqlitePool, Row};
 use uuid::Uuid;
@@ -17,8 +10,8 @@ pub struct SqliteRepository {
     pool: SqlitePool,
 }
 
-impl Repository {
-    pub async fn new(database_url: &str) -> Result<Self> {
+impl SqliteRepository {
+    pub async fn new(database_url: &str) -> anyhow::Result<Self> {
         let pool = SqlitePool::connect(database_url).await?;
         
         // Run migrations
@@ -125,7 +118,7 @@ impl Repository {
     // Policy Store Operations
     // ========================================================================
 
-    pub async fn create_policy_store(&self, description: Option<String>) -> Result<PolicyStore> {
+    pub async fn create_policy_store(&self, description: Option<String>) -> anyhow::Result<models::PolicyStore> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -139,7 +132,7 @@ impl Repository {
         .execute(&self.pool)
         .await?;
 
-        Ok(PolicyStore {
+        Ok(models::PolicyStore {
             id,
             description,
             created_at: now,
@@ -147,16 +140,16 @@ impl Repository {
         })
     }
 
-    pub async fn get_policy_store(&self, id: &str) -> Result<PolicyStore> {
+    pub async fn get_policy_store(&self, id: &str) -> anyhow::Result<models::PolicyStore> {
         let row = sqlx::query(
             "SELECT id, description, created_at, updated_at FROM policy_stores WHERE id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)
         .await?
-        .ok_or_else(|| AuthorizationError::PolicyStoreNotFound(id.to_string()))?;
+        .ok_or_else(|| anyhow::anyhow!("Policy store not found: {}", id))?;
 
-        Ok(PolicyStore {
+        Ok(models::PolicyStore {
             id: row.get("id"),
             description: row.get("description"),
             created_at: row.get::<String, _>("created_at").parse().unwrap(),
@@ -164,7 +157,7 @@ impl Repository {
         })
     }
 
-    pub async fn list_policy_stores(&self) -> Result<Vec<PolicyStore>> {
+    pub async fn list_policy_stores(&self) -> anyhow::Result<Vec<models::PolicyStore>> {
         let rows = sqlx::query(
             "SELECT id, description, created_at, updated_at FROM policy_stores ORDER BY created_at DESC",
         )
@@ -173,7 +166,7 @@ impl Repository {
 
         Ok(rows
             .into_iter()
-            .map(|row| PolicyStore {
+            .map(|row| models::PolicyStore {
                 id: row.get("id"),
                 description: row.get("description"),
                 created_at: row.get::<String, _>("created_at").parse().unwrap(),
@@ -182,14 +175,14 @@ impl Repository {
             .collect())
     }
 
-    pub async fn delete_policy_store(&self, id: &str) -> Result<()> {
+    pub async fn delete_policy_store(&self, id: &str) -> anyhow::Result<()> {
         let result = sqlx::query("DELETE FROM policy_stores WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
             .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::PolicyStoreNotFound(id.to_string()));
+            return Err(anyhow::anyhow!("Policy store not found: {}", id));
         }
 
         Ok(())
@@ -199,7 +192,7 @@ impl Repository {
     // Schema Operations
     // ========================================================================
 
-    pub async fn put_schema(&self, policy_store_id: &str, schema_json: String) -> Result<Schema> {
+    pub async fn put_schema(&self, policy_store_id: &str, schema_json: String) -> anyhow::Result<models::Schema> {
         // Verify policy store exists
         self.get_policy_store(policy_store_id).await?;
 
@@ -221,7 +214,7 @@ impl Repository {
         .execute(&self.pool)
         .await?;
 
-        Ok(Schema {
+        Ok(models::Schema {
             policy_store_id: policy_store_id.to_string(),
             schema_json,
             created_at: now,
@@ -229,16 +222,16 @@ impl Repository {
         })
     }
 
-    pub async fn get_schema(&self, policy_store_id: &str) -> Result<Schema> {
+    pub async fn get_schema(&self, policy_store_id: &str) -> anyhow::Result<models::Schema> {
         let row = sqlx::query(
             "SELECT policy_store_id, schema_json, created_at, updated_at FROM schemas WHERE policy_store_id = ?",
         )
         .bind(policy_store_id)
         .fetch_optional(&self.pool)
         .await?
-        .ok_or_else(|| AuthorizationError::SchemaNotFound(policy_store_id.to_string()))?;
+        .ok_or_else(|| anyhow::anyhow!("Schema not found: {}", policy_store_id))?;
 
-        Ok(Schema {
+        Ok(models::Schema {
             policy_store_id: row.get("policy_store_id"),
             schema_json: row.get("schema_json"),
             created_at: row.get::<String, _>("created_at").parse().unwrap(),
@@ -246,14 +239,14 @@ impl Repository {
         })
     }
 
-    pub async fn delete_schema(&self, policy_store_id: &str) -> Result<()> {
+    pub async fn delete_schema(&self, policy_store_id: &str) -> anyhow::Result<()> {
         let result = sqlx::query("DELETE FROM schemas WHERE policy_store_id = ?")
             .bind(policy_store_id)
             .execute(&self.pool)
             .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::SchemaNotFound(policy_store_id.to_string()));
+            return Err(anyhow::anyhow!("Schema not found: {}", policy_store_id));
         }
 
         Ok(())
@@ -269,7 +262,7 @@ impl Repository {
         policy_id: &str,
         statement: String,
         description: Option<String>,
-    ) -> Result<Policy> {
+    ) -> anyhow::Result<models::Policy> {
         // Verify policy store exists
         self.get_policy_store(policy_store_id).await?;
 
@@ -287,7 +280,7 @@ impl Repository {
         .execute(&self.pool)
         .await?;
 
-        Ok(Policy {
+        Ok(models::Policy {
             policy_store_id: policy_store_id.to_string(),
             policy_id: policy_id.to_string(),
             statement,
@@ -297,7 +290,7 @@ impl Repository {
         })
     }
 
-    pub async fn get_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<Policy> {
+    pub async fn get_policy(&self, policy_store_id: &str, policy_id: &str) -> anyhow::Result<models::Policy> {
         let row = sqlx::query(
             "SELECT policy_store_id, policy_id, statement, description, created_at, updated_at FROM policies WHERE policy_store_id = ? AND policy_id = ?",
         )
@@ -305,9 +298,9 @@ impl Repository {
         .bind(policy_id)
         .fetch_optional(&self.pool)
         .await?
-        .ok_or_else(|| AuthorizationError::PolicyNotFound(policy_id.to_string()))?;
+        .ok_or_else(|| anyhow::anyhow!("Policy not found: {}", policy_id))?;
 
-        Ok(Policy {
+        Ok(models::Policy {
             policy_store_id: row.get("policy_store_id"),
             policy_id: row.get("policy_id"),
             statement: row.get("statement"),
@@ -323,7 +316,7 @@ impl Repository {
         policy_id: &str,
         statement: String,
         description: Option<String>,
-    ) -> Result<Policy> {
+    ) -> anyhow::Result<models::Policy> {
         let now = Utc::now();
 
         let result = sqlx::query(
@@ -338,10 +331,10 @@ impl Repository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::PolicyNotFound(policy_id.to_string()));
+            return Err(anyhow::anyhow!("Policy not found: {}", policy_id));
         }
 
-        Ok(Policy {
+        Ok(models::Policy {
             policy_store_id: policy_store_id.to_string(),
             policy_id: policy_id.to_string(),
             statement,
@@ -351,7 +344,7 @@ impl Repository {
         })
     }
 
-    pub async fn delete_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<()> {
+    pub async fn delete_policy(&self, policy_store_id: &str, policy_id: &str) -> anyhow::Result<()> {
         let result = sqlx::query(
             "DELETE FROM policies WHERE policy_store_id = ? AND policy_id = ?",
         )
@@ -361,13 +354,13 @@ impl Repository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::PolicyNotFound(policy_id.to_string()));
+            return Err(anyhow::anyhow!("Policy not found: {}", policy_id));
         }
 
         Ok(())
     }
 
-    pub async fn list_policies(&self, policy_store_id: &str) -> Result<Vec<Policy>> {
+    pub async fn list_policies(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::Policy>> {
         let rows = sqlx::query(
             "SELECT policy_store_id, policy_id, statement, description, created_at, updated_at FROM policies WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -377,7 +370,7 @@ impl Repository {
 
         Ok(rows
             .into_iter()
-            .map(|row| Policy {
+            .map(|row| models::Policy {
                 policy_store_id: row.get("policy_store_id"),
                 policy_id: row.get("policy_id"),
                 statement: row.get("statement"),
@@ -399,7 +392,7 @@ impl Repository {
         configuration_json: &str,
         claims_mapping_json: Option<&str>,
         description: Option<&str>,
-    ) -> Result<IdentitySource> {
+    ) -> anyhow::Result<models::IdentitySource> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -417,7 +410,7 @@ impl Repository {
         .execute(&self.pool)
         .await?;
 
-        Ok(IdentitySource {
+        Ok(models::IdentitySource {
             id,
             policy_store_id: policy_store_id.to_string(),
             configuration_type: configuration_type.to_string(),
@@ -433,7 +426,7 @@ impl Repository {
         &self,
         policy_store_id: &str,
         identity_source_id: &str,
-    ) -> Result<IdentitySource> {
+    ) -> anyhow::Result<models::IdentitySource> {
         let row = sqlx::query(
             "SELECT id, policy_store_id, configuration_type, configuration_json, claims_mapping_json, description, created_at, updated_at FROM identity_sources WHERE policy_store_id = ? AND id = ?",
         )
@@ -443,7 +436,7 @@ impl Repository {
         .await?;
 
         match row {
-            Some(row) => Ok(IdentitySource {
+            Some(row) => Ok(models::IdentitySource {
                 id: row.get("id"),
                 policy_store_id: row.get("policy_store_id"),
                 configuration_type: row.get("configuration_type"),
@@ -453,14 +446,14 @@ impl Repository {
                 created_at: row.get::<String, _>("created_at").parse().unwrap(),
                 updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
             }),
-            None => Err(AuthorizationError::NotFound(format!(
+            None => Err(anyhow::anyhow!(
                 "Identity source {} not found",
                 identity_source_id
             ))),
         }
     }
 
-    pub async fn list_identity_sources(&self, policy_store_id: &str) -> Result<Vec<IdentitySource>> {
+    pub async fn list_identity_sources(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::IdentitySource>> {
         let rows = sqlx::query(
             "SELECT id, policy_store_id, configuration_type, configuration_json, claims_mapping_json, description, created_at, updated_at FROM identity_sources WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -470,7 +463,7 @@ impl Repository {
 
         Ok(rows
             .into_iter()
-            .map(|row| IdentitySource {
+            .map(|row| models::IdentitySource {
                 id: row.get("id"),
                 policy_store_id: row.get("policy_store_id"),
                 configuration_type: row.get("configuration_type"),
@@ -487,7 +480,7 @@ impl Repository {
         &self,
         policy_store_id: &str,
         identity_source_id: &str,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         let result = sqlx::query(
             "DELETE FROM identity_sources WHERE policy_store_id = ? AND id = ?",
         )
@@ -497,10 +490,10 @@ impl Repository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::NotFound(format!(
+            return Err(anyhow::anyhow!(
                 "Identity source {} not found",
                 identity_source_id
-            )));
+            ));
         }
 
         Ok(())
@@ -516,12 +509,12 @@ impl Repository {
         template_id: &str,
         statement: &str,
         description: Option<&str>,
-    ) -> Result<PolicyTemplate> {
+    ) -> anyhow::Result<models::PolicyTemplate> {
         let now = Utc::now();
 
         // Validate template syntax (check for placeholders)
         if !statement.contains("?principal") && !statement.contains("?resource") {
-            return Err(AuthorizationError::InvalidPolicy(
+            return Err(anyhow::anyhow!(
                 "Template must contain at least one placeholder (?principal or ?resource)".to_string()
             ));
         }
@@ -538,7 +531,7 @@ impl Repository {
         .execute(&self.pool)
         .await?;
 
-        Ok(PolicyTemplate {
+        Ok(models::PolicyTemplate {
             template_id: template_id.to_string(),
             policy_store_id: policy_store_id.to_string(),
             statement: statement.to_string(),
@@ -552,7 +545,7 @@ impl Repository {
         &self,
         policy_store_id: &str,
         template_id: &str,
-    ) -> Result<PolicyTemplate> {
+    ) -> anyhow::Result<models::PolicyTemplate> {
         let row = sqlx::query(
             "SELECT template_id, policy_store_id, statement, description, created_at, updated_at FROM policy_templates WHERE policy_store_id = ? AND template_id = ?",
         )
@@ -562,7 +555,7 @@ impl Repository {
         .await?;
 
         match row {
-            Some(row) => Ok(PolicyTemplate {
+            Some(row) => Ok(models::PolicyTemplate {
                 template_id: row.get("template_id"),
                 policy_store_id: row.get("policy_store_id"),
                 statement: row.get("statement"),
@@ -570,14 +563,14 @@ impl Repository {
                 created_at: row.get::<String, _>("created_at").parse().unwrap(),
                 updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
             }),
-            None => Err(AuthorizationError::NotFound(format!(
+            None => Err(anyhow::anyhow!(
                 "Policy template {} not found",
                 template_id
             ))),
         }
     }
 
-    pub async fn list_policy_templates(&self, policy_store_id: &str) -> Result<Vec<PolicyTemplate>> {
+    pub async fn list_policy_templates(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::PolicyTemplate>> {
         let rows = sqlx::query(
             "SELECT template_id, policy_store_id, statement, description, created_at, updated_at FROM policy_templates WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -587,7 +580,7 @@ impl Repository {
 
         Ok(rows
             .into_iter()
-            .map(|row| PolicyTemplate {
+            .map(|row| models::PolicyTemplate {
                 template_id: row.get("template_id"),
                 policy_store_id: row.get("policy_store_id"),
                 statement: row.get("statement"),
@@ -602,7 +595,7 @@ impl Repository {
         &self,
         policy_store_id: &str,
         template_id: &str,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         let result = sqlx::query(
             "DELETE FROM policy_templates WHERE policy_store_id = ? AND template_id = ?",
         )
@@ -612,10 +605,10 @@ impl Repository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(AuthorizationError::NotFound(format!(
+            return Err(anyhow::anyhow!(
                 "Policy template {} not found",
                 template_id
-            )));
+            ));
         }
 
         Ok(())
@@ -625,7 +618,7 @@ impl Repository {
     // Audit Operations
     // ========================================================================
 
-    pub async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
+    pub async fn log_authorization(&self, log: models::AuthorizationLog) -> anyhow::Result<()> {
         sqlx::query(
             r#"
             INSERT INTO authorization_logs (
@@ -643,119 +636,5 @@ impl Repository {
         .await?;
 
         Ok(())
-    }
-}
-
-// ============================================================================
-// PolicyRepository Trait Implementation
-// ============================================================================
-
-#[async_trait]
-impl PolicyRepository for Repository {
-    // Policy Store Operations
-    async fn create_policy_store(&self, description: Option<String>) -> Result<PolicyStore> {
-        self.create_policy_store(description).await
-    }
-    
-    async fn get_policy_store(&self, id: &str) -> Result<PolicyStore> {
-        self.get_policy_store(id).await
-    }
-    
-    async fn list_policy_stores(&self) -> Result<Vec<PolicyStore>> {
-        self.list_policy_stores().await
-    }
-    
-    async fn delete_policy_store(&self, id: &str) -> Result<()> {
-        self.delete_policy_store(id).await
-    }
-    
-    // Schema Operations
-    async fn put_schema(&self, policy_store_id: &str, schema: String) -> Result<()> {
-        self.put_schema(policy_store_id, schema).await?;
-        Ok(())
-    }
-    
-    async fn get_schema(&self, policy_store_id: &str) -> Result<Schema> {
-        self.get_schema(policy_store_id).await
-    }
-    
-    async fn delete_schema(&self, policy_store_id: &str) -> Result<()> {
-        self.delete_schema(policy_store_id).await
-    }
-    
-    // Policy Operations
-    async fn create_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: String,
-        description: Option<String>,
-    ) -> Result<Policy> {
-        self.create_policy(policy_store_id, policy_id, statement, description).await
-    }
-    
-    async fn get_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<Policy> {
-        self.get_policy(policy_store_id, policy_id).await
-    }
-    
-    async fn list_policies(&self, policy_store_id: &str) -> Result<Vec<Policy>> {
-        self.list_policies(policy_store_id).await
-    }
-    
-    async fn update_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: String,
-        description: Option<String>,
-    ) -> Result<Policy> {
-        self.update_policy(policy_store_id, policy_id, statement, description).await
-    }
-    
-    async fn delete_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<()> {
-        self.delete_policy(policy_store_id, policy_id).await
-    }
-    
-    // Identity Source Operations
-    async fn create_identity_source(
-        &self,
-        policy_store_id: &str,
-        provider_type: &str,
-        config: &str,
-        claims_mapping: Option<&str>,
-        description: Option<&str>,
-    ) -> Result<IdentitySource> {
-        self.create_identity_source(
-            policy_store_id,
-            provider_type,
-            config,
-            claims_mapping,
-            description,
-        ).await
-    }
-    
-    async fn get_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<IdentitySource> {
-        self.get_identity_source(policy_store_id, identity_source_id).await
-    }
-    
-    async fn list_identity_sources(&self, policy_store_id: &str) -> Result<Vec<IdentitySource>> {
-        self.list_identity_sources(policy_store_id).await
-    }
-    
-    async fn delete_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<()> {
-        self.delete_identity_source(policy_store_id, identity_source_id).await
-    }
-    
-    // Audit Operations
-    async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
-        self.log_authorization(log).await
     }
 }
