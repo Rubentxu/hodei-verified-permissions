@@ -115,7 +115,255 @@ export DATABASE_URL=ws://localhost:8000
 
 ## 📖 Usage Examples
 
-### Creating a Policy Store
+### Using the Client SDK (Recommended)
+
+The easiest way to integrate Hodei Verified Permissions into your application is using the gRPC client SDK.
+
+#### Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+hodei-permissions-sdk = { git = "https://github.com/Rubentxu/hodei-verified-permissions", branch = "feature/hybrid-architecture" }
+tokio = { version = "1.40", features = ["full"] }
+```
+
+#### Quick Start - Authorization Check
+
+```rust
+use hodei_permissions_sdk::AuthorizationClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Connect to the Hodei server
+    let mut client = AuthorizationClient::connect("http://localhost:50051").await?;
+
+    // Check if user can perform action
+    let response = client
+        .is_authorized(
+            "my-policy-store-id",
+            "User::alice",
+            "Action::view",
+            "Document::doc123"
+        )
+        .await?;
+
+    if response.decision() == hodei_permissions_sdk::Decision::Allow {
+        println!("✅ Access granted!");
+    } else {
+        println!("❌ Access denied!");
+    }
+
+    Ok(())
+}
+```
+
+#### Complete Example - Setup and Authorization
+
+```rust
+use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder, EntityBuilder};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = AuthorizationClient::connect("http://localhost:50051").await?;
+
+    // 1. Create a policy store
+    let store = client
+        .create_policy_store(Some("My Application".to_string()))
+        .await?;
+    let store_id = &store.policy_store_id;
+
+    // 2. Define schema
+    let schema = r#"{
+        "MyApp": {
+            "entityTypes": {
+                "User": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "department": { "type": "String" }
+                        }
+                    }
+                },
+                "Document": {
+                    "shape": {
+                        "type": "Record",
+                        "attributes": {
+                            "owner": { "type": "Entity", "name": "User" }
+                        }
+                    }
+                }
+            },
+            "actions": {
+                "view": {
+                    "appliesTo": {
+                        "principalTypes": ["User"],
+                        "resourceTypes": ["Document"]
+                    }
+                }
+            }
+        }
+    }"#;
+
+    client.put_schema(store_id, schema).await?;
+
+    // 3. Create a policy
+    let policy = r#"
+        permit(principal, action == Action::"view", resource)
+        when { resource.owner == principal };
+    "#;
+
+    client.create_policy(
+        store_id,
+        "allow-owners",
+        policy,
+        Some("Allow owners to view their documents".to_string())
+    ).await?;
+
+    // 4. Build entities for authorization
+    let user = EntityBuilder::new("User", "alice")
+        .attribute("department", r#""engineering""#)
+        .build();
+
+    let doc = EntityBuilder::new("Document", "doc123")
+        .attribute("owner", r#"{"__entity": {"type": "User", "id": "alice"}}"#)
+        .build();
+
+    // 5. Authorize with entities
+    let request = IsAuthorizedRequestBuilder::new(store_id)
+        .principal("User", "alice")
+        .action("Action", "view")
+        .resource("Document", "doc123")
+        .add_entity(user)
+        .add_entity(doc)
+        .build();
+
+    let response = client.is_authorized_with_context(request).await?;
+
+    println!("Decision: {:?}", response.decision());
+    println!("Determining policies: {:?}", response.determining_policies);
+
+    Ok(())
+}
+```
+
+#### Batch Authorization
+
+```rust
+use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = AuthorizationClient::connect("http://localhost:50051").await?;
+    let store_id = "my-policy-store-id";
+
+    // Check multiple permissions at once
+    let requests = vec![
+        IsAuthorizedRequestBuilder::new(store_id)
+            .principal("User", "alice")
+            .action("Action", "view")
+            .resource("Document", "doc1")
+            .build(),
+        IsAuthorizedRequestBuilder::new(store_id)
+            .principal("User", "alice")
+            .action("Action", "edit")
+            .resource("Document", "doc1")
+            .build(),
+        IsAuthorizedRequestBuilder::new(store_id)
+            .principal("User", "alice")
+            .action("Action", "delete")
+            .resource("Document", "doc1")
+            .build(),
+    ];
+
+    let responses = client.batch_is_authorized(store_id, requests).await?;
+
+    for (i, response) in responses.responses.iter().enumerate() {
+        println!("Request {}: {:?}", i + 1, response.decision());
+    }
+
+    Ok(())
+}
+```
+
+#### Integration in Web Application (Axum Example)
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
+use hodei_permissions_sdk::AuthorizationClient;
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState {
+    auth_client: Arc<AuthorizationClient>,
+    policy_store_id: String,
+}
+
+#[tokio::main]
+async fn main() {
+    // Initialize Hodei client
+    let auth_client = AuthorizationClient::connect("http://localhost:50051")
+        .await
+        .expect("Failed to connect to Hodei");
+
+    let state = AppState {
+        auth_client: Arc::new(auth_client),
+        policy_store_id: "my-store-id".to_string(),
+    };
+
+    // Build router
+    let app = Router::new()
+        .route("/documents/:id", get(view_document))
+        .with_state(state);
+
+    // Run server
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+        .await
+        .unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn view_document(
+    State(state): State<AppState>,
+    Path(doc_id): Path<String>,
+) -> impl IntoResponse {
+    // Get user from session/JWT (simplified)
+    let user_id = "alice";
+
+    // Check authorization
+    let mut client = state.auth_client.as_ref().clone();
+    let response = client
+        .is_authorized(
+            &state.policy_store_id,
+            &format!("User::{}", user_id),
+            "Action::view",
+            &format!("Document::{}", doc_id),
+        )
+        .await;
+
+    match response {
+        Ok(resp) if resp.decision() == hodei_permissions_sdk::Decision::Allow => {
+            (StatusCode::OK, format!("Document {} content", doc_id))
+        }
+        Ok(_) => (StatusCode::FORBIDDEN, "Access denied".to_string()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Authorization error: {}", e),
+        ),
+    }
+}
+```
+
+### Server-Side Usage (Direct Library)
+
+#### Creating a Policy Store
 
 ```rust
 use hodei_verified_permissions::storage::{create_repository, PolicyRepository};
