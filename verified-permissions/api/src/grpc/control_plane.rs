@@ -1,20 +1,19 @@
 //! Control Plane gRPC service implementation
 
-use crate::error::AuthorizationError;
 use crate::proto::authorization_control_server::AuthorizationControl;
 use crate::proto::*;
-use crate::storage::Repository;
+use hodei_domain::{PolicyRepository, PolicyStoreId, PolicyId, CedarPolicy, IdentitySourceType};
 use cedar_policy::Schema;
-use std::str::FromStr;
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
 
 pub struct AuthorizationControlService {
-    repository: Repository,
+    repository: Arc<dyn PolicyRepository>,
 }
 
 impl AuthorizationControlService {
-    pub fn new(repository: Repository) -> Self {
+    pub fn new(repository: Arc<dyn PolicyRepository>) -> Self {
         Self { repository }
     }
 }

@@ -136,10 +136,14 @@ impl AuthorizationClient {
     }
 
     /// List policy stores
-    pub async fn list_policy_stores(&self) -> Result<ListPolicyStoresResponse> {
+    pub async fn list_policy_stores(
+        &self,
+        max_results: Option<i32>,
+        next_token: Option<String>,
+    ) -> Result<ListPolicyStoresResponse> {
         let request = ListPolicyStoresRequest {
-            max_results: None,
-            next_token: None,
+            max_results,
+            next_token,
         };
 
         let response = self
@@ -290,6 +294,35 @@ impl AuthorizationClient {
         Ok(response)
     }
 
+    /// Update a policy
+    pub async fn update_policy(
+        &self,
+        policy_store_id: impl Into<String>,
+        policy_id: impl Into<String>,
+        statement: impl Into<String>,
+        description: Option<String>,
+    ) -> Result<UpdatePolicyResponse> {
+        let request = UpdatePolicyRequest {
+            policy_store_id: policy_store_id.into(),
+            policy_id: policy_id.into(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::Static(StaticPolicy {
+                    statement: statement.into(),
+                })),
+            }),
+            description,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .update_policy(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
     /// Delete a policy
     pub async fn delete_policy(
         &self,
@@ -305,6 +338,273 @@ impl AuthorizationClient {
             .control_client
             .clone()
             .delete_policy(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    // ========================================================================
+    // Control Plane - Identity Source
+    // ========================================================================
+
+    /// Create an identity source
+    pub async fn create_identity_source(
+        &self,
+        policy_store_id: impl Into<String>,
+        configuration: IdentitySourceConfiguration,
+        claims_mapping: Option<ClaimsMappingConfiguration>,
+        description: Option<String>,
+    ) -> Result<CreateIdentitySourceResponse> {
+        let request = CreateIdentitySourceRequest {
+            policy_store_id: policy_store_id.into(),
+            configuration: Some(configuration),
+            claims_mapping,
+            description,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .create_identity_source(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Get an identity source
+    pub async fn get_identity_source(
+        &self,
+        policy_store_id: impl Into<String>,
+        identity_source_id: impl Into<String>,
+    ) -> Result<GetIdentitySourceResponse> {
+        let request = GetIdentitySourceRequest {
+            policy_store_id: policy_store_id.into(),
+            identity_source_id: identity_source_id.into(),
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .get_identity_source(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// List identity sources
+    pub async fn list_identity_sources(
+        &self,
+        policy_store_id: impl Into<String>,
+    ) -> Result<ListIdentitySourcesResponse> {
+        let request = ListIdentitySourcesRequest {
+            policy_store_id: policy_store_id.into(),
+            max_results: None,
+            next_token: None,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .list_identity_sources(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Delete an identity source
+    pub async fn delete_identity_source(
+        &self,
+        policy_store_id: impl Into<String>,
+        identity_source_id: impl Into<String>,
+    ) -> Result<DeleteIdentitySourceResponse> {
+        let request = DeleteIdentitySourceRequest {
+            policy_store_id: policy_store_id.into(),
+            identity_source_id: identity_source_id.into(),
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .delete_identity_source(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    // ========================================================================
+    // Control Plane - Policy Template
+    // ========================================================================
+
+    /// Create a policy template
+    pub async fn create_policy_template(
+        &self,
+        policy_store_id: impl Into<String>,
+        template_id: impl Into<String>,
+        statement: impl Into<String>,
+        description: Option<String>,
+    ) -> Result<CreatePolicyTemplateResponse> {
+        let request = CreatePolicyTemplateRequest {
+            policy_store_id: policy_store_id.into(),
+            template_id: template_id.into(),
+            statement: statement.into(),
+            description,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .create_policy_template(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Get a policy template
+    pub async fn get_policy_template(
+        &self,
+        policy_store_id: impl Into<String>,
+        template_id: impl Into<String>,
+    ) -> Result<GetPolicyTemplateResponse> {
+        let request = GetPolicyTemplateRequest {
+            policy_store_id: policy_store_id.into(),
+            template_id: template_id.into(),
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .get_policy_template(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// List policy templates
+    pub async fn list_policy_templates(
+        &self,
+        policy_store_id: impl Into<String>,
+    ) -> Result<ListPolicyTemplatesResponse> {
+        let request = ListPolicyTemplatesRequest {
+            policy_store_id: policy_store_id.into(),
+            max_results: None,
+            next_token: None,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .list_policy_templates(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Delete a policy template
+    pub async fn delete_policy_template(
+        &self,
+        policy_store_id: impl Into<String>,
+        template_id: impl Into<String>,
+    ) -> Result<DeletePolicyTemplateResponse> {
+        let request = DeletePolicyTemplateRequest {
+            policy_store_id: policy_store_id.into(),
+            template_id: template_id.into(),
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .delete_policy_template(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Create a template-linked policy
+    pub async fn create_policy_from_template(
+        &self,
+        policy_store_id: impl Into<String>,
+        policy_id: impl Into<String>,
+        template_id: impl Into<String>,
+        principal: impl Into<String>,
+        resource: impl Into<String>,
+        description: Option<String>,
+    ) -> Result<CreatePolicyResponse> {
+        let request = CreatePolicyRequest {
+            policy_store_id: policy_store_id.into(),
+            policy_id: policy_id.into(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(
+                    TemplateLinkedPolicy {
+                        policy_template_id: template_id.into(),
+                        principal: Some(parse_entity_id(principal.into())?),
+                        resource: Some(parse_entity_id(resource.into())?),
+                    },
+                )),
+            }),
+            description,
+        };
+
+        let response = self
+            .control_client
+            .clone()
+            .create_policy(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    // ========================================================================
+    // Data Plane - Authorization with Token
+    // ========================================================================
+
+    /// Check authorization with JWT token
+    pub async fn is_authorized_with_token(
+        &self,
+        policy_store_id: impl Into<String>,
+        identity_source_id: impl Into<String>,
+        access_token: impl Into<String>,
+        action: impl Into<String>,
+        resource: impl Into<String>,
+    ) -> Result<IsAuthorizedResponse> {
+        let request = IsAuthorizedWithTokenRequest {
+            policy_store_id: policy_store_id.into(),
+            identity_source_id: identity_source_id.into(),
+            access_token: access_token.into(),
+            action: Some(parse_entity_id(action.into())?),
+            resource: Some(parse_entity_id(resource.into())?),
+            context: None,
+            entities: vec![],
+        };
+
+        let response = self
+            .data_client
+            .clone()
+            .is_authorized_with_token(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    /// Check authorization with JWT token and context
+    pub async fn is_authorized_with_token_and_context(
+        &self,
+        request: IsAuthorizedWithTokenRequest,
+    ) -> Result<IsAuthorizedResponse> {
+        let response = self
+            .data_client
+            .clone()
+            .is_authorized_with_token(request)
             .await?
             .into_inner();
 

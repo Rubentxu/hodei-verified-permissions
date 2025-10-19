@@ -4,21 +4,20 @@
 mod common;
 
 use testcontainers_modules::{postgres::Postgres, surrealdb::SurrealDb};
-use testcontainers::{clients, Container};
+use testcontainers::runners::AsyncRunner;
 
 use hodei_verified_permissions::config::{DatabaseConfig, DatabaseProvider};
-use hodei_verified_permissions::storage::create_repository;
+use hodei_verified_permissions::storage::{create_repository, PolicyRepository};
 
 use common::*;
 
 #[tokio::test]
 #[ignore] // Requires Docker
 async fn test_postgres_repository_with_containers() {
-    let docker = clients::Cli::default();
-    let postgres_container = docker.run(Postgres::default());
+    let postgres_container = Postgres::default().start().await.expect("Failed to start Postgres");
     let connection_string = format!(
         "postgresql://postgres:postgres@localhost:{}/postgres",
-        postgres_container.get_host_port_ipv4(5432)
+        postgres_container.get_host_port_ipv4(5432).await.expect("Failed to get port")
     );
 
     // Create repository
@@ -41,11 +40,10 @@ async fn test_postgres_repository_with_containers() {
 #[tokio::test]
 #[ignore] // Requires Docker
 async fn test_surreal_repository_with_containers() {
-    let docker = clients::Cli::default();
-    let surreal_container = docker.run(SurrealDb::default());
+    let surreal_container = SurrealDb::default().start().await.expect("Failed to start SurrealDB");
     let connection_string = format!(
         "ws://localhost:{}",
-        surreal_container.get_host_port_ipv4(8000)
+        surreal_container.get_host_port_ipv4(8000).await.expect("Failed to get port")
     );
 
     // Create repository
