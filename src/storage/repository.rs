@@ -2,6 +2,8 @@
 
 use crate::error::{AuthorizationError, Result};
 use crate::storage::models::{IdentitySource, Policy, PolicyStore, PolicyTemplate, Schema};
+use crate::storage::repository_trait::{PolicyRepository, AuthorizationLog};
+use async_trait::async_trait;
 use chrono::Utc;
 use sqlx::{SqlitePool, Row};
 use uuid::Uuid;
@@ -88,6 +90,23 @@ impl Repository {
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (policy_store_id, template_id),
+                FOREIGN KEY (policy_store_id) REFERENCES policy_stores(id) ON DELETE CASCADE
+            )
+            "#,
+        )
+        .execute(&pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS authorization_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                policy_store_id TEXT NOT NULL,
+                principal TEXT NOT NULL,
+                action TEXT NOT NULL,
+                resource TEXT NOT NULL,
+                decision TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
                 FOREIGN KEY (policy_store_id) REFERENCES policy_stores(id) ON DELETE CASCADE
             )
             "#,
@@ -221,6 +240,19 @@ impl Repository {
             created_at: row.get::<String, _>("created_at").parse().unwrap(),
             updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
         })
+    }
+
+    pub async fn delete_schema(&self, policy_store_id: &str) -> Result<()> {
+        let result = sqlx::query("DELETE FROM schemas WHERE policy_store_id = ?")
+            .bind(policy_store_id)
+            .execute(&self.pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AuthorizationError::SchemaNotFound(policy_store_id.to_string()));
+        }
+
+        Ok(())
     }
 
     // ========================================================================
@@ -583,5 +615,143 @@ impl Repository {
         }
 
         Ok(())
+    }
+
+    // ========================================================================
+    // Audit Operations
+    // ========================================================================
+
+    pub async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO authorization_logs (
+                policy_store_id, principal, action, resource, decision, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&log.policy_store_id)
+        .bind(&log.principal)
+        .bind(&log.action)
+        .bind(&log.resource)
+        .bind(&log.decision)
+        .bind(log.timestamp.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// PolicyRepository Trait Implementation
+// ============================================================================
+
+#[async_trait]
+impl PolicyRepository for Repository {
+    // Policy Store Operations
+    async fn create_policy_store(&self, description: Option<String>) -> Result<PolicyStore> {
+        self.create_policy_store(description).await
+    }
+    
+    async fn get_policy_store(&self, id: &str) -> Result<PolicyStore> {
+        self.get_policy_store(id).await
+    }
+    
+    async fn list_policy_stores(&self) -> Result<Vec<PolicyStore>> {
+        self.list_policy_stores().await
+    }
+    
+    async fn delete_policy_store(&self, id: &str) -> Result<()> {
+        self.delete_policy_store(id).await
+    }
+    
+    // Schema Operations
+    async fn put_schema(&self, policy_store_id: &str, schema: String) -> Result<()> {
+        self.put_schema(policy_store_id, schema).await?;
+        Ok(())
+    }
+    
+    async fn get_schema(&self, policy_store_id: &str) -> Result<Schema> {
+        self.get_schema(policy_store_id).await
+    }
+    
+    async fn delete_schema(&self, policy_store_id: &str) -> Result<()> {
+        self.delete_schema(policy_store_id).await
+    }
+    
+    // Policy Operations
+    async fn create_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+        statement: String,
+        description: Option<String>,
+    ) -> Result<Policy> {
+        self.create_policy(policy_store_id, policy_id, statement, description).await
+    }
+    
+    async fn get_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<Policy> {
+        self.get_policy(policy_store_id, policy_id).await
+    }
+    
+    async fn list_policies(&self, policy_store_id: &str) -> Result<Vec<Policy>> {
+        self.list_policies(policy_store_id).await
+    }
+    
+    async fn update_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+        statement: String,
+        description: Option<String>,
+    ) -> Result<Policy> {
+        self.update_policy(policy_store_id, policy_id, statement, description).await
+    }
+    
+    async fn delete_policy(&self, policy_store_id: &str, policy_id: &str) -> Result<()> {
+        self.delete_policy(policy_store_id, policy_id).await
+    }
+    
+    // Identity Source Operations
+    async fn create_identity_source(
+        &self,
+        policy_store_id: &str,
+        provider_type: &str,
+        config: &str,
+        claims_mapping: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<IdentitySource> {
+        self.create_identity_source(
+            policy_store_id,
+            provider_type,
+            config,
+            claims_mapping,
+            description,
+        ).await
+    }
+    
+    async fn get_identity_source(
+        &self,
+        policy_store_id: &str,
+        identity_source_id: &str,
+    ) -> Result<IdentitySource> {
+        self.get_identity_source(policy_store_id, identity_source_id).await
+    }
+    
+    async fn list_identity_sources(&self, policy_store_id: &str) -> Result<Vec<IdentitySource>> {
+        self.list_identity_sources(policy_store_id).await
+    }
+    
+    async fn delete_identity_source(
+        &self,
+        policy_store_id: &str,
+        identity_source_id: &str,
+    ) -> Result<()> {
+        self.delete_identity_source(policy_store_id, identity_source_id).await
+    }
+    
+    // Audit Operations
+    async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
+        self.log_authorization(log).await
     }
 }

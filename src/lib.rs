@@ -5,10 +5,14 @@
 
 pub mod grpc;
 pub mod storage;
+pub mod cache;
+pub mod authorization;
+pub mod config;
 pub mod error;
 pub mod jwt;
 pub mod audit;
 pub mod agent;
+pub mod metrics;
 
 // Re-export generated protobuf types
 pub mod proto {

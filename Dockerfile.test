@@ -1,0 +1,41 @@
+# Dockerfile for E2E testing with Testcontainers
+
+FROM rust:1.83 AS builder
+
+WORKDIR /app
+
+# Copy manifests
+COPY Cargo.toml Cargo.lock ./
+COPY sdk/Cargo.toml sdk/
+COPY build.rs ./
+
+# Copy source code
+COPY src ./src
+COPY proto ./proto
+COPY sdk/src ./sdk/src
+COPY sdk/proto ./sdk/proto
+
+# Build release binary
+RUN cargo build --release --bin hodei-verified-permissions
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/hodei-verified-permissions /usr/local/bin/
+
+# Expose gRPC port
+EXPOSE 50051
+
+# Set environment variables
+ENV RUST_LOG=info
+ENV DATABASE_URL=sqlite::memory:
+
+# Run the server
+CMD ["hodei-verified-permissions"]
