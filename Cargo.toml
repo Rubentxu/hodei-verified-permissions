@@ -79,13 +79,6 @@ hodei-permissions-sdk = { path = "sdk" }
 [build-dependencies]
 tonic-prost-build = "0.14.2"
 
-[[bin]]
-name = "hodei-cli"
-path = "src/bin/cli.rs"
-
-[[bin]]
-name = "hodei-agent"
-path = "src/bin/agent.rs"
 
 # Gate container tests behind the `containers` feature
 [[test]]
