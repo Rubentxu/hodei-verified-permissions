@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-avp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-avp-password}
+      POSTGRES_DB: ${POSTGRES_DB:-avp}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    command:
+      - start-dev
+      - --http-port=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: ${POSTGRES_DB:-avp}
+      KC_DB_USERNAME: ${POSTGRES_USER:-avp}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-avp-password}
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  avp-server:
+    build:
+      context: ..
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_PROVIDER: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-avp}:${POSTGRES_PASSWORD:-avp-password}@postgres:5432/${POSTGRES_DB:-avp}
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      - "${AVP_PORT:-50051}:50051"
+    healthcheck:
+      test: ["CMD", "grpcurl", "-plaintext", "localhost:50051", "list"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  demo-app:
+    build:
+      context: ./app
+    depends_on:
+      avp-server:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+    environment:
+      AVP_ENDPOINT: http://avp-server:50051
+      POLICY_STORE_ID: ${POLICY_STORE_ID:-demo-store}
+      IDENTITY_SOURCE_ID: ${IDENTITY_SOURCE_ID:-demo-identity}
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/${KEYCLOAK_REALM:-demo}
+      RUST_LOG: ${DEMO_RUST_LOG:-info}
+    ports:
+      - "${DEMO_HTTP_PORT:-3000}:3000"
+
+volumes:
+  postgres-data:
+  keycloak-data:
