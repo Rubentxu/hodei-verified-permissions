@@ -61,7 +61,7 @@ async fn test_policy_template_crud() {
 
 #[tokio::test]
 async fn test_template_validation() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
@@ -85,7 +85,7 @@ async fn test_template_validation() {
 
 #[tokio::test]
 async fn test_template_with_principal_only() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
@@ -109,7 +109,7 @@ async fn test_template_with_principal_only() {
 
 #[tokio::test]
 async fn test_template_with_resource_only() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
@@ -133,7 +133,7 @@ async fn test_template_with_resource_only() {
 
 #[tokio::test]
 async fn test_multiple_templates() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
@@ -178,7 +178,7 @@ async fn test_multiple_templates() {
 
 #[tokio::test]
 async fn test_template_not_found() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
@@ -190,7 +190,7 @@ async fn test_template_not_found() {
 
 #[tokio::test]
 async fn test_template_cascade_delete() {
-    let repo = Repository::new(":memory:").await.unwrap();
+    let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo.create_policy_store(Some("Test Store".to_string()))
         .await
         .unwrap();
