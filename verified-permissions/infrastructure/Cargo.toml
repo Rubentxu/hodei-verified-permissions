@@ -1,0 +1,45 @@
+[package]
+name = "hodei-infrastructure"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+default = []
+postgres = ["sqlx/postgres", "sqlx/uuid", "sqlx/chrono"]
+surreal = ["dep:surrealdb"]
+
+[dependencies]
+# Internal dependencies
+hodei-shared.workspace = true
+hodei-domain.workspace = true
+hodei-application.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Database
+sqlx.workspace = true
+surrealdb = { workspace = true, optional = true }
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Async trait support
+async-trait.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# JWT validation
+jsonwebtoken.workspace = true
+reqwest.workspace = true
+
+# Configuration
+toml.workspace = true
