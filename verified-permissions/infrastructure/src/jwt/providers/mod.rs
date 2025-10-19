@@ -4,8 +4,10 @@
 //! Keycloak, Zitadel, Cognito, etc.
 
 pub mod keycloak;
+pub mod zitadel;
 
 pub use keycloak::KeycloakProvider;
+pub use zitadel::ZitadelProvider;
 
 use crate::error::Result;
 use crate::jwt::{ClaimsMappingConfig, ValidatedClaims};
@@ -31,13 +33,17 @@ pub trait IdentityProvider {
 
 /// Auto-detect the identity provider from issuer URL
 pub fn detect_provider(issuer: &str) -> Option<Box<dyn IdentityProvider>> {
+    // Try Zitadel first (more specific pattern)
+    if ZitadelProvider::default().matches_issuer(issuer) {
+        return Some(Box::new(ZitadelProvider::default()));
+    }
+    
     // Try Keycloak
     if KeycloakProvider::default().matches_issuer(issuer) {
         return Some(Box::new(KeycloakProvider::default()));
     }
     
     // Add more providers here as they are implemented
-    // if ZitadelProvider::default().matches_issuer(issuer) { ... }
     // if CognitoProvider::default().matches_issuer(issuer) { ... }
     
     None
@@ -53,6 +59,14 @@ mod tests {
         let provider = detect_provider(issuer);
         assert!(provider.is_some());
         assert_eq!(provider.unwrap().name(), "Keycloak");
+    }
+
+    #[test]
+    fn test_detect_zitadel() {
+        let issuer = "https://myinstance.zitadel.cloud";
+        let provider = detect_provider(issuer);
+        assert!(provider.is_some());
+        assert_eq!(provider.unwrap().name(), "Zitadel");
     }
 
     #[test]
