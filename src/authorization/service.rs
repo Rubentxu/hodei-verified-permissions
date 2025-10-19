@@ -6,7 +6,6 @@ use crate::storage::AuthorizationLog;
 use cedar_policy::{Authorizer, Request, Entities, Context, Decision};
 use chrono::Utc;
 use std::sync::Arc;
-use std::str::FromStr;
 
 /// Respuesta de autorización
 #[derive(Debug, Clone)]
@@ -274,7 +273,7 @@ mod tests {
     
     #[tokio::test]
     async fn test_service_creation() {
-        let service = create_test_service().await;
+        let _service = create_test_service().await;
         // Service should be created successfully
         assert!(true);
     }

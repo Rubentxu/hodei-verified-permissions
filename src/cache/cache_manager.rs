@@ -2,7 +2,7 @@
 
 use crate::cache::PolicyStoreCache;
 use crate::error::Result;
-use crate::storage::{PolicyRepository, models::{PolicyStore, Policy, Schema}};
+use crate::storage::{PolicyRepository, models::{PolicyStore, Policy}};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

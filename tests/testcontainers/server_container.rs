@@ -1,7 +1,7 @@
 //! Server container setup for E2E tests
 
 use std::time::Duration;
-use testcontainers::{clients::Cli, Container, GenericImage, RunnableImage};
+use testcontainers::{clients::Cli, Container, GenericImage, RunnableImage, ImageExt};
 use tokio::time::sleep;
 
 /// Configuration for the test server container
@@ -15,7 +15,7 @@ impl<'a> ServerContainer<'a> {
     pub async fn start(docker: &'a Cli) -> Self {
         // Build the server image (assumes Dockerfile exists)
         let image = GenericImage::new("hodei-server", "test")
-            .with_exposed_port(50051)
+            .with_exposed_port(testcontainers::core::ContainerPort::Tcp(50051))
             .with_env_var("DATABASE_URL", "sqlite::memory:")
             .with_env_var("RUST_LOG", "info");
 

@@ -1,3 +1,4 @@
+#![cfg(feature = "containers")]
 //! E2E tests for Policy Store Management using Testcontainers
 
 mod testcontainers;
@@ -13,7 +14,7 @@ async fn test_policy_store_lifecycle() {
     let server = ServerContainer::start(&docker).await;
     
     // Create SDK client
-    let client = hodei_verified_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
+    let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
         .expect("Failed to connect to server");
     
@@ -60,7 +61,7 @@ async fn test_multiple_policy_stores_isolation() {
     let docker = Cli::default();
     let server = ServerContainer::start(&docker).await;
     
-    let client = hodei_verified_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
+    let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
         .expect("Failed to connect");
     
@@ -105,7 +106,7 @@ async fn test_policy_store_validation() {
     let docker = Cli::default();
     let server = ServerContainer::start(&docker).await;
     
-    let client = hodei_verified_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
+    let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
         .expect("Failed to connect");
     
@@ -132,7 +133,7 @@ async fn test_policy_store_pagination() {
     let docker = Cli::default();
     let server = ServerContainer::start(&docker).await;
     
-    let client = hodei_verified_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
+    let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
         .expect("Failed to connect");
     

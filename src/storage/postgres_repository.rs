@@ -238,7 +238,7 @@ impl PolicyRepository for PostgresRepository {
             .await?;
 
         if result.rows_affected() == 0 {
-            return Err(Authorization::SchemaNotFound(policy_store_id.to_string()));
+            return Err(AuthorizationError::SchemaNotFound(policy_store_id.to_string()));
         }
 
         Ok(())

@@ -2,7 +2,11 @@
 
 use crate::config::{DatabaseConfig, DatabaseProvider};
 use crate::error::Result;
-use crate::storage::{PolicyRepository, Repository, PostgresRepository, SurrealRepository};
+use crate::storage::{PolicyRepository, Repository};
+#[cfg(feature = "postgres")]
+use crate::storage::PostgresRepository;
+#[cfg(feature = "surreal")]
+use crate::storage::SurrealRepository;
 use std::sync::Arc;
 
 /// Creates a repository instance based on the database configuration
@@ -38,13 +42,31 @@ pub async fn create_repository(config: &DatabaseConfig) -> Result<Arc<dyn Policy
         }
         DatabaseProvider::Postgres => {
             tracing::info!("Creating PostgreSQL repository: {}", config.url);
-            let repo = PostgresRepository::new(&config.url).await?;
-            Ok(Arc::new(repo))
+            #[cfg(feature = "postgres")]
+            {
+                let repo = PostgresRepository::new(&config.url).await?;
+                return Ok(Arc::new(repo));
+            }
+            #[cfg(not(feature = "postgres"))]
+            {
+                return Err(crate::error::AuthorizationError::Internal(
+                    "PostgreSQL feature not enabled. Build with --features postgres".to_string(),
+                ));
+            }
         }
         DatabaseProvider::Surreal => {
             tracing::info!("Creating SurrealDB repository: {}", config.url);
-            let repo = SurrealRepository::new(&config.url).await?;
-            Ok(Arc::new(repo))
+            #[cfg(feature = "surreal")]
+            {
+                let repo = SurrealRepository::new(&config.url).await?;
+                return Ok(Arc::new(repo));
+            }
+            #[cfg(not(feature = "surreal"))]
+            {
+                return Err(crate::error::AuthorizationError::Internal(
+                    "SurrealDB feature not enabled. Build with --features surreal".to_string(),
+                ));
+            }
         }
     }
 }

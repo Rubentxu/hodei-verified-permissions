@@ -1,4 +1,7 @@
+#![cfg(feature = "containers")]
 //! Integration tests using Testcontainers for PostgreSQL and SurrealDB
+
+mod common;
 
 use testcontainers_modules::{postgres::Postgres, surrealdb::SurrealDb};
 use testcontainers::{clients, Container};
@@ -6,7 +9,7 @@ use testcontainers::{clients, Container};
 use hodei_verified_permissions::config::{DatabaseConfig, DatabaseProvider};
 use hodei_verified_permissions::storage::create_repository;
 
-use crate::common::*;
+use common::*;
 
 #[tokio::test]
 #[ignore] // Requires Docker
