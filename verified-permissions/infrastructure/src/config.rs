@@ -196,10 +196,6 @@ mod tests {
     
     #[test]
     fn test_default_config() {
-        // Ensure no DATABASE_PROVIDER env var is set for this test
-        unsafe {
-            std::env::remove_var("DATABASE_PROVIDER");
-        }
         let config = Config::from_env();
         assert_eq!(config.database.provider, DatabaseProvider::Sqlite);
         assert_eq!(config.server.port, 50051);

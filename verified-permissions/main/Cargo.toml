@@ -1,0 +1,59 @@
+[package]
+name = "hodei-verified-permissions"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+default = []
+postgres = ["hodei-infrastructure/postgres"]
+surreal = ["hodei-infrastructure/surreal"]
+containers = []
+
+[dependencies]
+# Internal dependencies
+hodei-shared.workspace = true
+hodei-domain.workspace = true
+hodei-application.workspace = true
+hodei-infrastructure.workspace = true
+hodei-api.workspace = true
+
+# gRPC
+tonic.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# CLI
+clap.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Error handling
+anyhow.workspace = true
+
+[dev-dependencies]
+testcontainers = { version = "0.25.0", features = ["blocking"] }
+testcontainers-modules = { version = "0.13.0", features = ["postgres", "surrealdb"] }
+tokio-test = "0.4"
+
+[[bin]]
+name = "hodei-cli"
+path = "src/bin/cli.rs"
+
+[[bin]]
+name = "hodei-agent"
+path = "src/bin/agent.rs"
+
+[[test]]
+name = "container_integration_tests"
+path = "tests/container_integration_tests.rs"
+required-features = ["containers"]
+
+[[test]]
+name = "e2e_policy_store_tests"
+path = "tests/e2e_policy_store_tests.rs"
+required-features = ["containers"]

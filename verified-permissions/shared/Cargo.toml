@@ -1,0 +1,23 @@
+[package]
+name = "hodei-shared"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Time handling
+chrono.workspace = true
+
+# UUID generation
+uuid.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+# Async trait support
+async-trait.workspace = true

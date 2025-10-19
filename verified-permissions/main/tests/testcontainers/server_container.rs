@@ -1,26 +1,29 @@
 //! Server container setup for E2E tests
 
 use std::time::Duration;
-use testcontainers::{core::ContainerPort, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt};
+use testcontainers::{clients::Cli, Container, GenericImage, RunnableImage, ImageExt};
 use tokio::time::sleep;
 
 /// Configuration for the test server container
-pub struct ServerContainer {
-    pub container: ContainerAsync<GenericImage>,
+pub struct ServerContainer<'a> {
+    pub container: Container<'a, GenericImage>,
     pub grpc_port: u16,
 }
 
-impl ServerContainer {
+impl<'a> ServerContainer<'a> {
     /// Start a new server container for testing
-    pub async fn start() -> Self {
+    pub async fn start(docker: &'a Cli) -> Self {
         // Build the server image (assumes Dockerfile exists)
         let image = GenericImage::new("hodei-server", "test")
-            .with_exposed_port(ContainerPort::Tcp(50051))
+            .with_exposed_port(testcontainers::core::ContainerPort::Tcp(50051))
             .with_env_var("DATABASE_URL", "sqlite::memory:")
             .with_env_var("RUST_LOG", "info");
 
-        let container = image.start().await.expect("Failed to start container");
-        let grpc_port = container.get_host_port_ipv4(50051).await.expect("Failed to get port");
+        let runnable = RunnableImage::from(image)
+            .with_tag("test");
+
+        let container = docker.run(runnable);
+        let grpc_port = container.get_host_port_ipv4(50051);
 
         // Wait for server to be ready
         Self::wait_for_ready(grpc_port).await;
@@ -68,7 +71,8 @@ mod tests {
     #[tokio::test]
     #[ignore] // Requires Docker
     async fn test_server_container_starts() {
-        let container = ServerContainer::start().await;
+        let docker = Cli::default();
+        let container = ServerContainer::start(&docker).await;
         
         assert!(container.grpc_port > 0);
         assert!(container.grpc_url().contains("http://127.0.0.1"));

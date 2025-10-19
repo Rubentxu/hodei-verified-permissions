@@ -1,0 +1,43 @@
+[package]
+name = "hodei-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Internal dependencies
+hodei-shared.workspace = true
+hodei-domain.workspace = true
+hodei-application.workspace = true
+
+# gRPC
+tonic.workspace = true
+tonic-prost.workspace = true
+prost.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Cedar policy engine
+cedar-policy.workspace = true
+
+# CLI
+clap.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Async trait support
+async-trait.workspace = true
+
+# Logging
+tracing.workspace = true
+
+[build-dependencies]
+tonic-prost-build = "0.14.2"

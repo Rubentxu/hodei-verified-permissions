@@ -1,0 +1,29 @@
+[package]
+name = "hodei-domain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Internal dependencies
+hodei-shared.workspace = true
+
+# Cedar policy engine
+cedar-policy.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+# Async trait support
+async-trait.workspace = true
+
+# Time handling
+chrono.workspace = true
+
+# UUID generation
+uuid.workspace = true

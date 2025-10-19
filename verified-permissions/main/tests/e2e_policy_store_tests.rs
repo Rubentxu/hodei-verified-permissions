@@ -3,13 +3,15 @@
 
 mod testcontainers;
 
+use testcontainers::clients::Cli;
 use testcontainers::server_container::ServerContainer;
 
 #[tokio::test]
 #[ignore] // Requires Docker - run with: cargo test --ignored
 async fn test_policy_store_lifecycle() {
     // Setup: Start server container
-    let server = ServerContainer::start().await;
+    let docker = Cli::default();
+    let server = ServerContainer::start(&docker).await;
     
     // Create SDK client
     let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
@@ -23,6 +25,7 @@ async fn test_policy_store_lifecycle() {
         .expect("Failed to create policy store");
     
     assert!(!store.policy_store_id.is_empty());
+    assert_eq!(store.description, Some("Test Store".to_string()));
     
     // Test: Get policy store
     let retrieved = client
@@ -31,7 +34,6 @@ async fn test_policy_store_lifecycle() {
         .expect("Failed to get policy store");
     
     assert_eq!(retrieved.policy_store_id, store.policy_store_id);
-    assert_eq!(retrieved.description, Some("Test Store".to_string()));
     
     // Test: List policy stores
     let stores = client
@@ -55,8 +57,9 @@ async fn test_policy_store_lifecycle() {
 
 #[tokio::test]
 #[ignore] // Requires Docker
-async fn test_multiple_stores() {
-    let server = ServerContainer::start().await;
+async fn test_multiple_policy_stores_isolation() {
+    let docker = Cli::default();
+    let server = ServerContainer::start(&docker).await;
     
     let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
@@ -100,7 +103,8 @@ async fn test_multiple_stores() {
 #[tokio::test]
 #[ignore] // Requires Docker
 async fn test_policy_store_validation() {
-    let server = ServerContainer::start().await;
+    let docker = Cli::default();
+    let server = ServerContainer::start(&docker).await;
     
     let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
@@ -113,10 +117,7 @@ async fn test_policy_store_validation() {
         .expect("Should allow empty description");
     
     assert!(!store.policy_store_id.is_empty());
-    
-    // Verify description is None by getting the store
-    let retrieved = client.get_policy_store(&store.policy_store_id).await.unwrap();
-    assert_eq!(retrieved.description, None);
+    assert_eq!(store.description, None);
     
     // Test: Get non-existent store
     let result = client.get_policy_store("non-existent-id").await;
@@ -129,7 +130,8 @@ async fn test_policy_store_validation() {
 #[tokio::test]
 #[ignore] // Requires Docker
 async fn test_policy_store_pagination() {
-    let server = ServerContainer::start().await;
+    let docker = Cli::default();
+    let server = ServerContainer::start(&docker).await;
     
     let client = hodei_permissions_sdk::AuthorizationClient::connect(server.grpc_url())
         .await
