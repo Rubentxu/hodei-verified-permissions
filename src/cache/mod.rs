@@ -5,6 +5,8 @@
 
 pub mod policy_store_cache;
 pub mod cache_manager;
+pub mod reload_task;
 
 pub use policy_store_cache::PolicyStoreCache;
 pub use cache_manager::CacheManager;
+pub use reload_task::{ReloadTask, ReloadConfig};
