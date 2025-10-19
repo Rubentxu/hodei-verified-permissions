@@ -449,7 +449,7 @@ impl SqliteRepository {
             None => Err(anyhow::anyhow!(
                 "Identity source {} not found",
                 identity_source_id
-            ))),
+            )),
         }
     }
 
@@ -566,7 +566,7 @@ impl SqliteRepository {
             None => Err(anyhow::anyhow!(
                 "Policy template {} not found",
                 template_id
-            ))),
+            )),
         }
     }
 

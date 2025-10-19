@@ -1,7 +1,7 @@
 //! Repository implementations for persistence layer
 
 pub mod models;
-pub mod repository;
+mod sqlite_repository;
 pub mod adapter;
 
 // Optional DB implementations
@@ -11,7 +11,7 @@ pub mod postgres_repository;
 pub mod surreal_repository;
 
 pub use models::*;
-pub use repository::SqliteRepository;
+pub use sqlite_repository::SqliteRepository;
 pub use adapter::RepositoryAdapter;
 
 #[cfg(feature = "postgres")]

@@ -6,10 +6,11 @@
 pub mod repository;
 pub mod factory;
 
-// TODO: Update these modules to use new structure
+// TODO: These modules need updating to use new crate structure
+// Temporarily commented out to allow compilation
 // pub mod cache;
 // pub mod jwt;
 // pub mod config;
 
-pub use repository::{RepositoryAdapter, SqliteRepository};
+pub use repository::{RepositoryAdapter, SqliteRepository, models};
 pub use factory::create_repository;
