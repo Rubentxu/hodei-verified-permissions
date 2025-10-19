@@ -8,7 +8,7 @@ pub mod claims_mapper;
 pub mod jwks_cache;
 
 pub use validator::JwtValidator;
-pub use claims_mapper::ClaimsMapper;
+pub use claims_mapper::{ClaimsMapper, ClaimsMappingConfig, ParentMapping, ValueTransform};
 pub use jwks_cache::{JwksCache, JwksCacheConfig, CacheMetrics};
 
 use serde::{Deserialize, Serialize};
