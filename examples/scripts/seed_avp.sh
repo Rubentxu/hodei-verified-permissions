@@ -14,6 +14,7 @@ KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-demo-app}"
 KEYCLOAK_GROUP_CLAIM="${KEYCLOAK_GROUP_CLAIM:-realm_access.roles}"
 
 POLICIES_DIR="${POLICIES_DIR:-$(dirname "$0")/../policies}"
+SCHEMA_FILE="${SCHEMA_FILE:-$(dirname "$0")/../schema/pet_store_schema.json}"
 
 if ! command -v grpcurl >/dev/null; then
   echo "grpcurl no está instalado. Instala grpcurl para continuar." >&2
@@ -22,6 +23,22 @@ fi
 
 json_escape() {
   echo "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))'
+}
+
+put_schema() {
+  if [ ! -f "$SCHEMA_FILE" ]; then
+    echo "No se encontró schema en $SCHEMA_FILE, omitiendo carga" >&2
+    return
+  fi
+  echo "===> Actualizando schema con $SCHEMA_FILE"
+  local schema_json
+  schema_json=$(cat "$SCHEMA_FILE")
+  cat <<JSON | grpcurl -plaintext -d @ "$GRPC_ENDPOINT" hodei.permissions.v1.Authorization/PutSchema >/dev/null
+{
+  "policy_store_id": "$STORE_ID",
+  "schema": $(json_escape "$schema_json")
+}
+JSON
 }
 
 create_policy_store() {
@@ -44,7 +61,7 @@ create_identity_source() {
   "oidc_configuration": {
     "issuer": "$(json_escape "$KEYCLOAK_ISSUER")",
     "client_ids": ["$(json_escape "$KEYCLOAK_CLIENT_ID")"],
-    "jwks_uri": "$(json_escape "$KEYCLOAK_ISSUER")/.well-known/openid-configuration/jwks",
+    "jwks_uri": "$(json_escape "$KEYCLOAK_ISSUER")/protocol/openid-connect/certs",
     "group_claim": "$(json_escape "$KEYCLOAK_GROUP_CLAIM")"
   },
   "claims_mapping": {
@@ -75,6 +92,7 @@ if ! grpcurl -plaintext "$GRPC_ENDPOINT" list >/dev/null; then
 fi
 
 create_policy_store || true
+put_schema || true
 create_identity_source || true
 
 echo "===> Cargando políticas desde $POLICIES_DIR"

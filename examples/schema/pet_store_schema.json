@@ -1,0 +1,59 @@
+{
+  "namespaces": {
+    "PetStore": {
+      "entityTypes": {
+        "Pet": {
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "owner": { "type": "Entity", "name": "User" },
+              "species": { "type": "String" },
+              "breed": { "type": "String" }
+            }
+          }
+        },
+        "Appointment": {
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "pet": { "type": "Entity", "name": "Pet" },
+              "vet": { "type": "Entity", "name": "User" }
+            }
+          }
+        },
+        "User": {
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "username": { "type": "String" },
+              "role": { "type": "String" }
+            }
+          }
+        }
+      },
+      "actions": {
+        "read": {
+          "appliesTo": {
+            "resourceTypes": ["Pet", "PetAppointments"],
+            "principalTypes": ["User"],
+            "context": {}
+          }
+        },
+        "create": {
+          "appliesTo": {
+            "resourceTypes": ["Pet", "Appointment"],
+            "principalTypes": ["User"],
+            "context": {}
+          }
+        },
+        "update": {
+          "appliesTo": {
+            "resourceTypes": ["Appointment"],
+            "principalTypes": ["User"],
+            "context": {}
+          }
+        }
+      }
+    }
+  }
+}
