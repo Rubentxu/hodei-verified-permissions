@@ -9,6 +9,8 @@ publish = false
 [dependencies]
 # Hodei SDK with all features
 hodei-permissions-sdk = { path = "../../sdk", features = ["middleware", "runtime-mapping"] }
+# Hodei macros for Cedar annotations
+hodei-macros = { path = "../../hodei-macros" }
 
 # Web framework
 axum = "0.8"

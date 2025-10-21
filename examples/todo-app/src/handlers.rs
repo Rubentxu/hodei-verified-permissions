@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use hodei_macros::cedar_action;
 use serde::Deserialize;
 use tracing::info;
 
@@ -49,6 +50,11 @@ pub struct AssignTaskQuery {
 }
 
 // Task handlers
+#[cedar_action(
+    action = "listTasks",
+    resource = "Application",
+    description = "List all tasks with optional filters"
+)]
 pub async fn list_tasks(
     State(state): State<AppState>,
     Query(query): Query<TaskListQuery>,
@@ -68,6 +74,11 @@ pub async fn list_tasks(
     Ok(Json(TaskListResponse { tasks, total }))
 }
 
+#[cedar_action(
+    action = "getTask",
+    resource = "Task",
+    description = "Get a specific task by ID"
+)]
 pub async fn get_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
@@ -80,6 +91,11 @@ pub async fn get_task(
         .ok_or_else(|| anyhow::anyhow!("Task not found").into())
 }
 
+#[cedar_action(
+    action = "createTask",
+    resource = "Application",
+    description = "Create a new task"
+)]
 pub async fn create_task(
     State(state): State<AppState>,
     Json(payload): Json<CreateTaskRequest>,
@@ -97,6 +113,11 @@ pub async fn create_task(
     Ok((StatusCode::CREATED, Json(task)))
 }
 
+#[cedar_action(
+    action = "updateTask",
+    resource = "Task",
+    description = "Update task details"
+)]
 pub async fn update_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
@@ -126,6 +147,11 @@ pub async fn update_task(
         .ok_or_else(|| anyhow::anyhow!("Failed to update task").into())
 }
 
+#[cedar_action(
+    action = "deleteTask",
+    resource = "Task",
+    description = "Delete a task"
+)]
 pub async fn delete_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
@@ -139,6 +165,11 @@ pub async fn delete_task(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[cedar_action(
+    action = "assignTask",
+    resource = "Task",
+    description = "Assign task to a user"
+)]
 pub async fn assign_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
@@ -159,6 +190,11 @@ pub async fn assign_task(
         .ok_or_else(|| anyhow::anyhow!("Failed to assign task").into())
 }
 
+#[cedar_action(
+    action = "completeTask",
+    resource = "Task",
+    description = "Mark task as completed"
+)]
 pub async fn complete_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
@@ -179,6 +215,11 @@ pub async fn complete_task(
 }
 
 // Project handlers
+#[cedar_action(
+    action = "listProjects",
+    resource = "Application",
+    description = "List all projects"
+)]
 pub async fn list_projects(
     State(state): State<AppState>,
 ) -> Result<Json<ProjectListResponse>, AppError> {
@@ -190,6 +231,11 @@ pub async fn list_projects(
     Ok(Json(ProjectListResponse { projects, total }))
 }
 
+#[cedar_action(
+    action = "getProject",
+    resource = "Project",
+    description = "Get project details"
+)]
 pub async fn get_project(
     State(state): State<AppState>,
     Path(project_id): Path<String>,
@@ -202,6 +248,11 @@ pub async fn get_project(
         .ok_or_else(|| anyhow::anyhow!("Project not found").into())
 }
 
+#[cedar_action(
+    action = "createProject",
+    resource = "Application",
+    description = "Create a new project"
+)]
 pub async fn create_project(
     State(state): State<AppState>,
     Json(payload): Json<CreateProjectRequest>,
@@ -217,6 +268,11 @@ pub async fn create_project(
     Ok((StatusCode::CREATED, Json(project)))
 }
 
+#[cedar_action(
+    action = "deleteProject",
+    resource = "Project",
+    description = "Delete a project and all its tasks"
+)]
 pub async fn delete_project(
     State(state): State<AppState>,
     Path(project_id): Path<String>,

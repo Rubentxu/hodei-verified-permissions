@@ -6,6 +6,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, ItemFn};
+use darling::FromMeta;
 
 /// Attribute macro to mark a handler with Cedar action metadata
 ///
@@ -24,26 +25,57 @@ use syn::{parse_macro_input, ItemFn};
 ///
 /// # Attributes
 ///
-/// - `action`: Cedar action name (required)
+/// - `action`: Cedar action name (optional, for documentation)
 /// - `resource`: Cedar resource type (default: "Application")
 /// - `description`: Action description for documentation (optional)
-/// - `principal`: Principal type (default: "User")
+#[derive(Debug, FromMeta)]
+struct CedarActionArgs {
+    #[darling(default)]
+    action: Option<String>,
+    #[darling(default = "default_resource")]
+    resource: String,
+    #[darling(default)]
+    description: Option<String>,
+}
+
+fn default_resource() -> String {
+    "Application".to_string()
+}
+
 #[proc_macro_attribute]
-pub fn cedar_action(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn cedar_action(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = match darling::ast::NestedMeta::parse_meta_list(args.into()) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(darling::Error::from(e).write_errors());
+        }
+    };
+    
+    let args = match CedarActionArgs::from_list(&attr_args) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(e.write_errors());
+        }
+    };
+    
     let input_fn = parse_macro_input!(input as ItemFn);
     
-    // NOTE: This is a simplified proof-of-concept implementation.
-    // A full implementation would:
-    // 1. Parse args to extract action, resource, principal, description
-    // 2. Generate a const metadata struct
-    // 3. Register the metadata in a global inventory for schema generation
-    // 4. Potentially integrate with utoipa for OpenAPI generation
-    //
-    // For now, we just pass through the function unchanged.
-    // The real power comes from using SimpleRestMapping at runtime.
+    // Generate documentation
+    let doc = if let Some(action) = &args.action {
+        format!("Cedar Action: {} on {}", action, args.resource)
+    } else {
+        "Cedar-protected handler".to_string()
+    };
+    
+    let desc_doc = args.description.as_ref().map(|d| {
+        quote! {
+            #[doc = #d]
+        }
+    });
     
     let expanded = quote! {
-        #[doc = "Cedar-protected handler"]
+        #[doc = #doc]
+        #desc_doc
         #input_fn
     };
     
