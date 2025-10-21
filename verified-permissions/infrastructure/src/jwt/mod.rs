@@ -5,13 +5,9 @@
 
 pub mod validator;
 pub mod claims_mapper;
-pub mod jwks_cache;
-pub mod providers;
 
 pub use validator::JwtValidator;
-pub use claims_mapper::{ClaimsMapper, ClaimsMappingConfig, ParentMapping, ValueTransform};
-pub use jwks_cache::{JwksCache, JwksCacheConfig, CacheMetrics};
-pub use providers::{IdentityProvider, KeycloakProvider, ZitadelProvider, CognitoProvider, detect_provider};
+pub use claims_mapper::ClaimsMapper;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,40 +1,38 @@
 //! JWT token validation
 
 use crate::error::{AuthorizationError, Result};
-use crate::jwt::{JwksCache, ValidatedClaims};
-use jsonwebtoken::{decode, decode_header, Validation};
+use crate::jwt::ValidatedClaims;
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// JWT Validator with JWKS caching
 pub struct JwtValidator {
-    /// JWKS cache with auto-refresh
-    jwks_cache: Arc<JwksCache>,
+    /// HTTP client for fetching JWKS
+    client: reqwest::Client,
+    
+    /// Cache of public keys by key ID
+    key_cache: Arc<RwLock<HashMap<String, DecodingKey>>>,
 }
 
 impl JwtValidator {
-    /// Create a new JWT validator with default cache configuration
+    /// Create a new JWT validator
     pub fn new() -> Self {
         Self {
-            jwks_cache: Arc::new(JwksCache::new()),
+            client: reqwest::Client::new(),
+            key_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    /// Create a new JWT validator with custom JWKS cache
-    pub fn with_cache(jwks_cache: Arc<JwksCache>) -> Self {
-        Self { jwks_cache }
-    }
-
-    /// Start background refresh task for JWKS cache
-    pub fn start_background_refresh(&self) -> tokio::task::JoinHandle<()> {
-        self.jwks_cache.clone().start_background_refresh()
-    }
-
-    /// Validate a JWT token using issuer (with auto-discovery)
+    /// Validate a JWT token
     pub async fn validate_token(
         &self,
         token: &str,
         expected_issuer: &str,
         expected_audiences: &[String],
+        jwks_uri: &str,
     ) -> Result<ValidatedClaims> {
         // Decode header to get key ID
         let header = decode_header(token).map_err(|e| {
@@ -45,8 +43,8 @@ impl JwtValidator {
             AuthorizationError::Internal("JWT header missing 'kid' field".to_string())
         })?;
 
-        // Get decoding key from cache (with auto-discovery and refresh)
-        let decoding_key = self.jwks_cache.get_key(&kid, expected_issuer).await?;
+        // Get decoding key (from cache or fetch)
+        let decoding_key = self.get_decoding_key(&kid, jwks_uri).await?;
 
         // Setup validation
         let mut validation = Validation::new(header.alg);
@@ -62,27 +60,74 @@ impl JwtValidator {
         Ok(token_data.claims)
     }
 
-    /// Validate a JWT token with explicit JWKS URI (legacy method)
-    #[deprecated(note = "Use validate_token with auto-discovery instead")]
-    pub async fn validate_token_with_jwks_uri(
-        &self,
-        token: &str,
-        expected_issuer: &str,
-        expected_audiences: &[String],
-        _jwks_uri: &str,
-    ) -> Result<ValidatedClaims> {
-        // Delegate to new method that uses auto-discovery
-        self.validate_token(token, expected_issuer, expected_audiences).await
+    /// Get decoding key from cache or fetch from JWKS endpoint
+    async fn get_decoding_key(&self, kid: &str, jwks_uri: &str) -> Result<DecodingKey> {
+        // Check cache first
+        {
+            let cache = self.key_cache.read().await;
+            if let Some(key) = cache.get(kid) {
+                return Ok(key.clone());
+            }
+        }
+
+        // Fetch JWKS
+        let jwks = self.fetch_jwks(jwks_uri).await?;
+
+        // Find key with matching kid
+        let jwk = jwks
+            .get("keys")
+            .and_then(|keys| keys.as_array())
+            .and_then(|keys| {
+                keys.iter().find(|key| {
+                    key.get("kid")
+                        .and_then(|k| k.as_str())
+                        .map(|k| k == kid)
+                        .unwrap_or(false)
+                })
+            })
+            .ok_or_else(|| {
+                AuthorizationError::Internal(format!("Key with kid '{}' not found in JWKS", kid))
+            })?;
+
+        // Extract public key components
+        let n = jwk
+            .get("n")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AuthorizationError::Internal("Missing 'n' in JWK".to_string()))?;
+
+        let e = jwk
+            .get("e")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AuthorizationError::Internal("Missing 'e' in JWK".to_string()))?;
+
+        // Create decoding key from RSA components
+        let decoding_key = DecodingKey::from_rsa_components(n, e)
+            .map_err(|e| AuthorizationError::Internal(format!("Failed to create decoding key: {}", e)))?;
+
+        // Cache the key
+        {
+            let mut cache = self.key_cache.write().await;
+            cache.insert(kid.to_string(), decoding_key.clone());
+        }
+
+        Ok(decoding_key)
     }
 
-    /// Get cache metrics
-    pub async fn cache_metrics(&self) -> crate::jwt::jwks_cache::CacheMetrics {
-        self.jwks_cache.metrics().await
-    }
+    /// Fetch JWKS from endpoint
+    async fn fetch_jwks(&self, jwks_uri: &str) -> Result<Value> {
+        let response = self
+            .client
+            .get(jwks_uri)
+            .send()
+            .await
+            .map_err(|e| AuthorizationError::Internal(format!("Failed to fetch JWKS: {}", e)))?;
 
-    /// Clear the JWKS cache
-    pub async fn clear_cache(&self) {
-        self.jwks_cache.clear().await;
+        let jwks = response
+            .json::<Value>()
+            .await
+            .map_err(|e| AuthorizationError::Internal(format!("Failed to parse JWKS: {}", e)))?;
+
+        Ok(jwks)
     }
 }
 

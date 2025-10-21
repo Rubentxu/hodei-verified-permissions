@@ -3,34 +3,7 @@
 use crate::error::{AuthorizationError, Result};
 use crate::jwt::ValidatedClaims;
 use crate::proto::{Entity, EntityIdentifier};
-use serde_json::Value;
 use std::collections::HashMap;
-
-/// Value transformation types
-#[derive(Debug, Clone, PartialEq)]
-pub enum ValueTransform {
-    /// No transformation
-    None,
-    /// Convert to uppercase
-    Uppercase,
-    /// Convert to lowercase
-    Lowercase,
-    /// Split string by delimiter and take first part
-    SplitFirst(String),
-    /// Split string by delimiter and take last part
-    SplitLast(String),
-}
-
-/// Parent entity mapping configuration
-#[derive(Debug, Clone)]
-pub struct ParentMapping {
-    /// Claim path (supports dot notation)
-    pub claim_path: String,
-    /// Entity type for parents (e.g., "Role", "Group")
-    pub entity_type: String,
-    /// Optional transformation
-    pub transform: ValueTransform,
-}
 
 /// Configuration for mapping JWT claims to Cedar entities
 #[derive(Debug, Clone)]
@@ -38,21 +11,11 @@ pub struct ClaimsMappingConfig {
     /// Claim to use as principal entity ID (default: "sub")
     pub principal_id_claim: String,
     
-    /// Claim containing group membership (legacy, use parent_mappings instead)
-    #[deprecated(note = "Use parent_mappings for more flexibility")]
+    /// Claim containing group membership
     pub group_claim: Option<String>,
     
-    /// Map of Cedar attribute names to JWT claim paths (supports dot notation)
+    /// Map of Cedar attribute names to JWT claim names
     pub attribute_mappings: HashMap<String, String>,
-    
-    /// Parent entity mappings (roles, groups, etc.)
-    pub parent_mappings: Vec<ParentMapping>,
-    
-    /// Required claims that must be present
-    pub required_claims: Vec<String>,
-    
-    /// Attribute transformations
-    pub attribute_transforms: HashMap<String, ValueTransform>,
 }
 
 impl Default for ClaimsMappingConfig {
@@ -61,15 +24,6 @@ impl Default for ClaimsMappingConfig {
             principal_id_claim: "sub".to_string(),
             group_claim: Some("groups".to_string()),
             attribute_mappings: HashMap::new(),
-            parent_mappings: vec![
-                ParentMapping {
-                    claim_path: "groups".to_string(),
-                    entity_type: "Role".to_string(),
-                    transform: ValueTransform::None,
-                }
-            ],
-            required_claims: vec![],
-            attribute_transforms: HashMap::new(),
         }
     }
 }
@@ -78,64 +32,12 @@ impl Default for ClaimsMappingConfig {
 pub struct ClaimsMapper;
 
 impl ClaimsMapper {
-    /// Get nested claim value using dot notation (e.g., "realm_access.roles")
-    fn get_nested_claim(claims: &ValidatedClaims, path: &str) -> Option<Value> {
-        let parts: Vec<&str> = path.split('.').collect();
-        
-        if parts.is_empty() {
-            return None;
-        }
-        
-        // Start with additional_claims
-        let mut current = claims.additional_claims.get(parts[0])?.clone();
-        
-        // Navigate through nested objects
-        for part in &parts[1..] {
-            current = current.get(part)?.clone();
-        }
-        
-        Some(current)
-    }
-    
-    /// Apply transformation to a string value
-    fn apply_transform(value: &str, transform: &ValueTransform) -> String {
-        match transform {
-            ValueTransform::None => value.to_string(),
-            ValueTransform::Uppercase => value.to_uppercase(),
-            ValueTransform::Lowercase => value.to_lowercase(),
-            ValueTransform::SplitFirst(delimiter) => {
-                value.split(delimiter).next().unwrap_or(value).to_string()
-            }
-            ValueTransform::SplitLast(delimiter) => {
-                value.split(delimiter).last().unwrap_or(value).to_string()
-            }
-        }
-    }
-    
-    /// Validate that all required claims are present
-    fn validate_required_claims(
-        claims: &ValidatedClaims,
-        required: &[String],
-    ) -> Result<()> {
-        for claim_path in required {
-            if Self::get_nested_claim(claims, claim_path).is_none() {
-                return Err(AuthorizationError::Internal(format!(
-                    "Required claim '{}' not found in token",
-                    claim_path
-                )));
-            }
-        }
-        Ok(())
-    }
-
     /// Map JWT claims to a Cedar principal entity
     pub fn map_to_principal(
         claims: &ValidatedClaims,
         config: &ClaimsMappingConfig,
         principal_type: &str,
     ) -> Result<(EntityIdentifier, Vec<Entity>)> {
-        // Validate required claims
-        Self::validate_required_claims(claims, &config.required_claims)?;
         // Extract principal ID
         let principal_id = if config.principal_id_claim == "sub" {
             claims.sub.clone()
@@ -161,66 +63,27 @@ impl ClaimsMapper {
         // Build principal entity with attributes
         let mut attributes = HashMap::new();
         
-        // Map configured attributes (with dot notation support)
-        for (cedar_attr, claim_path) in &config.attribute_mappings {
-            if let Some(value) = Self::get_nested_claim(claims, claim_path) {
-                // Apply transformation if configured
-                let transformed_value = if let Some(transform) = config.attribute_transforms.get(cedar_attr) {
-                    if let Some(str_val) = value.as_str() {
-                        Value::String(Self::apply_transform(str_val, transform))
-                    } else {
-                        value
-                    }
-                } else {
-                    value
-                };
-                
+        // Map configured attributes
+        for (cedar_attr, claim_name) in &config.attribute_mappings {
+            if let Some(value) = claims.additional_claims.get(claim_name) {
                 // Convert to JSON string for Cedar
-                let attr_value = serde_json::to_string(&transformed_value)
-                    .unwrap_or_else(|_| format!("\"{}\"", transformed_value));
+                let attr_value = serde_json::to_string(value)
+                    .unwrap_or_else(|_| format!("\"{}\"", value));
                 attributes.insert(cedar_attr.clone(), attr_value);
             }
         }
 
-        // Extract parent entities using parent_mappings
+        // Extract groups as parent entities
         let mut parents = Vec::new();
-        
-        for mapping in &config.parent_mappings {
-            if let Some(value) = Self::get_nested_claim(claims, &mapping.claim_path) {
-                // Handle both arrays and single values
-                let values_array = if let Some(arr) = value.as_array() {
-                    arr.clone()
-                } else if let Some(str_val) = value.as_str() {
-                    vec![Value::String(str_val.to_string())]
-                } else {
-                    continue;
-                };
-                
-                for item in values_array {
-                    if let Some(item_str) = item.as_str() {
-                        let transformed = Self::apply_transform(item_str, &mapping.transform);
-                        parents.push(EntityIdentifier {
-                            entity_type: mapping.entity_type.clone(),
-                            entity_id: transformed,
-                        });
-                    }
-                }
-            }
-        }
-        
-        // Legacy support for group_claim
-        #[allow(deprecated)]
         if let Some(group_claim) = &config.group_claim {
-            if config.parent_mappings.is_empty() {
-                if let Some(groups_value) = claims.additional_claims.get(group_claim) {
-                    if let Some(groups_array) = groups_value.as_array() {
-                        for group in groups_array {
-                            if let Some(group_str) = group.as_str() {
-                                parents.push(EntityIdentifier {
-                                    entity_type: "Role".to_string(),
-                                    entity_id: group_str.to_string(),
-                                });
-                            }
+            if let Some(groups_value) = claims.additional_claims.get(group_claim) {
+                if let Some(groups_array) = groups_value.as_array() {
+                    for group in groups_array {
+                        if let Some(group_str) = group.as_str() {
+                            parents.push(EntityIdentifier {
+                                entity_type: "Role".to_string(), // or "Group"
+                                entity_id: group_str.to_string(),
+                            });
                         }
                     }
                 }

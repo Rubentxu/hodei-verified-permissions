@@ -1,35 +1,38 @@
 //! Data Plane gRPC service implementation
 
+use crate::audit::{AuditEvent, AuditLogger};
+use crate::error::AuthorizationError;
 use crate::proto::authorization_data_server::AuthorizationData;
 use crate::proto::*;
-use hodei_domain::PolicyRepository;
+use crate::storage::Repository;
 use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request as CedarRequest};
+use chrono::Utc;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
+use uuid::Uuid;
 
 pub struct AuthorizationDataService {
-    repository: Arc<dyn PolicyRepository>,
+    repository: Repository,
+    audit_logger: Arc<AuditLogger>,
 }
 
 impl AuthorizationDataService {
-    pub fn new(repository: Arc<dyn PolicyRepository>) -> Self {
+    pub fn new(repository: Repository) -> Self {
         Self {
             repository,
+            audit_logger: Arc::new(AuditLogger::new()),
         }
     }
     
-    // TODO: Re-enable audit logging after updating audit module
-    /*
-    pub fn with_audit_logger(repository: Arc<dyn PolicyRepository>, audit_logger: Arc<AuditLogger>) -> Self {
+    pub fn with_audit_logger(repository: Repository, audit_logger: Arc<AuditLogger>) -> Self {
         Self {
             repository,
             audit_logger,
         }
     }
-    */
 
     fn build_entity_uid(identifier: &EntityIdentifier) -> Result<EntityUid, Status> {
         EntityUid::from_str(&format!("{}::\"{}\"", identifier.entity_type, identifier.entity_id))
@@ -189,8 +192,7 @@ impl AuthorizationData for AuthorizationDataService {
             decision, determining_policies
         );
 
-        // TODO: Re-enable audit logging after updating audit module
-        /*
+        // Audit log the decision
         let audit_event = AuditEvent {
             event_id: Uuid::new_v4().to_string(),
             timestamp: Utc::now(),
@@ -206,8 +208,8 @@ impl AuthorizationData for AuthorizationDataService {
             request_type: "is_authorized".to_string(),
             identity_source_id: None,
         };
+        
         self.audit_logger.log_decision(audit_event).await;
-        */
 
         Ok(Response::new(IsAuthorizedResponse {
             decision: decision as i32,
