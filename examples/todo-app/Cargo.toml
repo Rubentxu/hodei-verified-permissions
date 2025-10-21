@@ -6,6 +6,10 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
+[lib]
+name = "todo_app"
+path = "src/lib.rs"
+
 [dependencies]
 # Hodei SDK with all features
 hodei-permissions-sdk = { path = "../../sdk", features = ["middleware", "runtime-mapping"] }
@@ -34,3 +38,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Error handling
 anyhow = "1.0"
 thiserror = "2.0"
+
+[dev-dependencies]
+# Testing
+axum-test = "15.0"
+http-body-util = "0.1"

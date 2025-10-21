@@ -173,7 +173,7 @@ impl VerifiedPermissionsLayer {
     
     /// Load a SimpleRest mapping from a Cedar schema JSON
     #[cfg(feature = "runtime-mapping")]
-    pub fn with_simple_rest_mapping(mut self, schema_json: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn with_simple_rest_mapping(mut self, schema_json: &str) -> anyhow::Result<Self> {
         let mapping = SimpleRestMapping::from_schema_json(schema_json)?;
         self.simple_rest_mapping = Some(Arc::new(mapping));
         Ok(self)
