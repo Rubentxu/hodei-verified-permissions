@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Hodei Verified Permissions Server (gRPC)
+  hodei-server:
+    build:
+      context: ./verified-permissions
+      dockerfile: Dockerfile
+    container_name: hodei-server
+    ports:
+      - "50051:50051"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=sqlite:///app/data/hodei.db
+    volumes:
+      - hodei-data:/app/data
+    healthcheck:
+      test: ["CMD", "grpcurl", "-plaintext", "localhost:50051", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # TODO Application (uses SDK)
+  todo-app:
+    build:
+      context: .
+      dockerfile: examples/todo-app/Dockerfile
+    container_name: todo-app
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_LOG=debug
+      - AUTH_ENDPOINT=http://hodei-server:50051
+      - POLICY_STORE_ID=todo-policy-store
+      - IDENTITY_SOURCE_ID=todo-identity-source
+    depends_on:
+      hodei-server:
+        condition: service_healthy
+    networks:
+      - hodei-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Test runner (executes E2E tests)
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: e2e-tests
+    environment:
+      - RUST_LOG=debug
+      - HODEI_SERVER_URL=http://hodei-server:50051
+      - TODO_APP_URL=http://todo-app:3000
+    depends_on:
+      hodei-server:
+        condition: service_healthy
+      todo-app:
+        condition: service_healthy
+    networks:
+      - hodei-network
+    command: cargo test --test e2e_full_stack -- --nocapture
+
+volumes:
+  hodei-data:
+
+networks:
+  hodei-network:
+    driver: bridge
