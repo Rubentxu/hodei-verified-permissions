@@ -40,6 +40,6 @@ pub mod service;
 pub mod error;
 
 pub use extractor::{AuthorizationRequestExtractor, AuthorizationRequestParts, DefaultExtractor};
-pub use layer::VerifiedPermissionsLayer;
+pub use layer::{VerifiedPermissionsLayer, SkippedEndpoint, MatchType};
 pub use service::VerifiedPermissionsService;
 pub use error::MiddlewareError;

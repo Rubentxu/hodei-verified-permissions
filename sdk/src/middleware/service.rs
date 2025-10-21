@@ -1,11 +1,10 @@
 //! Tower Service implementation for Hodei Verified Permissions
 
 use crate::AuthorizationClient;
-use crate::middleware::{AuthorizationRequestExtractor, DefaultExtractor, MiddlewareError};
+use crate::middleware::{AuthorizationRequestExtractor, DefaultExtractor, MiddlewareError, SkippedEndpoint};
 use crate::proto::Decision;
-use http::{Request, Response, StatusCode};
+use http::{Request, Response};
 use http_body::Body;
-use http_body_util::Full;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -23,6 +22,7 @@ pub struct VerifiedPermissionsService<S> {
     policy_store_id: String,
     identity_source_id: String,
     extractor: Arc<DefaultExtractor>,
+    skipped_endpoints: Vec<SkippedEndpoint>,
 }
 
 impl<S> VerifiedPermissionsService<S> {
@@ -33,6 +33,7 @@ impl<S> VerifiedPermissionsService<S> {
         policy_store_id: String,
         identity_source_id: String,
         extractor: Arc<DefaultExtractor>,
+        skipped_endpoints: Vec<SkippedEndpoint>,
     ) -> Self {
         Self {
             inner,
@@ -40,6 +41,7 @@ impl<S> VerifiedPermissionsService<S> {
             policy_store_id,
             identity_source_id,
             extractor,
+            skipped_endpoints,
         }
     }
 }
@@ -67,9 +69,22 @@ where
         let policy_store_id = self.policy_store_id.clone();
         let identity_source_id = self.identity_source_id.clone();
         let extractor = self.extractor.clone();
+        let skipped_endpoints = self.skipped_endpoints.clone();
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
+            // Check if this endpoint should skip authorization
+            let method = req.method();
+            let path = req.uri().path();
+            
+            if skipped_endpoints.iter().any(|endpoint| endpoint.matches(method, path)) {
+                // Skip authorization, forward directly to inner service
+                return match inner.call(req).await {
+                    Ok(response) => Ok(response),
+                    Err(e) => Err(e.into()),
+                };
+            }
+            
             // Extract JWT token from Authorization header
             let token = match DefaultExtractor::extract_token(&req) {
                 Ok(t) => t,
