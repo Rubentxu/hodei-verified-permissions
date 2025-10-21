@@ -9,8 +9,19 @@ A complete, production-ready example of a TODO task management application with 
 - ✅ **Attribute-Based Access Control** (users can only update their assigned tasks)
 - ✅ **Automatic Authorization** using SimpleRest mapping
 - ✅ **Context-Aware Policies** (path parameters, query strings)
+- ✅ **Cedar Action Macros** for self-documenting handlers
+- ✅ **OpenAPI to Cedar Schema** generation
 - ✅ **In-Memory Storage** with sample data
 - ✅ **Production-Ready** error handling and logging
+
+## 🎯 Demonstrates ALL Implemented Features
+
+This application showcases the complete integration of all features developed across Sprints 1-4:
+
+1. **Sprint 1**: OpenAPI → Cedar schema generation
+2. **Sprint 2**: Runtime mapping with SimpleRest
+3. **Sprint 3**: Procedural macros (`#[cedar_action]`)
+4. **Sprint 4**: Complete production application
 
 ## Architecture
 
@@ -305,6 +316,50 @@ todo-app/
 ├── Cargo.toml           # Dependencies
 └── README.md            # This file
 ```
+
+## Cedar Action Macros
+
+All handlers in this application use the `#[cedar_action]` macro for self-documentation:
+
+```rust
+use hodei_macros::cedar_action;
+
+#[cedar_action(
+    action = "getTask",
+    resource = "Task",
+    description = "Get a specific task by ID"
+)]
+pub async fn get_task(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<Task>, AppError> {
+    // Handler implementation
+}
+```
+
+### Benefits of Using Macros
+
+1. **Self-Documenting Code**: Cedar metadata visible in code
+2. **IDE Integration**: Tooltips show Cedar action information
+3. **Compile-Time Validation**: Macro ensures correct syntax
+4. **Future-Proof**: Foundation for schema generation from code
+5. **Consistency**: Enforces documentation standards
+
+### All Annotated Handlers
+
+| Handler | Action | Resource | Description |
+|---------|--------|----------|-------------|
+| `list_tasks` | `listTasks` | `Application` | List all tasks with optional filters |
+| `get_task` | `getTask` | `Task` | Get a specific task by ID |
+| `create_task` | `createTask` | `Application` | Create a new task |
+| `update_task` | `updateTask` | `Task` | Update task details |
+| `delete_task` | `deleteTask` | `Task` | Delete a task |
+| `assign_task` | `assignTask` | `Task` | Assign task to a user |
+| `complete_task` | `completeTask` | `Task` | Mark task as completed |
+| `list_projects` | `listProjects` | `Application` | List all projects |
+| `get_project` | `getProject` | `Project` | Get project details |
+| `create_project` | `createProject` | `Application` | Create a new project |
+| `delete_project` | `deleteProject` | `Project` | Delete a project and all its tasks |
 
 ## Key Implementation Details
 
