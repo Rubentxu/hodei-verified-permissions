@@ -1,72 +1,181 @@
 version: '3.8'
 
 services:
-  # Hodei Verified Permissions Server (gRPC)
-  hodei-server:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: hodei-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=hodei_test
+      - POSTGRES_USER=hodei
+      - POSTGRES_PASSWORD=hodei_pass
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hodei"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # SurrealDB Database
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    container_name: hodei-surrealdb
+    ports:
+      - "8000:8000"
+    command: start --log trace --user root --pass root memory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # Hodei Server with SQLite
+  hodei-server-sqlite:
     build:
       context: ./verified-permissions
       dockerfile: Dockerfile
-    container_name: hodei-server
+    container_name: hodei-server-sqlite
     ports:
       - "50051:50051"
     environment:
       - RUST_LOG=debug
       - DATABASE_URL=sqlite:///app/data/hodei.db
     volumes:
-      - hodei-data:/app/data
+      - sqlite-data:/app/data
     healthcheck:
-      test: ["CMD", "grpcurl", "-plaintext", "localhost:50051", "list"]
+      test: ["CMD-SHELL", "test -f /app/data/hodei.db"]
       interval: 5s
       timeout: 3s
       retries: 10
     networks:
       - hodei-network
 
-  # TODO Application (uses SDK)
-  todo-app:
+  # Hodei Server with PostgreSQL
+  hodei-server-postgres:
+    build:
+      context: ./verified-permissions
+      dockerfile: Dockerfile
+    container_name: hodei-server-postgres
+    ports:
+      - "50052:50051"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://hodei:hodei_pass@postgres:5432/hodei_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # Hodei Server with SurrealDB
+  hodei-server-surrealdb:
+    build:
+      context: ./verified-permissions
+      dockerfile: Dockerfile
+    container_name: hodei-server-surrealdb
+    ports:
+      - "50053:50051"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=surreal://root:root@surrealdb:8000/hodei/test
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # TODO Application with SQLite backend
+  todo-app-sqlite:
     build:
       context: .
       dockerfile: examples/todo-app/Dockerfile
-    container_name: todo-app
+    container_name: todo-app-sqlite
     ports:
       - "3000:3000"
     environment:
       - RUST_LOG=debug
-      - AUTH_ENDPOINT=http://hodei-server:50051
+      - AUTH_ENDPOINT=http://hodei-server-sqlite:50051
       - POLICY_STORE_ID=todo-policy-store
       - IDENTITY_SOURCE_ID=todo-identity-source
     depends_on:
-      hodei-server:
+      hodei-server-sqlite:
         condition: service_healthy
     networks:
       - hodei-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  # Test runner (executes E2E tests)
-  e2e-tests:
+  # TODO Application with PostgreSQL backend
+  todo-app-postgres:
     build:
       context: .
-      dockerfile: Dockerfile.e2e
-    container_name: e2e-tests
+      dockerfile: examples/todo-app/Dockerfile
+    container_name: todo-app-postgres
+    ports:
+      - "3001:3000"
     environment:
       - RUST_LOG=debug
-      - HODEI_SERVER_URL=http://hodei-server:50051
-      - TODO_APP_URL=http://todo-app:3000
+      - AUTH_ENDPOINT=http://hodei-server-postgres:50051
+      - POLICY_STORE_ID=todo-policy-store
+      - IDENTITY_SOURCE_ID=todo-identity-source
     depends_on:
-      hodei-server:
-        condition: service_healthy
-      todo-app:
+      hodei-server-postgres:
         condition: service_healthy
     networks:
       - hodei-network
-    command: cargo test --test e2e_full_stack -- --nocapture
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # TODO Application with SurrealDB backend
+  todo-app-surrealdb:
+    build:
+      context: .
+      dockerfile: examples/todo-app/Dockerfile
+    container_name: todo-app-surrealdb
+    ports:
+      - "3002:3000"
+    environment:
+      - RUST_LOG=debug
+      - AUTH_ENDPOINT=http://hodei-server-surrealdb:50051
+      - POLICY_STORE_ID=todo-policy-store
+      - IDENTITY_SOURCE_ID=todo-identity-source
+    depends_on:
+      hodei-server-surrealdb:
+        condition: service_healthy
+    networks:
+      - hodei-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
-  hodei-data:
+  sqlite-data:
+  postgres-data:
 
 networks:
   hodei-network:

@@ -47,17 +47,31 @@ docker-compose -f docker-compose.test.yml ps
 
 # Run E2E tests
 echo -e "${YELLOW}🧪 Running E2E tests...${NC}"
+
+echo -e "${YELLOW}📝 Running full stack tests...${NC}"
 cargo test --test e2e_full_stack -- --ignored --nocapture || {
-    echo -e "${RED}❌ E2E tests failed${NC}"
-    echo -e "${YELLOW}📋 Server logs:${NC}"
-    docker-compose -f docker-compose.test.yml logs hodei-server
-    echo -e "${YELLOW}📋 TODO app logs:${NC}"
-    docker-compose -f docker-compose.test.yml logs todo-app
+    echo -e "${RED}❌ Full stack tests failed${NC}"
+    docker-compose -f docker-compose.test.yml logs
+    docker-compose -f docker-compose.test.yml down -v
+    exit 1
+}
+
+echo -e "${YELLOW}🗄️  Running multi-database tests...${NC}"
+cargo test --test e2e_multi_database -- --ignored --nocapture || {
+    echo -e "${RED}❌ Multi-database tests failed${NC}"
+    echo -e "${YELLOW}📋 SQLite server logs:${NC}"
+    docker-compose -f docker-compose.test.yml logs hodei-server-sqlite
+    echo -e "${YELLOW}📋 PostgreSQL server logs:${NC}"
+    docker-compose -f docker-compose.test.yml logs hodei-server-postgres
+    echo -e "${YELLOW}📋 SurrealDB server logs:${NC}"
+    docker-compose -f docker-compose.test.yml logs hodei-server-surrealdb
     docker-compose -f docker-compose.test.yml down -v
     exit 1
 }
 
 echo -e "${GREEN}✅ All E2E tests passed!${NC}"
+echo -e "${GREEN}  ✅ Full stack tests${NC}"
+echo -e "${GREEN}  ✅ Multi-database tests (SQLite, PostgreSQL, SurrealDB)${NC}"
 
 # Cleanup
 echo -e "${YELLOW}🧹 Cleaning up...${NC}"
