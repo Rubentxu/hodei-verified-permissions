@@ -10,17 +10,17 @@ RUN apt-get update && apt-get install -y \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files
-COPY Cargo.toml ./
-COPY shared ./shared
-COPY domain ./domain
-COPY application ./application
-COPY infrastructure ./infrastructure
-COPY api ./api
-COPY main ./main
+# Copy proto files first (from root context)
+COPY proto ./proto
 
-# Copy proto files from root
-COPY ../proto ../proto
+# Copy workspace files
+COPY verified-permissions/Cargo.toml ./
+COPY verified-permissions/shared ./shared
+COPY verified-permissions/domain ./domain
+COPY verified-permissions/application ./application
+COPY verified-permissions/infrastructure ./infrastructure
+COPY verified-permissions/api ./api
+COPY verified-permissions/main ./main
 
 # Build release binary
 RUN cargo build --release -p hodei-verified-permissions

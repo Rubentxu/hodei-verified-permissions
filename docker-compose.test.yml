@@ -39,8 +39,8 @@ services:
   # Hodei Server with SQLite
   hodei-server-sqlite:
     build:
-      context: ./verified-permissions
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: verified-permissions/Dockerfile
     container_name: hodei-server-sqlite
     ports:
       - "50051:50051"
@@ -60,8 +60,8 @@ services:
   # Hodei Server with PostgreSQL
   hodei-server-postgres:
     build:
-      context: ./verified-permissions
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: verified-permissions/Dockerfile
     container_name: hodei-server-postgres
     ports:
       - "50052:50051"
@@ -82,8 +82,8 @@ services:
   # Hodei Server with SurrealDB
   hodei-server-surrealdb:
     build:
-      context: ./verified-permissions
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: verified-permissions/Dockerfile
     container_name: hodei-server-surrealdb
     ports:
       - "50053:50051"

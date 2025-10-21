@@ -91,8 +91,8 @@ services:
   # Hodei Server with Keycloak integration
   hodei-server-keycloak:
     build:
-      context: ./verified-permissions
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: verified-permissions/Dockerfile
     container_name: hodei-server-keycloak
     ports:
       - "50054:50051"
@@ -117,8 +117,8 @@ services:
   # Hodei Server with Zitadel integration
   hodei-server-zitadel:
     build:
-      context: ./verified-permissions
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: verified-permissions/Dockerfile
     container_name: hodei-server-zitadel
     ports:
       - "50055:50051"
