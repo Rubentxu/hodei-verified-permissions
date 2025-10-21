@@ -1,0 +1,202 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for Keycloak
+  keycloak-db:
+    image: postgres:15-alpine
+    container_name: keycloak-db
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak_pass
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # Keycloak Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak_pass
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_ENABLED=true
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hodei-network
+
+  # CockroachDB for Zitadel
+  zitadel-db:
+    image: cockroachdb/cockroach:v23.1.0
+    container_name: zitadel-db
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+      - "8081:8080"
+    volumes:
+      - zitadel-db-data:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - hodei-network
+
+  # Zitadel Identity Provider
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v2.42.0
+    container_name: zitadel
+    command: 'start-from-init --masterkeyFromEnv --tlsMode disabled'
+    ports:
+      - "8082:8080"
+    environment:
+      - ZITADEL_MASTERKEY=MasterkeyNeedsToHave32Characters
+      - ZITADEL_DATABASE_COCKROACH_HOST=zitadel-db
+      - ZITADEL_EXTERNALSECURE=false
+      - ZITADEL_EXTERNALPORT=8082
+      - ZITADEL_EXTERNALDOMAIN=localhost
+    depends_on:
+      zitadel-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/debug/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hodei-network
+
+  # Hodei Server with Keycloak integration
+  hodei-server-keycloak:
+    build:
+      context: ./verified-permissions
+      dockerfile: Dockerfile
+    container_name: hodei-server-keycloak
+    ports:
+      - "50054:50051"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=sqlite:///app/data/hodei-keycloak.db
+      - IDENTITY_PROVIDER=keycloak
+      - KEYCLOAK_URL=http://keycloak:8080
+    volumes:
+      - keycloak-server-data:/app/data
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # Hodei Server with Zitadel integration
+  hodei-server-zitadel:
+    build:
+      context: ./verified-permissions
+      dockerfile: Dockerfile
+    container_name: hodei-server-zitadel
+    ports:
+      - "50055:50051"
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=sqlite:///app/data/hodei-zitadel.db
+      - IDENTITY_PROVIDER=zitadel
+      - ZITADEL_URL=http://zitadel:8080
+    volumes:
+      - zitadel-server-data:/app/data
+    depends_on:
+      zitadel:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'healthy'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # TODO App with Keycloak
+  todo-app-keycloak:
+    build:
+      context: .
+      dockerfile: examples/todo-app/Dockerfile
+    container_name: todo-app-keycloak
+    ports:
+      - "3003:3000"
+    environment:
+      - RUST_LOG=debug
+      - AUTH_ENDPOINT=http://hodei-server-keycloak:50051
+      - POLICY_STORE_ID=todo-policy-store-keycloak
+      - IDENTITY_SOURCE_ID=keycloak-source
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=hodei
+    depends_on:
+      hodei-server-keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+  # TODO App with Zitadel
+  todo-app-zitadel:
+    build:
+      context: .
+      dockerfile: examples/todo-app/Dockerfile
+    container_name: todo-app-zitadel
+    ports:
+      - "3004:3000"
+    environment:
+      - RUST_LOG=debug
+      - AUTH_ENDPOINT=http://hodei-server-zitadel:50051
+      - POLICY_STORE_ID=todo-policy-store-zitadel
+      - IDENTITY_SOURCE_ID=zitadel-source
+      - ZITADEL_URL=http://zitadel:8080
+    depends_on:
+      hodei-server-zitadel:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - hodei-network
+
+volumes:
+  keycloak-db-data:
+  keycloak-server-data:
+  zitadel-db-data:
+  zitadel-server-data:
+
+networks:
+  hodei-network:
+    driver: bridge
