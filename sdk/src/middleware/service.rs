@@ -1,7 +1,7 @@
 //! Tower Service implementation for Hodei Verified Permissions
 
 use crate::AuthorizationClient;
-use crate::middleware::{AuthorizationRequestExtractor, DefaultExtractor, MiddlewareError, SkippedEndpoint};
+use crate::middleware::{AuthorizationRequestExtractor, DefaultExtractor, SkippedEndpoint};
 use crate::proto::Decision;
 use http::{Request, Response};
 use http_body::Body;
@@ -118,7 +118,7 @@ where
             // Extract JWT token from Authorization header
             let token = match DefaultExtractor::extract_token(&req) {
                 Ok(t) => t,
-                Err(e) => {
+                Err(_) => {
                     // Return 401 Unauthorized response
                     let response = Response::builder()
                         .status(401)
