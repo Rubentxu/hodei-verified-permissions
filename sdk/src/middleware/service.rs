@@ -129,7 +129,7 @@ where
 
             // Try to use SimpleRest mapping if available
             #[cfg(feature = "runtime-mapping")]
-            let (action, resource, context) = if let Some(ref mapping) = mapping {
+            let (action, resource, _context) = if let Some(ref mapping) = mapping {
                 // Resolve route using mapping
                 match mapping.resolve(method, path) {
                     Ok(resolved) => {
