@@ -1,0 +1,266 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TODO Task Manager API",
+    "version": "1.0.0",
+    "description": "A complete TODO task management API with Cedar authorization"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/tasks": {
+      "get": {
+        "operationId": "listTasks",
+        "summary": "List all tasks",
+        "description": "Get all tasks visible to the user",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "in_progress", "completed"]
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Application"]
+        }
+      },
+      "post": {
+        "operationId": "createTask",
+        "summary": "Create a new task",
+        "description": "Create a new task in the system",
+        "responses": {
+          "201": {
+            "description": "Task created"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Application"]
+        }
+      }
+    },
+    "/tasks/{taskId}": {
+      "get": {
+        "operationId": "getTask",
+        "summary": "Get a task by ID",
+        "description": "Retrieve details of a specific task",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Task"]
+        }
+      },
+      "put": {
+        "operationId": "updateTask",
+        "summary": "Update a task",
+        "description": "Update task details (title, description, status)",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task updated"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Task"]
+        }
+      },
+      "delete": {
+        "operationId": "deleteTask",
+        "summary": "Delete a task",
+        "description": "Remove a task from the system",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Task deleted"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Task"]
+        }
+      }
+    },
+    "/tasks/{taskId}/assign": {
+      "post": {
+        "operationId": "assignTask",
+        "summary": "Assign task to user",
+        "description": "Assign a task to a specific user",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task assigned"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Task"]
+        }
+      }
+    },
+    "/tasks/{taskId}/complete": {
+      "post": {
+        "operationId": "completeTask",
+        "summary": "Mark task as completed",
+        "description": "Change task status to completed",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task completed"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Task"]
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "summary": "List all projects",
+        "description": "Get all projects visible to the user",
+        "responses": {
+          "200": {
+            "description": "List of projects"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Application"]
+        }
+      },
+      "post": {
+        "operationId": "createProject",
+        "summary": "Create a new project",
+        "description": "Create a new project",
+        "responses": {
+          "201": {
+            "description": "Project created"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Application"]
+        }
+      }
+    },
+    "/projects/{projectId}": {
+      "get": {
+        "operationId": "getProject",
+        "summary": "Get project details",
+        "description": "Retrieve details of a specific project",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project details"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Project"]
+        }
+      },
+      "delete": {
+        "operationId": "deleteProject",
+        "summary": "Delete a project",
+        "description": "Remove a project and all its tasks",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Project deleted"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Project"]
+        }
+      }
+    }
+  }
+}
