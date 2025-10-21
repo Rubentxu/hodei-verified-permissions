@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.83-slim as builder
+FROM rust:latest as builder
 
 WORKDIR /app
 
@@ -10,17 +10,18 @@ RUN apt-get update && apt-get install -y \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace root files
-COPY ../../Cargo.toml ../../Cargo.toml
-COPY ../../sdk ../../sdk
-COPY ../../cli ../../cli
-COPY ../../hodei-macros ../../hodei-macros
-COPY ../../proto ../../proto
+# Copy workspace root files (context is repository root)
+COPY Cargo.toml ./Cargo.toml
+COPY sdk ./sdk
+COPY cli ./cli
+COPY hodei-macros ./hodei-macros
+COPY proto ./proto
 
 # Copy TODO app
-COPY . .
+COPY examples/todo-app ./examples/todo-app
 
 # Build release binary
+WORKDIR /app/examples/todo-app
 RUN cargo build --release
 
 # Runtime stage
@@ -35,12 +36,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/todo-app /usr/local/bin/todo-app
+COPY --from=builder /app/examples/todo-app/target/release/todo-app /usr/local/bin/todo-app
 
-# Copy static files (policies, schema, etc.)
-COPY policies ./policies
-COPY v4.cedarschema.json ./v4.cedarschema.json
-COPY openapi.json ./openapi.json
+# Copy static files (policies, schema, etc.) from context root
+COPY examples/todo-app/policies ./policies
+COPY examples/todo-app/v4.cedarschema.json ./v4.cedarschema.json
+COPY examples/todo-app/openapi.json ./openapi.json
 
 # Expose HTTP port
 EXPOSE 3000
