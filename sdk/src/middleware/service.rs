@@ -81,18 +81,18 @@ impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for VerifiedPermissionsServi
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
-    S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + 'static,
+    S::Error: std::error::Error + Send + Sync + 'static,
     ReqBody: Body + Send + Sync + 'static,
-    ResBody: Body + Send + 'static,
+    ResBody: Body + Default + Send + 'static,
     ResBody::Data: Send,
-    ResBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    ResBody::Error: std::error::Error + Send + Sync + 'static,
 {
     type Response = Response<ResBody>;
-    type Error = Box<dyn std::error::Error + Send + Sync>;
+    type Error = S::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx).map_err(Into::into)
+        self.inner.poll_ready(cx)
     }
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
@@ -112,18 +112,19 @@ where
             
             if skipped_endpoints.iter().any(|endpoint| endpoint.matches(method, path)) {
                 // Skip authorization, forward directly to inner service
-                return match inner.call(req).await {
-                    Ok(response) => Ok(response),
-                    Err(e) => Err(e.into()),
-                };
+                return inner.call(req).await;
             }
             
             // Extract JWT token from Authorization header
             let token = match DefaultExtractor::extract_token(&req) {
                 Ok(t) => t,
                 Err(e) => {
-                    let error = MiddlewareError::AuthorizationHeader(e.to_string());
-                    return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                    // Return 401 Unauthorized response
+                    let response = Response::builder()
+                        .status(401)
+                        .body(ResBody::default())
+                        .unwrap();
+                    return Ok(response);
                 }
             };
 
@@ -182,9 +183,13 @@ where
                         // Fallback to extractor if mapping fails
                         let parts = match extractor.extract(&req).await {
                             Ok(p) => p,
-                            Err(e) => {
-                                let error = MiddlewareError::ExtractionFailed(e.to_string());
-                                return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                            Err(_) => {
+                                // Return 400 Bad Request
+                                let response = Response::builder()
+                                    .status(400)
+                                    .body(ResBody::default())
+                                    .unwrap();
+                                return Ok(response);
                             }
                         };
                         (parts.action, parts.resource, parts.context)
@@ -194,9 +199,13 @@ where
                 // No mapping, use extractor
                 let parts = match extractor.extract(&req).await {
                     Ok(p) => p,
-                    Err(e) => {
-                        let error = MiddlewareError::ExtractionFailed(e.to_string());
-                        return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                    Err(_) => {
+                        // Return 400 Bad Request
+                        let response = Response::builder()
+                            .status(400)
+                            .body(ResBody::default())
+                            .unwrap();
+                        return Ok(response);
                     }
                 };
                 (parts.action, parts.resource, parts.context)
@@ -207,9 +216,13 @@ where
                 // Extract authorization request parts
                 let parts = match extractor.extract(&req).await {
                     Ok(p) => p,
-                    Err(e) => {
-                        let error = MiddlewareError::ExtractionFailed(e.to_string());
-                        return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                    Err(_) => {
+                        // Return 400 Bad Request
+                        let response = Response::builder()
+                            .status(400)
+                            .body(ResBody::default())
+                            .unwrap();
+                        return Ok(response);
                     }
                 };
                 (parts.action, parts.resource, parts.context)
@@ -231,22 +244,23 @@ where
                     // Check decision
                     if response.decision == Decision::Allow as i32 {
                         // Allow: forward request to inner service
-                        match inner.call(req).await {
-                            Ok(response) => Ok(response),
-                            Err(e) => Err(e.into()),
-                        }
+                        inner.call(req).await
                     } else {
-                        // Deny: return error
-                        let error = MiddlewareError::AccessDenied(format!(
-                            "Access denied for action '{}' on resource '{}'",
-                            action, resource
-                        ));
-                        Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>)
+                        // Deny: return 403 Forbidden
+                        let response = Response::builder()
+                            .status(403)
+                            .body(ResBody::default())
+                            .unwrap();
+                        Ok(response)
                     }
                 }
-                Err(e) => {
-                    let error = MiddlewareError::AuthorizationFailed(e.to_string());
-                    Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>)
+                Err(_) => {
+                    // Authorization service error: return 500
+                    let response = Response::builder()
+                        .status(500)
+                        .body(ResBody::default())
+                        .unwrap();
+                    Ok(response)
                 }
             }
         })

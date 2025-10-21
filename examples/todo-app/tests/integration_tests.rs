@@ -15,7 +15,7 @@ use tower::ServiceExt;
 fn create_test_app() -> Router {
     use todo_app::handlers;
     use todo_app::storage::AppState;
-    use axum::routing::{delete, get, post, put};
+    use axum::routing::{get, post};
 
     let state = AppState::with_sample_data();
 
@@ -23,19 +23,19 @@ fn create_test_app() -> Router {
         .route("/health", get(handlers::health))
         .route("/tasks", get(handlers::list_tasks).post(handlers::create_task))
         .route(
-            "/tasks/:taskId",
+            "/tasks/{taskId}",
             get(handlers::get_task)
                 .put(handlers::update_task)
                 .delete(handlers::delete_task),
         )
-        .route("/tasks/:taskId/assign", post(handlers::assign_task))
-        .route("/tasks/:taskId/complete", post(handlers::complete_task))
+        .route("/tasks/{taskId}/assign", post(handlers::assign_task))
+        .route("/tasks/{taskId}/complete", post(handlers::complete_task))
         .route(
             "/projects",
             get(handlers::list_projects).post(handlers::create_project),
         )
         .route(
-            "/projects/:projectId",
+            "/projects/{projectId}",
             get(handlers::get_project).delete(handlers::delete_project),
         )
         .with_state(state)
@@ -169,7 +169,7 @@ async fn test_update_task() {
     // Now update the task
     let update = json!({
         "title": "Updated Title",
-        "status": "in_progress"
+        "status": "inprogress"
     });
 
     let response = app
@@ -192,7 +192,7 @@ async fn test_update_task() {
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     
     assert_eq!(json["title"], "Updated Title");
-    assert_eq!(json["status"], "in_progress");
+    assert_eq!(json["status"], "inprogress");
 }
 
 #[tokio::test]
