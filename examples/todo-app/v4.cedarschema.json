@@ -1,0 +1,333 @@
+{
+  "TodoApp": {
+    "annotations": {
+      "mappingType": "SimpleRest"
+    },
+    "entityTypes": {
+      "Task": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Application": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "UserGroup": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        },
+        "memberOfTypes": [
+          "UserGroup"
+        ]
+      },
+      "Project": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {
+      "createProject": {
+        "annotations": {
+          "httpPathTemplate": "/api/v1/projects",
+          "httpVerb": "post"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Application"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {}
+          }
+        }
+      },
+      "getProject": {
+        "annotations": {
+          "httpVerb": "get",
+          "httpPathTemplate": "/api/v1/projects/{projectId}"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Project"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "projectId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "getTask": {
+        "annotations": {
+          "httpPathTemplate": "/api/v1/tasks/{taskId}",
+          "httpVerb": "get"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Task"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "taskId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "completeTask": {
+        "annotations": {
+          "httpVerb": "post",
+          "httpPathTemplate": "/api/v1/tasks/{taskId}/complete"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Task"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "taskId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "updateTask": {
+        "annotations": {
+          "httpVerb": "put",
+          "httpPathTemplate": "/api/v1/tasks/{taskId}"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Task"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "taskId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "deleteTask": {
+        "annotations": {
+          "httpPathTemplate": "/api/v1/tasks/{taskId}",
+          "httpVerb": "delete"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Task"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "taskId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "deleteProject": {
+        "annotations": {
+          "httpPathTemplate": "/api/v1/projects/{projectId}",
+          "httpVerb": "delete"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Project"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "projectId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "createTask": {
+        "annotations": {
+          "httpVerb": "post",
+          "httpPathTemplate": "/api/v1/tasks"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Application"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {}
+          }
+        }
+      },
+      "listTasks": {
+        "annotations": {
+          "httpPathTemplate": "/api/v1/tasks",
+          "httpVerb": "get"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Application"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "queryStringParameters": {
+                "type": "Record",
+                "attributes": {
+                  "status": {
+                    "type": "String"
+                  },
+                  "assignee": {
+                    "type": "String"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "assignTask": {
+        "annotations": {
+          "httpVerb": "post",
+          "httpPathTemplate": "/api/v1/tasks/{taskId}/assign"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Task"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {
+              "pathParameters": {
+                "type": "Record",
+                "attributes": {
+                  "taskId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              },
+              "queryStringParameters": {
+                "type": "Record",
+                "attributes": {
+                  "userId": {
+                    "type": "String",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "listProjects": {
+        "annotations": {
+          "httpVerb": "get",
+          "httpPathTemplate": "/api/v1/projects"
+        },
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Application"
+          ],
+          "context": {
+            "type": "Record",
+            "attributes": {}
+          }
+        }
+      }
+    }
+  }
+}
