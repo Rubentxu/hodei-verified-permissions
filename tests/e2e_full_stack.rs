@@ -14,7 +14,7 @@ const SERVER_ENDPOINT: &str = "http://localhost:50051";
 const TODO_APP_URL: &str = "http://localhost:3000";
 
 /// Helper to create a test JWT token
-fn create_test_jwt(user_id: &str, groups: Vec<&str>) -> String {
+fn create_test_jwt(user_id: &str, _groups: Vec<&str>) -> String {
     // TODO: Implement JWT generation for tests
     // For now, return a placeholder
     format!("test-token-{}", user_id)
@@ -70,14 +70,21 @@ async fn test_e2e_authorization_with_real_server() {
     println!("📦 Created policy store: {}", policy_store_id);
 
     // 2. Create identity source
+    use hodei_permissions_sdk::proto::{IdentitySourceConfiguration, OidcConfiguration};
+    use hodei_permissions_sdk::proto::identity_source_configuration::ConfigurationType;
     let identity_response = client
         .create_identity_source(
             &policy_store_id,
-            json!({
-                "issuer": "https://test.example.com",
-                "audience": ["test-app"],
-                "jwks_uri": "https://test.example.com/.well-known/jwks.json"
-            }),
+            IdentitySourceConfiguration {
+                configuration_type: Some(ConfigurationType::Oidc(OidcConfiguration {
+                    issuer: "https://test.example.com".to_string(),
+                    client_ids: vec!["test-app".to_string()],
+                    jwks_uri: "https://test.example.com/.well-known/jwks.json".to_string(),
+                    group_claim: "groups".to_string(),
+                })),
+            },
+            None,
+            None,
         )
         .await
         .expect("Failed to create identity source");
@@ -95,7 +102,12 @@ async fn test_e2e_authorization_with_real_server() {
     "#;
 
     client
-        .create_policy(&policy_store_id, policy_content.to_string(), None)
+        .create_policy(
+            &policy_store_id,
+            "test-policy-1",
+            policy_content.to_string(),
+            None,
+        )
         .await
         .expect("Failed to create policy");
 
