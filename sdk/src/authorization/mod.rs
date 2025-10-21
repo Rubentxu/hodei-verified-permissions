@@ -7,7 +7,7 @@ pub use engine::{AuthorizationEngine, AuthorizationRequest, AuthorizationResult}
 /// Common authorization types
 pub mod types {
     use super::*;
-    use crate::entities::{CedarEntity, EntityIdentifier};
+    use crate::entities::CedarEntity;
     
     /// Authorization decision
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

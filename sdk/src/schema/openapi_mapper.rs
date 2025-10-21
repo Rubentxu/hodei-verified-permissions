@@ -20,6 +20,8 @@ pub enum MappingError {
 }
 
 const RESERVED_WORDS: &[&str] = &["if", "in", "is", "__cedar"];
+// Supported HTTP methods for SimpleRest mapping
+#[allow(dead_code)]
 const SUPPORTED_HTTP_METHODS: &[&str] = &["get", "post", "put", "patch", "delete"];
 
 /// Validates a Cedar namespace

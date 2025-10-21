@@ -5,7 +5,7 @@ use super::types::*;
 use super::SchemaGenerationUseCase;
 use openapiv3::OpenAPI;
 use std::collections::{HashMap, HashSet};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

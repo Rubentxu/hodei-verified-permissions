@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use hodei_permissions_sdk::schema::{SchemaGenerationUseCase, SimpleRestSchemaGenerator};
 use std::path::PathBuf;
 use tokio::fs;
-use tracing::{info, error};
+use tracing::info;
 
 #[derive(Parser)]
 #[command(name = "hodei-cli")]
