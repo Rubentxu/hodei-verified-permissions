@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sdk"]
+members = [".", "sdk", "cli"]
 
 [package]
 name = "hodei-verified-permissions"

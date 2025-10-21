@@ -28,6 +28,12 @@
 pub mod client;
 pub mod builders;
 pub mod error;
+pub mod entities;
+pub mod authorization;
+
+// Schema generation module (optional, requires "schema" feature)
+#[cfg(feature = "schema")]
+pub mod schema;
 
 // Middleware module (optional, requires "middleware" feature)
 #[cfg(feature = "middleware")]

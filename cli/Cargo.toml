@@ -1,0 +1,33 @@
+[package]
+name = "hodei-cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Hodei Team"]
+description = "CLI tools for Hodei Verified Permissions"
+license = "MIT"
+
+[[bin]]
+name = "hodei-cli"
+path = "src/main.rs"
+
+[dependencies]
+# SDK with schema generation feature
+hodei-permissions-sdk = { path = "../sdk", features = ["schema"] }
+
+# CLI framework
+clap = { version = "4.5", features = ["derive"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Async runtime
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "fs"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
