@@ -10,7 +10,7 @@ license = "MIT"
 default = []
 middleware = ["axum", "tower", "tower-layer", "http", "http-body", "http-body-util", "async-trait", "matchit"]
 schema = ["openapiv3", "url", "async-trait"]
-runtime-mapping = ["schema", "matchit", "http"]
+runtime-mapping = ["schema", "matchit", "http", "form_urlencoded"]
 
 [dependencies]
 # gRPC client
@@ -45,6 +45,7 @@ url = { version = "2.5", optional = true }
 
 # Runtime mapping dependencies (optional)
 matchit = { version = "0.8", optional = true }
+form_urlencoded = { version = "1.2", optional = true }
 
 [build-dependencies]
 tonic-prost-build = "0.14.2"

@@ -13,6 +13,8 @@ use tower::Service;
 
 #[cfg(feature = "runtime-mapping")]
 use crate::schema::SimpleRestMapping;
+#[cfg(feature = "runtime-mapping")]
+use form_urlencoded;
 
 /// Tower Service for Hodei Verified Permissions authorization
 ///
@@ -99,6 +101,8 @@ where
         let identity_source_id = self.identity_source_id.clone();
         let extractor = self.extractor.clone();
         let skipped_endpoints = self.skipped_endpoints.clone();
+        #[cfg(feature = "runtime-mapping")]
+        let mapping = self.simple_rest_mapping.clone();
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
@@ -123,13 +127,92 @@ where
                 }
             };
 
-            // Extract authorization request parts
-            let parts = match extractor.extract(&req).await {
-                Ok(p) => p,
-                Err(e) => {
-                    let error = MiddlewareError::ExtractionFailed(e.to_string());
-                    return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+            // Try to use SimpleRest mapping if available
+            #[cfg(feature = "runtime-mapping")]
+            let (action, resource, context) = if let Some(ref mapping) = mapping {
+                // Resolve route using mapping
+                match mapping.resolve(method, path) {
+                    Ok(resolved) => {
+                        // Build context from path parameters and query string
+                        let mut context_map = serde_json::Map::new();
+                        
+                        // Add path parameters
+                        if !resolved.path_params.is_empty() {
+                            let mut path_params = serde_json::Map::new();
+                            for (key, value) in resolved.path_params {
+                                path_params.insert(key, serde_json::Value::String(value));
+                            }
+                            context_map.insert(
+                                "pathParameters".to_string(),
+                                serde_json::Value::Object(path_params)
+                            );
+                        }
+                        
+                        // Add query parameters
+                        if let Some(query) = req.uri().query() {
+                            let mut query_params = serde_json::Map::new();
+                            for (key, value) in form_urlencoded::parse(query.as_bytes()) {
+                                query_params.insert(
+                                    key.to_string(),
+                                    serde_json::Value::String(value.to_string())
+                                );
+                            }
+                            if !query_params.is_empty() {
+                                context_map.insert(
+                                    "queryStringParameters".to_string(),
+                                    serde_json::Value::Object(query_params)
+                                );
+                            }
+                        }
+                        
+                        let context_value = if !context_map.is_empty() {
+                            Some(serde_json::Value::Object(context_map))
+                        } else {
+                            None
+                        };
+                        
+                        // Use first resource type (or default to Application)
+                        let resource_type = resolved.resource_types.first()
+                            .cloned()
+                            .unwrap_or_else(|| "Application".to_string());
+                        
+                        (resolved.action_name, resource_type, context_value)
+                    }
+                    Err(_) => {
+                        // Fallback to extractor if mapping fails
+                        let parts = match extractor.extract(&req).await {
+                            Ok(p) => p,
+                            Err(e) => {
+                                let error = MiddlewareError::ExtractionFailed(e.to_string());
+                                return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                            }
+                        };
+                        (parts.action, parts.resource, parts.context)
+                    }
                 }
+            } else {
+                // No mapping, use extractor
+                let parts = match extractor.extract(&req).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        let error = MiddlewareError::ExtractionFailed(e.to_string());
+                        return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                };
+                (parts.action, parts.resource, parts.context)
+            };
+            
+            #[cfg(not(feature = "runtime-mapping"))]
+            let (action, resource, _context) = {
+                // Extract authorization request parts
+                let parts = match extractor.extract(&req).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        let error = MiddlewareError::ExtractionFailed(e.to_string());
+                        return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                    }
+                };
+                (parts.action, parts.resource, parts.context)
             };
 
             // Call IsAuthorizedWithToken
@@ -138,8 +221,8 @@ where
                     &policy_store_id,
                     &identity_source_id,
                     &token,
-                    &parts.action,
-                    &parts.resource,
+                    &action,
+                    &resource,
                 )
                 .await;
 
@@ -156,7 +239,7 @@ where
                         // Deny: return error
                         let error = MiddlewareError::AccessDenied(format!(
                             "Access denied for action '{}' on resource '{}'",
-                            parts.action, parts.resource
+                            action, resource
                         ));
                         Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>)
                     }
