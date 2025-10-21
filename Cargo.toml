@@ -1,5 +1,6 @@
 [workspace]
 members = [".", "sdk", "cli"]
+exclude = ["examples/axum-simple-rest"]
 
 [package]
 name = "hodei-verified-permissions"

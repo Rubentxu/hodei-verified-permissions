@@ -1,0 +1,27 @@
+[workspace]
+
+[package]
+name = "axum-simple-rest-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# Hodei SDK with all features
+hodei-permissions-sdk = { path = "../../sdk", features = ["middleware", "runtime-mapping"] }
+
+# Web framework
+axum = "0.8"
+tokio = { version = "1.40", features = ["full"] }
+tower = "0.5"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
