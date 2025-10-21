@@ -11,6 +11,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::Service;
 
+#[cfg(feature = "runtime-mapping")]
+use crate::schema::SimpleRestMapping;
+
 /// Tower Service for Hodei Verified Permissions authorization
 ///
 /// This service intercepts requests, extracts JWT tokens, calls
@@ -23,6 +26,8 @@ pub struct VerifiedPermissionsService<S> {
     identity_source_id: String,
     extractor: Arc<DefaultExtractor>,
     skipped_endpoints: Vec<SkippedEndpoint>,
+    #[cfg(feature = "runtime-mapping")]
+    simple_rest_mapping: Option<Arc<SimpleRestMapping>>,
 }
 
 impl<S> VerifiedPermissionsService<S> {
@@ -42,6 +47,30 @@ impl<S> VerifiedPermissionsService<S> {
             identity_source_id,
             extractor,
             skipped_endpoints,
+            #[cfg(feature = "runtime-mapping")]
+            simple_rest_mapping: None,
+        }
+    }
+    
+    /// Create with SimpleRest mapping
+    #[cfg(feature = "runtime-mapping")]
+    pub fn with_mapping(
+        inner: S,
+        client: Arc<AuthorizationClient>,
+        policy_store_id: String,
+        identity_source_id: String,
+        extractor: Arc<DefaultExtractor>,
+        skipped_endpoints: Vec<SkippedEndpoint>,
+        mapping: Option<Arc<SimpleRestMapping>>,
+    ) -> Self {
+        Self {
+            inner,
+            client,
+            policy_store_id,
+            identity_source_id,
+            extractor,
+            skipped_endpoints,
+            simple_rest_mapping: mapping,
         }
     }
 }

@@ -5,6 +5,9 @@ use crate::middleware::{VerifiedPermissionsService, DefaultExtractor};
 use std::sync::Arc;
 use tower_layer::Layer;
 
+#[cfg(feature = "runtime-mapping")]
+use crate::schema::SimpleRestMapping;
+
 /// Tower Layer for Hodei Verified Permissions authorization
 ///
 /// This layer wraps services to add authorization checks using
@@ -39,6 +42,8 @@ pub struct VerifiedPermissionsLayer {
     policy_store_id: String,
     identity_source_id: String,
     skipped_endpoints: Vec<SkippedEndpoint>,
+    #[cfg(feature = "runtime-mapping")]
+    simple_rest_mapping: Option<Arc<SimpleRestMapping>>,
 }
 
 /// Endpoint to skip authorization
@@ -145,6 +150,8 @@ impl VerifiedPermissionsLayer {
             policy_store_id: policy_store_id.into(),
             identity_source_id: identity_source_id.into(),
             skipped_endpoints: Vec::new(),
+            #[cfg(feature = "runtime-mapping")]
+            simple_rest_mapping: None,
         }
     }
     
@@ -159,7 +166,24 @@ impl VerifiedPermissionsLayer {
             policy_store_id: policy_store_id.into(),
             identity_source_id: identity_source_id.into(),
             skipped_endpoints: Vec::new(),
+            #[cfg(feature = "runtime-mapping")]
+            simple_rest_mapping: None,
         }
+    }
+    
+    /// Load a SimpleRest mapping from a Cedar schema JSON
+    #[cfg(feature = "runtime-mapping")]
+    pub fn with_simple_rest_mapping(mut self, schema_json: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let mapping = SimpleRestMapping::from_schema_json(schema_json)?;
+        self.simple_rest_mapping = Some(Arc::new(mapping));
+        Ok(self)
+    }
+    
+    /// Set a SimpleRest mapping directly
+    #[cfg(feature = "runtime-mapping")]
+    pub fn with_mapping(mut self, mapping: SimpleRestMapping) -> Self {
+        self.simple_rest_mapping = Some(Arc::new(mapping));
+        self
     }
     
     /// Skip authorization for a specific endpoint
@@ -212,6 +236,21 @@ impl<S> Layer<S> for VerifiedPermissionsLayer {
             self.policy_store_id.clone(),
             self.identity_source_id.clone(),
         );
+
+        #[cfg(feature = "runtime-mapping")]
+        {
+            if self.simple_rest_mapping.is_some() {
+                return VerifiedPermissionsService::with_mapping(
+                    inner,
+                    self.client.clone(),
+                    self.policy_store_id.clone(),
+                    self.identity_source_id.clone(),
+                    std::sync::Arc::new(extractor),
+                    self.skipped_endpoints.clone(),
+                    self.simple_rest_mapping.clone(),
+                );
+            }
+        }
 
         VerifiedPermissionsService::new(
             inner,
