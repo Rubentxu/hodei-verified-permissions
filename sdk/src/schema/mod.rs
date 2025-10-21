@@ -8,8 +8,14 @@ pub mod service;
 pub mod openapi_mapper;
 pub mod serialization;
 
+#[cfg(feature = "runtime-mapping")]
+pub mod runtime_mapping;
+
 pub use types::*;
 pub use service::SimpleRestSchemaGenerator;
+
+#[cfg(feature = "runtime-mapping")]
+pub use runtime_mapping::{SimpleRestMapping, ResolvedRoute};
 
 /// Port for schema generation use case
 #[async_trait::async_trait]
