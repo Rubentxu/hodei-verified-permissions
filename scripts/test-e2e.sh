@@ -24,11 +24,11 @@ docker compose -f docker-compose.test.yml down -v 2>/dev/null || true
 
 # Build images
 echo -e "${YELLOW}🔨 Building Docker images...${NC}"
-docker compose -f docker-compose.test.yml build
+docker compose -f docker-compose.test.yml --profile all build
 
 # Start services
 echo -e "${YELLOW}🚀 Starting services...${NC}"
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml --profile all up -d
 
 # Wait for services to be healthy
 echo -e "${YELLOW}⏳ Waiting for services to be ready...${NC}"

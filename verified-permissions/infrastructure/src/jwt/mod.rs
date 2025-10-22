@@ -4,10 +4,8 @@
 //! for use in authorization decisions.
 
 pub mod validator;
-pub mod claims_mapper;
 
 pub use validator::JwtValidator;
-pub use claims_mapper::ClaimsMapper;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

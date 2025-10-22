@@ -121,8 +121,8 @@ async fn test_e2e_authorization_with_real_server() {
             &policy_store_id,
             &identity_source_id,
             &token,
-            "listTasks",
-            "Application",
+            "Action::listTasks",
+            "Application::todoApp",
         )
         .await
         .expect("Authorization request failed");

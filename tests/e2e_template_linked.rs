@@ -1,0 +1,540 @@
+//! E2E tests for Template-Linked Policies
+//!
+//! These tests validate the complete template-linked policy flow:
+//! - Creating policy templates with placeholders
+//! - Instantiating templates with specific principal/resource
+//! - Dynamic policy updates when template changes
+//! - Authorization with template-linked policies
+//!
+//! Run with: cargo test --test e2e_template_linked -- --ignored --nocapture
+
+use hodei_permissions_sdk::AuthorizationClient;
+use hodei_permissions_sdk::proto::*;
+
+const SQLITE_ENDPOINT: &str = "http://localhost:50051";
+
+// ============================================================================
+// TEST: Basic Template-Linked Policy Creation
+// ============================================================================
+
+#[tokio::test]
+#[ignore]
+async fn test_template_linked_policy_basic() {
+    println!("🔗 Testing basic template-linked policy creation");
+    
+    let client = AuthorizationClient::connect(SQLITE_ENDPOINT.to_string())
+        .await
+        .expect("Failed to connect to server");
+
+    // 1. Create policy store
+    println!("  ✓ Creating policy store...");
+    let store = client
+        .create_policy_store(Some("Template Test Store".to_string()))
+        .await
+        .expect("Failed to create policy store");
+    let policy_store_id = store.policy_store_id.clone();
+
+    // 2. Create a policy template with placeholders
+    println!("  ✓ Creating policy template...");
+    let template_statement = r#"
+        permit(
+            principal == ?principal,
+            action in [Action::"read", Action::"edit", Action::"comment"],
+            resource == ?resource
+        );
+    "#;
+    
+    let template_response = client
+        .create_policy_template(
+            &policy_store_id,
+            "editor-template".to_string(),
+            template_statement.to_string(),
+            Some("Template for editor permissions".to_string()),
+        )
+        .await
+        .expect("Failed to create policy template");
+    
+    println!("    Created template: {}", template_response.template_id);
+
+    // 3. Create a template-linked policy
+    println!("  ✓ Creating template-linked policy...");
+    
+    let template_linked = TemplateLinkedPolicy {
+        policy_template_id: "editor-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "alice".to_string(),
+        }),
+        resource: Some(EntityIdentifier {
+            entity_type: "Document".to_string(),
+            entity_id: "report.pdf".to_string(),
+        }),
+    };
+    
+    let policy_definition = PolicyDefinition {
+        policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked)),
+    };
+    
+    let create_request = CreatePolicyRequest {
+        policy_store_id: policy_store_id.clone(),
+        policy_id: "alice-editor-report".to_string(),
+        definition: Some(policy_definition),
+        description: Some("Alice as editor of report.pdf".to_string()),
+    };
+    
+    let policy_response = client
+        .create_policy_raw(create_request)
+        .await
+        .expect("Failed to create template-linked policy");
+    
+    println!("    Created policy: {}", policy_response.policy_id);
+
+    // 4. Test authorization - alice should be able to read the document
+    println!("  ✓ Testing authorization with template-linked policy...");
+    
+    let auth_response = client
+        .is_authorized(
+            &policy_store_id,
+            "User", "alice",
+            "Action", "read",
+            "Document", "report.pdf",
+        )
+        .await
+        .expect("Authorization failed");
+    
+    assert_eq!(auth_response.decision, Decision::Allow as i32, "Alice should be allowed to read");
+    println!("    ✓ Authorization ALLOW (correct)");
+
+    // 5. Test that alice cannot read a different document
+    println!("  ✓ Testing authorization for different resource...");
+    
+    let auth_response2 = client
+        .is_authorized(
+            &policy_store_id,
+            "User", "alice",
+            "Action", "read",
+            "Document", "other.pdf",
+        )
+        .await
+        .expect("Authorization failed");
+    
+    assert_eq!(auth_response2.decision, Decision::Deny as i32, "Alice should NOT be allowed to read other.pdf");
+    println!("    ✓ Authorization DENY (correct)");
+
+    // 6. Test that bob cannot read the document
+    println!("  ✓ Testing authorization for different principal...");
+    
+    let auth_response3 = client
+        .is_authorized(
+            &policy_store_id,
+            "User", "bob",
+            "Action", "read",
+            "Document", "report.pdf",
+        )
+        .await
+        .expect("Authorization failed");
+    
+    assert_eq!(auth_response3.decision, Decision::Deny as i32, "Bob should NOT be allowed");
+    println!("    ✓ Authorization DENY (correct)");
+
+    // Cleanup
+    client.delete_policy_store(&policy_store_id).await.ok();
+
+    println!("✅ Template-linked policy basic test PASSED");
+}
+
+// ============================================================================
+// TEST: Multiple Template-Linked Policies from Same Template
+// ============================================================================
+
+#[tokio::test]
+#[ignore]
+async fn test_multiple_template_linked_policies() {
+    println!("🔗 Testing multiple policies from same template");
+    
+    let client = AuthorizationClient::connect(SQLITE_ENDPOINT.to_string())
+        .await
+        .expect("Failed to connect to server");
+
+    // 1. Create policy store
+    let store = client
+        .create_policy_store(Some("Multi-Template Test".to_string()))
+        .await
+        .expect("Failed to create policy store");
+    let policy_store_id = store.policy_store_id.clone();
+
+    // 2. Create a shared template
+    println!("  ✓ Creating shared template...");
+    let template_statement = r#"
+        permit(
+            principal == ?principal,
+            action == Action::"access",
+            resource == ?resource
+        );
+    "#;
+    
+    client
+        .create_policy_template(
+            &policy_store_id,
+            "access-template".to_string(),
+            template_statement.to_string(),
+            Some("Shared access template".to_string()),
+        )
+        .await
+        .expect("Failed to create template");
+
+    // 3. Create multiple template-linked policies
+    println!("  ✓ Creating multiple template-linked policies...");
+    
+    // Policy 1: alice -> doc1
+    let template_linked1 = TemplateLinkedPolicy {
+        policy_template_id: "access-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "alice".to_string(),
+        }),
+        resource: Some(EntityIdentifier {
+            entity_type: "Document".to_string(),
+            entity_id: "doc1".to_string(),
+        }),
+    };
+    
+    client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "alice-doc1".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked1)),
+            }),
+            description: None,
+        })
+        .await
+        .expect("Failed to create policy 1");
+
+    // Policy 2: bob -> doc2
+    let template_linked2 = TemplateLinkedPolicy {
+        policy_template_id: "access-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "bob".to_string(),
+        }),
+        resource: Some(EntityIdentifier {
+            entity_type: "Document".to_string(),
+            entity_id: "doc2".to_string(),
+        }),
+    };
+    
+    client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "bob-doc2".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked2)),
+            }),
+            description: None,
+        })
+        .await
+        .expect("Failed to create policy 2");
+
+    // Policy 3: charlie -> doc3
+    let template_linked3 = TemplateLinkedPolicy {
+        policy_template_id: "access-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "charlie".to_string(),
+        }),
+        resource: Some(EntityIdentifier {
+            entity_type: "Document".to_string(),
+            entity_id: "doc3".to_string(),
+        }),
+    };
+    
+    client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "charlie-doc3".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked3)),
+            }),
+            description: None,
+        })
+        .await
+        .expect("Failed to create policy 3");
+
+    println!("    Created 3 template-linked policies");
+
+    // 4. Test each policy independently
+    println!("  ✓ Testing independent authorization...");
+    
+    // Alice can access doc1
+    let resp1 = client
+        .is_authorized(&policy_store_id, "User", "alice", "Action", "access", "Document", "doc1")
+        .await
+        .expect("Auth failed");
+    assert_eq!(resp1.decision, Decision::Allow as i32, "Alice should access doc1");
+    
+    // Alice cannot access doc2
+    let resp2 = client
+        .is_authorized(&policy_store_id, "User", "alice", "Action", "access", "Document", "doc2")
+        .await
+        .expect("Auth failed");
+    assert_eq!(resp2.decision, Decision::Deny as i32, "Alice should NOT access doc2");
+    
+    // Bob can access doc2
+    let resp3 = client
+        .is_authorized(&policy_store_id, "User", "bob", "Action", "access", "Document", "doc2")
+        .await
+        .expect("Auth failed");
+    assert_eq!(resp3.decision, Decision::Allow as i32, "Bob should access doc2");
+    
+    // Charlie can access doc3
+    let resp4 = client
+        .is_authorized(&policy_store_id, "User", "charlie", "Action", "access", "Document", "doc3")
+        .await
+        .expect("Auth failed");
+    assert_eq!(resp4.decision, Decision::Allow as i32, "Charlie should access doc3");
+    
+    println!("    ✓ All authorizations correct");
+
+    // Cleanup
+    client.delete_policy_store(&policy_store_id).await.ok();
+
+    println!("✅ Multiple template-linked policies test PASSED");
+}
+
+// ============================================================================
+// TEST: Template-Linked Policy with Only Principal
+// ============================================================================
+
+#[tokio::test]
+#[ignore]
+async fn test_template_linked_only_principal() {
+    println!("🔗 Testing template-linked with only principal placeholder");
+    
+    let client = AuthorizationClient::connect(SQLITE_ENDPOINT.to_string())
+        .await
+        .expect("Failed to connect to server");
+
+    let store = client.create_policy_store(None).await.expect("Failed to create store");
+    let policy_store_id = store.policy_store_id.clone();
+
+    // Template with only ?principal
+    let template_statement = r#"
+        permit(
+            principal == ?principal,
+            action == Action::"read",
+            resource
+        );
+    "#;
+    
+    client
+        .create_policy_template(
+            &policy_store_id,
+            "reader-template".to_string(),
+            template_statement.to_string(),
+            None,
+        )
+        .await
+        .expect("Failed to create template");
+
+    // Create policy with only principal specified
+    let template_linked = TemplateLinkedPolicy {
+        policy_template_id: "reader-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "alice".to_string(),
+        }),
+        resource: None, // No resource specified
+    };
+    
+    client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "alice-reader".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked)),
+            }),
+            description: None,
+        })
+        .await
+        .expect("Failed to create policy");
+
+    // Alice should be able to read ANY resource
+    let resp = client
+        .is_authorized(&policy_store_id, "User", "alice", "Action", "read", "Document", "any")
+        .await
+        .expect("Auth failed");
+    
+    assert_eq!(resp.decision, Decision::Allow as i32, "Alice should read any resource");
+    println!("  ✓ Authorization with wildcard resource works");
+
+    client.delete_policy_store(&policy_store_id).await.ok();
+
+    println!("✅ Template-linked with only principal test PASSED");
+}
+
+// ============================================================================
+// TEST: Template-Linked Policy Error Handling
+// ============================================================================
+
+#[tokio::test]
+#[ignore]
+async fn test_template_linked_error_handling() {
+    println!("🔗 Testing template-linked error handling");
+    
+    let client = AuthorizationClient::connect(SQLITE_ENDPOINT.to_string())
+        .await
+        .expect("Failed to connect to server");
+
+    let store = client.create_policy_store(None).await.expect("Failed to create store");
+    let policy_store_id = store.policy_store_id.clone();
+
+    // 1. Test with non-existent template
+    println!("  ✓ Testing non-existent template...");
+    let template_linked = TemplateLinkedPolicy {
+        policy_template_id: "non-existent-template".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "alice".to_string(),
+        }),
+        resource: None,
+    };
+    
+    let result = client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "test-policy".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked)),
+            }),
+            description: None,
+        })
+        .await;
+    
+    assert!(result.is_err(), "Should fail with non-existent template");
+    println!("    ✓ Non-existent template correctly rejected");
+
+    // 2. Test with template that has unresolved placeholders
+    println!("  ✓ Testing unresolved placeholders...");
+    
+    // Create template with both placeholders
+    let template_statement = r#"
+        permit(
+            principal == ?principal,
+            action == Action::"read",
+            resource == ?resource
+        );
+    "#;
+    
+    client
+        .create_policy_template(
+            &policy_store_id,
+            "both-placeholders".to_string(),
+            template_statement.to_string(),
+            None,
+        )
+        .await
+        .expect("Failed to create template");
+
+    // Try to create policy with only principal (missing resource)
+    let template_linked2 = TemplateLinkedPolicy {
+        policy_template_id: "both-placeholders".to_string(),
+        principal: Some(EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: "alice".to_string(),
+        }),
+        resource: None, // Missing required resource
+    };
+    
+    let result2 = client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "incomplete-policy".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(template_linked2)),
+            }),
+            description: None,
+        })
+        .await;
+    
+    assert!(result2.is_err(), "Should fail with unresolved placeholders");
+    println!("    ✓ Unresolved placeholders correctly rejected");
+
+    client.delete_policy_store(&policy_store_id).await.ok();
+
+    println!("✅ Template-linked error handling test PASSED");
+}
+
+// ============================================================================
+// TEST: Use Case - Document Sharing
+// ============================================================================
+
+#[tokio::test]
+#[ignore]
+async fn test_template_linked_document_sharing_use_case() {
+    println!("📄 Testing document sharing use case with template-linked policies");
+    
+    let client = AuthorizationClient::connect(SQLITE_ENDPOINT.to_string())
+        .await
+        .expect("Failed to connect to server");
+
+    let store = client.create_policy_store(Some("Document Sharing".to_string())).await.unwrap();
+    let policy_store_id = store.policy_store_id.clone();
+
+    // Create "share" template
+    println!("  ✓ Creating share template...");
+    let share_template = r#"
+        permit(
+            principal == ?principal,
+            action in [Action::"read", Action::"comment"],
+            resource == ?resource
+        );
+    "#;
+    
+    client
+        .create_policy_template(&policy_store_id, "share-template".to_string(), share_template.to_string(), Some("Share document with read and comment permissions".to_string()))
+        .await
+        .unwrap();
+
+    // Simulate: Alice shares doc1 with Bob
+    println!("  ✓ Alice shares doc1 with Bob...");
+    client
+        .create_policy_raw(CreatePolicyRequest {
+            policy_store_id: policy_store_id.clone(),
+            policy_id: "share-doc1-with-bob".to_string(),
+            definition: Some(PolicyDefinition {
+                policy_type: Some(policy_definition::PolicyType::TemplateLinked(TemplateLinkedPolicy {
+                    policy_template_id: "share-template".to_string(),
+                    principal: Some(EntityIdentifier {
+                        entity_type: "User".to_string(),
+                        entity_id: "bob".to_string(),
+                    }),
+                    resource: Some(EntityIdentifier {
+                        entity_type: "Document".to_string(),
+                        entity_id: "doc1".to_string(),
+                    }),
+                })),
+            }),
+            description: Some("Alice shared doc1 with Bob".to_string()),
+        })
+        .await
+        .unwrap();
+
+    // Bob can now read doc1
+    let resp = client
+        .is_authorized(&policy_store_id, "User", "bob", "Action", "read", "Document", "doc1")
+        .await
+        .unwrap();
+    assert_eq!(resp.decision, Decision::Allow as i32);
+    println!("    ✓ Bob can read shared document");
+
+    // Bob can comment on doc1
+    let resp2 = client
+        .is_authorized(&policy_store_id, "User", "bob", "Action", "comment", "Document", "doc1")
+        .await
+        .unwrap();
+    assert_eq!(resp2.decision, Decision::Allow as i32);
+    println!("    ✓ Bob can comment on shared document");
+
+    // Bob cannot edit doc1 (not in template)
+    let resp

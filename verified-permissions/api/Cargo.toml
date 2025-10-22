@@ -10,6 +10,7 @@ license.workspace = true
 hodei-shared.workspace = true
 hodei-domain.workspace = true
 hodei-application.workspace = true
+hodei-infrastructure.workspace = true
 
 # gRPC
 tonic.workspace = true
@@ -28,6 +29,7 @@ clap.workspace = true
 # Serialization
 serde.workspace = true
 serde_json.workspace = true
+base64 = "0.21"
 
 # Error handling
 thiserror.workspace = true
@@ -38,6 +40,9 @@ async-trait.workspace = true
 
 # Logging
 tracing.workspace = true
+
+# Time
+chrono.workspace = true
 
 [build-dependencies]
 tonic-prost-build = "0.14.2"

@@ -62,14 +62,28 @@ cargo test --workspace --lib
 ### Tests E2E - Multi-Database
 
 ```bash
-# Opción 1: Script automático (recomendado)
+# Opción 1: Script automático - TODAS las bases de datos (recomendado)
 ./scripts/test-e2e.sh
 
-# Opción 2: Manual
-docker compose -f docker-compose.test.yml up -d
+# Opción 2: Solo SQLite (más rápido, sin dependencias externas)
+docker compose -f docker-compose.test.yml --profile sqlite up -d
 cargo test --test e2e_full_stack -- --ignored --nocapture
+docker compose -f docker-compose.test.yml --profile sqlite down -v
+
+# Opción 3: Solo PostgreSQL
+docker compose -f docker-compose.test.yml --profile postgres up -d
+cargo test --test e2e_multi_database test_postgres -- --ignored --nocapture
+docker compose -f docker-compose.test.yml --profile postgres down -v
+
+# Opción 4: Solo SurrealDB
+docker compose -f docker-compose.test.yml --profile surrealdb up -d
+cargo test --test e2e_multi_database test_surrealdb -- --ignored --nocapture
+docker compose -f docker-compose.test.yml --profile surrealdb down -v
+
+# Opción 5: Todas las bases de datos
+docker compose -f docker-compose.test.yml --profile all up -d
 cargo test --test e2e_multi_database -- --ignored --nocapture
-docker compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.test.yml --profile all down -v
 ```
 
 ### Tests E2E - Identity Providers

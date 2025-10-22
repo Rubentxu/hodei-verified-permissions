@@ -1,36 +1,30 @@
 //! Data Plane gRPC service implementation
 
-use crate::audit::{AuditEvent, AuditLogger};
-use crate::error::AuthorizationError;
 use crate::proto::authorization_data_server::AuthorizationData;
 use crate::proto::*;
-use crate::storage::Repository;
-use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request as CedarRequest};
-use chrono::Utc;
+use hodei_infrastructure::repository::RepositoryAdapter;
+use hodei_infrastructure::jwt::JwtValidator;
+use hodei_domain::{PolicyStoreId, PolicyRepository};
+use tonic::{Request, Response, Status};
+use tracing::{info, error};
+use cedar_policy::{
+    Authorizer, Context, Entities, EntityUid, PolicySet,
+    Request as CedarRequest,
+};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
-use tonic::{Request, Response, Status};
-use tracing::{error, info};
-use uuid::Uuid;
 
 pub struct AuthorizationDataService {
-    repository: Repository,
-    audit_logger: Arc<AuditLogger>,
+    repository: Arc<RepositoryAdapter>,
+    jwt_validator: JwtValidator,
 }
 
 impl AuthorizationDataService {
-    pub fn new(repository: Repository) -> Self {
-        Self {
+    pub fn new(repository: Arc<RepositoryAdapter>) -> Self {
+        Self { 
             repository,
-            audit_logger: Arc::new(AuditLogger::new()),
-        }
-    }
-    
-    pub fn with_audit_logger(repository: Repository, audit_logger: Arc<AuditLogger>) -> Self {
-        Self {
-            repository,
-            audit_logger,
+            jwt_validator: JwtValidator::new(),
         }
     }
 
@@ -116,12 +110,19 @@ impl AuthorizationData for AuthorizationDataService {
             req.policy_store_id
         );
 
-        // Load policies from database
+        // 1. Parse policy store ID
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id.clone())
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        // 2. Load policies from database
         let policies = self
             .repository
-            .list_policies(&req.policy_store_id)
+            .list_policies(&policy_store_id)
             .await
-            .map_err(Status::from)?;
+            .map_err(|e| {
+                error!("Failed to load policies: {}", e);
+                Status::internal(format!("Failed to load policies: {}", e))
+            })?;
 
         if policies.is_empty() {
             info!("No policies found for policy store: {}", req.policy_store_id);
@@ -132,19 +133,19 @@ impl AuthorizationData for AuthorizationDataService {
             }));
         }
 
-        // Build policy set
+        // 3. Build Cedar PolicySet
         let mut policy_set_str = String::new();
         for policy in &policies {
-            policy_set_str.push_str(&policy.statement);
+            policy_set_str.push_str(policy.statement.as_str());
             policy_set_str.push('\n');
         }
 
         let policy_set = PolicySet::from_str(&policy_set_str).map_err(|e| {
             error!("Failed to parse policy set: {}", e);
-            Status::from(AuthorizationError::EvaluationError(e.to_string()))
+            Status::internal(format!("Failed to parse policy set: {}", e))
         })?;
 
-        // Build Cedar request
+        // 4. Build Cedar entities
         let principal = Self::build_entity_uid(req.principal.as_ref().ok_or_else(|| {
             Status::invalid_argument("Principal is required")
         })?)?;
@@ -157,30 +158,37 @@ impl AuthorizationData for AuthorizationDataService {
             Status::invalid_argument("Resource is required")
         })?)?;
 
+        // 5. Build context
         let context = Self::build_context(req.context.as_deref())?;
+
+        // 6. Build entities slice
         let entities = Self::build_entities(&req.entities)?;
 
+        // 7. Create Cedar request
         let cedar_request = CedarRequest::new(principal, action, resource, context, None)
             .map_err(|e| {
                 error!("Failed to create Cedar request: {}", e);
-                Status::from(AuthorizationError::EvaluationError(e.to_string()))
+                Status::internal(format!("Failed to create Cedar request: {}", e))
             })?;
 
-        // Evaluate
+        // 8. Evaluate with Cedar Authorizer
         let authorizer = Authorizer::new();
         let response = authorizer.is_authorized(&cedar_request, &policy_set, &entities);
 
+        // 9. Convert decision
         let decision = match response.decision() {
             cedar_policy::Decision::Allow => Decision::Allow,
             cedar_policy::Decision::Deny => Decision::Deny,
         };
 
+        // 10. Extract determining policies
         let determining_policies: Vec<String> = response
             .diagnostics()
             .reason()
             .map(|policy_id| policy_id.to_string())
             .collect();
 
+        // 11. Extract errors
         let errors: Vec<String> = response
             .diagnostics()
             .errors()
@@ -192,25 +200,7 @@ impl AuthorizationData for AuthorizationDataService {
             decision, determining_policies
         );
 
-        // Audit log the decision
-        let audit_event = AuditEvent {
-            event_id: Uuid::new_v4().to_string(),
-            timestamp: Utc::now(),
-            policy_store_id: req.policy_store_id.clone(),
-            principal: format!("{}::{}", req.principal.as_ref().unwrap().entity_type, req.principal.as_ref().unwrap().entity_id),
-            action: format!("{}::{}", req.action.as_ref().unwrap().entity_type, req.action.as_ref().unwrap().entity_id),
-            resource: format!("{}::{}", req.resource.as_ref().unwrap().entity_type, req.resource.as_ref().unwrap().entity_id),
-            decision: format!("{:?}", decision),
-            determining_policies: determining_policies.clone(),
-            errors: errors.clone(),
-            context: req.context.clone(),
-            entity_count: req.entities.len(),
-            request_type: "is_authorized".to_string(),
-            identity_source_id: None,
-        };
-        
-        self.audit_logger.log_decision(audit_event).await;
-
+        // 12. Return response
         Ok(Response::new(IsAuthorizedResponse {
             decision: decision as i32,
             determining_policies,
@@ -256,124 +246,116 @@ impl AuthorizationData for AuthorizationDataService {
         &self,
         request: Request<IsAuthorizedWithTokenRequest>,
     ) -> Result<Response<IsAuthorizedResponse>, Status> {
-        use crate::jwt::{ClaimsMapper, JwtValidator};
-        use crate::jwt::claims_mapper::ClaimsMappingConfig;
-        
         let req = request.into_inner();
         info!(
-            "Authorization with token request for policy store: {}",
-            req.policy_store_id
+            "Authorization with token request for policy store: {} and identity source: {}",
+            req.policy_store_id, req.identity_source_id
         );
 
-        // 1. Get identity source from database
+        // 1. Load Identity Source configuration
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id.clone())
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
         let identity_source = self
             .repository
-            .get_identity_source(&req.policy_store_id, &req.identity_source_id)
+            .get_identity_source(&policy_store_id, &req.identity_source_id)
             .await
-            .map_err(Status::from)?;
+            .map_err(|e| {
+                error!("Failed to load identity source: {}", e);
+                Status::not_found(format!("Identity source not found: {}", e))
+            })?;
 
-        // 2. Parse identity source configuration
+        // 2. Parse Identity Source configuration
         let config_json: serde_json::Value = serde_json::from_str(&identity_source.configuration_json)
-            .map_err(|e| Status::internal(format!("Failed to parse identity source config: {}", e)))?;
+            .map_err(|e| Status::internal(format!("Invalid identity source config: {}", e)))?;
 
-        let (issuer, audiences, jwks_uri) = match identity_source.configuration_type.as_str() {
-            "oidc" => {
-                let issuer = config_json["issuer"].as_str()
-                    .ok_or_else(|| Status::internal("Missing issuer in OIDC config"))?;
-                let jwks_uri = config_json["jwks_uri"].as_str()
-                    .ok_or_else(|| Status::internal("Missing jwks_uri in OIDC config"))?;
-                let client_ids = config_json["client_ids"].as_array()
-                    .ok_or_else(|| Status::internal("Missing client_ids in OIDC config"))?
-                    .iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect::<Vec<_>>();
-                (issuer.to_string(), client_ids, jwks_uri.to_string())
-            }
-            "cognito" => {
-                // For Cognito, construct issuer and JWKS URI from user pool ARN
-                let user_pool_arn = config_json["user_pool_arn"].as_str()
-                    .ok_or_else(|| Status::internal("Missing user_pool_arn in Cognito config"))?;
-                
-                // Extract region and pool ID from ARN
-                // Format: arn:aws:cognito-idp:REGION:ACCOUNT:userpool/POOL_ID
-                let parts: Vec<&str> = user_pool_arn.split(':').collect();
-                if parts.len() < 6 {
-                    return Err(Status::internal("Invalid Cognito user pool ARN format"));
-                }
-                let region = parts[3];
-                let pool_id = parts[5].split('/').last()
-                    .ok_or_else(|| Status::internal("Invalid pool ID in ARN"))?;
-                
-                let issuer = format!("https://cognito-idp.{}.amazonaws.com/{}", region, pool_id);
-                let jwks_uri = format!("{}/.well-known/jwks.json", issuer);
-                let client_ids = config_json["client_ids"].as_str()
-                    .unwrap_or("")
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .collect();
-                
-                (issuer, client_ids, jwks_uri)
-            }
-            _ => return Err(Status::internal("Unknown identity source type")),
+        let issuer = config_json["issuer"]
+            .as_str()
+            .ok_or_else(|| Status::internal("Identity source missing 'issuer'"))?;
+
+        let client_ids = config_json["client_ids"]
+            .as_array()
+            .ok_or_else(|| Status::internal("Identity source missing 'client_ids'"))?
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect::<Vec<String>>();
+
+        let jwks_uri = config_json["jwks_uri"]
+            .as_str()
+            .ok_or_else(|| Status::internal("Identity source missing 'jwks_uri'"))?;
+
+        info!("Validating token with issuer: {}, jwks_uri: {}", issuer, jwks_uri);
+
+        // 3. Validate JWT token (signature, issuer, audience, expiration)
+        let validated_claims = self
+            .jwt_validator
+            .validate_token(&req.access_token, issuer, &client_ids, jwks_uri)
+            .await
+            .map_err(|e| {
+                error!("JWT validation failed: {}", e);
+                Status::unauthenticated(format!("Invalid token: {}", e))
+            })?;
+
+        info!("Token validated successfully for subject: {}", validated_claims.sub);
+
+        // 4. Extract principal ID from claims
+        let principal_id = validated_claims.sub.clone();
+        let principal = EntityIdentifier {
+            entity_type: "User".to_string(),
+            entity_id: principal_id.clone(),
         };
 
-        // 3. Validate JWT token
-        let validator = JwtValidator::new();
-        let claims = validator
-            .validate_token(&req.access_token, &issuer, &audiences, &jwks_uri)
-            .await
-            .map_err(|e| Status::unauthenticated(format!("Token validation failed: {}", e)))?;
+        info!("Mapped principal: User::{}", principal_id);
 
-        // 4. Parse claims mapping configuration
-        let claims_mapping_config = if let Some(mapping_json) = &identity_source.claims_mapping_json {
-            let mapping_val: serde_json::Value = serde_json::from_str(mapping_json)
-                .map_err(|e| Status::internal(format!("Failed to parse claims mapping: {}", e)))?;
-            
-            let mut attribute_mappings = std::collections::HashMap::new();
-            if let Some(attrs) = mapping_val["attribute_mappings"].as_object() {
-                for (k, v) in attrs {
-                    if let Some(v_str) = v.as_str() {
-                        attribute_mappings.insert(k.clone(), v_str.to_string());
+        // 5. Extract groups from claims and create entities
+        let mut entities = Vec::new();
+        
+        // Create principal entity
+        let mut principal_attrs = HashMap::new();
+        
+        // Add email if present
+        if let Some(email) = validated_claims.additional_claims.get("email") {
+            if let Some(email_str) = email.as_str() {
+                principal_attrs.insert("email".to_string(), format!("\"{}\"", email_str));
+            }
+        }
+        
+        // Extract groups as parent entities
+        let mut parents = Vec::new();
+        if let Some(groups_value) = validated_claims.additional_claims.get("groups") {
+            if let Some(groups_array) = groups_value.as_array() {
+                for group in groups_array {
+                    if let Some(group_str) = group.as_str() {
+                        parents.push(EntityIdentifier {
+                            entity_type: "Role".to_string(),
+                            entity_id: group_str.to_string(),
+                        });
                     }
                 }
             }
-            
-            ClaimsMappingConfig {
-                principal_id_claim: mapping_val["principal_id_claim"]
-                    .as_str()
-                    .unwrap_or("sub")
-                    .to_string(),
-                group_claim: mapping_val["group_claim"]
-                    .as_str()
-                    .map(String::from),
-                attribute_mappings,
-            }
-        } else {
-            ClaimsMappingConfig::default()
-        };
+        }
+        
+        // Create principal entity with attributes and parents
+        entities.push(Entity {
+            identifier: Some(principal.clone()),
+            attributes: principal_attrs,
+            parents,
+        });
 
-        // 5. Map claims to Cedar principal
-        let (principal, mut principal_entities) = ClaimsMapper::map_to_principal(
-            &claims,
-            &claims_mapping_config,
-            "User", // Default principal type
-        )
-        .map_err(|e| Status::internal(format!("Failed to map claims: {}", e)))?;
+        // 6. Merge with any additional entities from request
+        entities.extend(req.entities);
 
-        // 6. Combine with provided entities
-        let mut all_entities = req.entities.clone();
-        all_entities.append(&mut principal_entities);
-
-        // 7. Call standard is_authorized
+        // 7. Create authorization request
         let auth_request = IsAuthorizedRequest {
             policy_store_id: req.policy_store_id,
             principal: Some(principal),
             action: req.action,
             resource: req.resource,
             context: req.context,
-            entities: all_entities,
+            entities,
         };
 
+        // 8. Evaluate with Cedar (real authorization)
         self.is_authorized(Request::new(auth_request)).await
     }
 }

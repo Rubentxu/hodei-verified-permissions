@@ -5,11 +5,12 @@
 
 pub mod repository;
 pub mod factory;
+pub mod jwt;
+pub mod error;
 
 // TODO: These modules need updating to use new crate structure
 // Temporarily commented out to allow compilation
 // pub mod cache;
-// pub mod jwt;
 // pub mod config;
 
 pub use repository::{RepositoryAdapter, SqliteRepository, models};

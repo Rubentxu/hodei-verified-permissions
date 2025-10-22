@@ -203,8 +203,8 @@ async fn test_authorization_flow(endpoint: &str, db_name: &str) {
             &policy_store_id,
             &identity_source_id,
             &token,
-            "listTasks",
-            "Application",
+            "Action::listTasks",
+            "Application::todoApp",
         )
         .await
         .expect(&format!("Authorization request failed in {}", db_name));
