@@ -129,6 +129,16 @@ service AuthorizationControl {
   
   // Delete a policy template
   rpc DeletePolicyTemplate(DeletePolicyTemplateRequest) returns (DeletePolicyTemplateResponse);
+  
+  // ========================================================================
+  // Playground / Testing Endpoints
+  // ========================================================================
+  
+  // Test authorization without persisting policies (Playground)
+  rpc TestAuthorization(TestAuthorizationRequest) returns (TestAuthorizationResponse);
+  
+  // Validate policy syntax and semantics against schema
+  rpc ValidatePolicy(ValidatePolicyRequest) returns (ValidatePolicyResponse);
 }
 
 // ============================================================================
@@ -484,4 +494,119 @@ message DeletePolicyTemplateRequest {
 // Response from deleting policy template
 message DeletePolicyTemplateResponse {
   string template_id = 1;
+}
+// ============================================================================
+// Playground / Testing Messages
+// ============================================================================
+
+// Request to test authorization without persisting policies
+message TestAuthorizationRequest {
+  // Optional policy store ID to use existing schema
+  optional string policy_store_id = 1;
+  
+  // Schema to use for validation (if not using policy_store_id)
+  optional string schema = 2;
+  
+  // Policies to test (Cedar policy statements)
+  repeated string policies = 3;
+  
+  // The principal making the request
+  EntityIdentifier principal = 4;
+  
+  // The action being performed
+  EntityIdentifier action = 5;
+  
+  // The resource being accessed
+  EntityIdentifier resource = 6;
+  
+  // Additional context for the request
+  optional string context = 7; // JSON string
+  
+  // Entity data slice for attribute-based evaluation
+  repeated Entity entities = 8;
+}
+
+// Response from test authorization
+message TestAuthorizationResponse {
+  // The decision result
+  Decision decision = 1;
+  
+  // IDs of policies that determined this decision
+  repeated string determining_policies = 2;
+  
+  // Any errors that occurred during evaluation
+  repeated string errors = 3;
+  
+  // Validation warnings (if schema was provided)
+  repeated ValidationIssue validation_warnings = 4;
+  
+  // Validation errors (if schema was provided)
+  repeated ValidationIssue validation_errors = 5;
+}
+
+// Request to validate policy
+message ValidatePolicyRequest {
+  // Policy store ID to get schema from
+  optional string policy_store_id = 1;
+  
+  // Schema to validate against (if not using policy_store_id)
+  optional string schema = 2;
+  
+  // Policy statement to validate
+  string policy_statement = 3;
+}
+
+// Response from policy validation
+message ValidatePolicyResponse {
+  // Whether the policy is valid
+  bool is_valid = 1;
+  
+  // Validation errors
+  repeated ValidationIssue errors = 2;
+  
+  // Validation warnings
+  repeated ValidationIssue warnings = 3;
+  
+  // Parsed policy information (if valid)
+  optional PolicyInfo policy_info = 4;
+}
+
+// Validation issue (error or warning)
+message ValidationIssue {
+  // Severity level
+  enum Severity {
+    SEVERITY_UNSPECIFIED = 0;
+    ERROR = 1;
+    WARNING = 2;
+    INFO = 3;
+  }
+  
+  Severity severity = 1;
+  
+  // Issue message
+  string message = 2;
+  
+  // Location in policy (line, column if available)
+  optional string location = 3;
+  
+  // Type of issue
+  string issue_type = 4;
+}
+
+// Information about parsed policy
+message PolicyInfo {
+  // Policy effect (permit or forbid)
+  string effect = 1;
+  
+  // Principal scope
+  optional string principal_scope = 2;
+  
+  // Action scope
+  optional string action_scope = 3;
+  
+  // Resource scope
+  optional string resource_scope = 4;
+  
+  // Whether policy has conditions (when/unless)
+  bool has_conditions = 5;
 }

@@ -6,7 +6,11 @@ use hodei_infrastructure::repository::RepositoryAdapter;
 use hodei_domain::{PolicyStoreId, PolicyId, CedarPolicy, IdentitySourceType, PolicyRepository};
 use tonic::{Request, Response, Status};
 use tracing::{info, error};
-use cedar_policy::{Policy as CedarPolicyType, Schema};
+use cedar_policy::{
+    Policy as CedarPolicyType, Schema, Validator, PolicySet,
+    Authorizer, Context, Entities, EntityUid,
+    Request as CedarRequest, Decision,
+};
 use std::str::FromStr;
 use std::sync::Arc;
 use serde_json;
@@ -773,6 +777,286 @@ impl AuthorizationControl for AuthorizationControlService {
 
         Ok(Response::new(DeletePolicyTemplateResponse {
             template_id: req.template_id,
+        }))
+    }
+
+    // ========================================================================
+    // Playground / Testing Endpoints
+    // ========================================================================
+
+    async fn test_authorization(
+        &self,
+        request: Request<TestAuthorizationRequest>,
+    ) -> Result<Response<TestAuthorizationResponse>, Status> {
+        let req = request.into_inner();
+        info!("Testing authorization in playground mode");
+
+        // 1. Get or parse schema
+        let schema = if let Some(policy_store_id) = &req.policy_store_id {
+            // Load schema from policy store
+            let store_id = PolicyStoreId::new(policy_store_id.clone())
+                .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+            
+            let schema_model = self.repository
+                .get_schema(&store_id)
+                .await
+                .map_err(|e| {
+                    error!("Failed to load schema: {}", e);
+                    Status::not_found(format!("Schema not found: {}", e))
+                })?
+                .ok_or_else(|| Status::not_found("Schema not found"))?;
+            
+            Some(Schema::from_str(&schema_model.schema_json).map_err(|e| {
+                Status::invalid_argument(format!("Invalid schema: {}", e))
+            })?)
+        } else if let Some(schema_str) = &req.schema {
+            // Parse provided schema
+            Some(Schema::from_str(schema_str).map_err(|e| {
+                Status::invalid_argument(format!("Invalid schema: {}", e))
+            })?)
+        } else {
+            None
+        };
+
+        // 2. Parse and validate policies
+        let mut policy_set_str = String::new();
+        let mut validation_errors = Vec::new();
+        let mut validation_warnings = Vec::new();
+
+        for (idx, policy_str) in req.policies.iter().enumerate() {
+            // Parse policy
+            match CedarPolicyType::from_str(policy_str) {
+                Ok(policy) => {
+                    // Validate against schema if available
+                    if let Some(ref schema) = schema {
+                        let validator = Validator::new(schema.clone());
+                        let policy_set = PolicySet::from_str(policy_str).unwrap_or_default();
+                        let validation_result = validator.validate(&policy_set, cedar_policy::ValidationMode::default());
+                        
+                        // Collect validation issues
+                        for error in validation_result.validation_errors() {
+                            validation_errors.push(ValidationIssue {
+                                severity: validation_issue::Severity::Error as i32,
+                                message: error.to_string(),
+                                location: Some(format!("Policy {}", idx)),
+                                issue_type: "ValidationError".to_string(),
+                            });
+                        }
+                        
+                        for warning in validation_result.validation_warnings() {
+                            validation_warnings.push(ValidationIssue {
+                                severity: validation_issue::Severity::Warning as i32,
+                                message: warning.to_string(),
+                                location: Some(format!("Policy {}", idx)),
+                                issue_type: "ValidationWarning".to_string(),
+                            });
+                        }
+                    }
+                    
+                    // Add to policy set
+                    policy_set_str.push_str(&format!("@id(\"test-policy-{}\")\n{}\n\n", idx, policy_str));
+                }
+                Err(e) => {
+                    return Err(Status::invalid_argument(format!("Invalid policy {}: {}", idx, e)));
+                }
+            }
+        }
+
+        // 3. Build Cedar request
+        let principal_uid = EntityUid::from_str(&format!(
+            "{}::\"{}\"",
+            req.principal.as_ref().ok_or_else(|| Status::invalid_argument("Principal required"))?.entity_type,
+            req.principal.as_ref().unwrap().entity_id
+        )).map_err(|e| Status::invalid_argument(format!("Invalid principal: {}", e)))?;
+
+        let action_uid = EntityUid::from_str(&format!(
+            "{}::\"{}\"",
+            req.action.as_ref().ok_or_else(|| Status::invalid_argument("Action required"))?.entity_type,
+            req.action.as_ref().unwrap().entity_id
+        )).map_err(|e| Status::invalid_argument(format!("Invalid action: {}", e)))?;
+
+        let resource_uid = EntityUid::from_str(&format!(
+            "{}::\"{}\"",
+            req.resource.as_ref().ok_or_else(|| Status::invalid_argument("Resource required"))?.entity_type,
+            req.resource.as_ref().unwrap().entity_id
+        )).map_err(|e| Status::invalid_argument(format!("Invalid resource: {}", e)))?;
+
+        // 4. Build context
+        let context = if let Some(context_str) = &req.context {
+            Context::from_json_str(context_str, None).map_err(|e| {
+                Status::invalid_argument(format!("Invalid context: {}", e))
+            })?
+        } else {
+            Context::empty()
+        };
+
+        // 5. Build entities
+        let mut entities_json = serde_json::json!([]);
+        if let Some(entities_array) = entities_json.as_array_mut() {
+            for entity in &req.entities {
+                let entity_json = serde_json::json!({
+                    "uid": {
+                        "type": entity.identifier.as_ref().unwrap().entity_type,
+                        "id": entity.identifier.as_ref().unwrap().entity_id
+                    },
+                    "attrs": entity.attributes,
+                    "parents": entity.parents.iter().map(|p| {
+                        serde_json::json!({
+                            "type": p.entity_type,
+                            "id": p.entity_id
+                        })
+                    }).collect::<Vec<_>>()
+                });
+                entities_array.push(entity_json);
+            }
+        }
+
+        let entities = Entities::from_json_str(&entities_json.to_string(), None)
+            .map_err(|e| Status::invalid_argument(format!("Invalid entities: {}", e)))?;
+
+        // 6. Create Cedar request
+        let cedar_request = CedarRequest::new(
+            principal_uid,
+            action_uid,
+            resource_uid,
+            context,
+            schema.as_ref(),
+        ).map_err(|e| Status::internal(format!("Failed to create request: {}", e)))?;
+
+        // 7. Evaluate
+        let policy_set = PolicySet::from_str(&policy_set_str)
+            .map_err(|e| Status::internal(format!("Failed to create policy set: {}", e)))?;
+
+        let authorizer = Authorizer::new();
+        let response = authorizer.is_authorized(&cedar_request, &policy_set, &entities);
+
+        // 8. Build response
+        let decision = match response.decision() {
+            Decision::Allow => Decision::Allow as i32,
+            Decision::Deny => Decision::Deny as i32,
+        };
+
+        let determining_policies: Vec<String> = response
+            .diagnostics()
+            .reason()
+            .map(|id| id.to_string())
+            .collect();
+
+        let errors: Vec<String> = response
+            .diagnostics()
+            .errors()
+            .map(|e| e.to_string())
+            .collect();
+
+        Ok(Response::new(TestAuthorizationResponse {
+            decision,
+            determining_policies,
+            errors,
+            validation_warnings,
+            validation_errors,
+        }))
+    }
+
+    async fn validate_policy(
+        &self,
+        request: Request<ValidatePolicyRequest>,
+    ) -> Result<Response<ValidatePolicyResponse>, Status> {
+        let req = request.into_inner();
+        info!("Validating policy in playground mode");
+
+        // 1. Get or parse schema
+        let schema = if let Some(policy_store_id) = &req.policy_store_id {
+            // Load schema from policy store
+            let store_id = PolicyStoreId::new(policy_store_id.clone())
+                .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+            
+            let schema_model = self.repository
+                .get_schema(&store_id)
+                .await
+                .map_err(|e| {
+                    error!("Failed to load schema: {}", e);
+                    Status::not_found(format!("Schema not found: {}", e))
+                })?
+                .ok_or_else(|| Status::not_found("Schema not found"))?;
+            
+            Schema::from_str(&schema_model.schema_json).map_err(|e| {
+                Status::invalid_argument(format!("Invalid schema: {}", e))
+            })?
+        } else if let Some(schema_str) = &req.schema {
+            // Parse provided schema
+            Schema::from_str(schema_str).map_err(|e| {
+                Status::invalid_argument(format!("Invalid schema: {}", e))
+            })?
+        } else {
+            return Err(Status::invalid_argument("Either policy_store_id or schema must be provided"));
+        };
+
+        // 2. Parse policy
+        let policy = match CedarPolicyType::from_str(&req.policy_statement) {
+            Ok(p) => p,
+            Err(e) => {
+                return Ok(Response::new(ValidatePolicyResponse {
+                    is_valid: false,
+                    errors: vec![ValidationIssue {
+                        severity: validation_issue::Severity::Error as i32,
+                        message: format!("Syntax error: {}", e),
+                        location: None,
+                        issue_type: "SyntaxError".to_string(),
+                    }],
+                    warnings: vec![],
+                    policy_info: None,
+                }));
+            }
+        };
+
+        // 3. Validate against schema
+        let validator = Validator::new(schema);
+        let policy_set = PolicySet::from_str(&req.policy_statement).unwrap_or_default();
+        let validation_result = validator.validate(&policy_set, cedar_policy::ValidationMode::default());
+
+        // 4. Collect errors and warnings
+        let mut errors = Vec::new();
+        let mut warnings = Vec::new();
+
+        for error in validation_result.validation_errors() {
+            errors.push(ValidationIssue {
+                severity: validation_issue::Severity::Error as i32,
+                message: error.to_string(),
+                location: None,
+                issue_type: "ValidationError".to_string(),
+            });
+        }
+
+        for warning in validation_result.validation_warnings() {
+            warnings.push(ValidationIssue {
+                severity: validation_issue::Severity::Warning as i32,
+                message: warning.to_string(),
+                location: None,
+                issue_type: "ValidationWarning".to_string(),
+            });
+        }
+
+        let is_valid = errors.is_empty();
+
+        // 5. Extract policy info if valid
+        let policy_info = if is_valid {
+            let policy_str = policy.to_string();
+            Some(PolicyInfo {
+                effect: if policy_str.starts_with("permit") { "permit".to_string() } else { "forbid".to_string() },
+                principal_scope: Some("principal".to_string()),
+                action_scope: Some("action".to_string()),
+                resource_scope: Some("resource".to_string()),
+                has_conditions: policy_str.contains("when") || policy_str.contains("unless"),
+            })
+        } else {
+            None
+        };
+
+        Ok(Response::new(ValidatePolicyResponse {
+            is_valid,
+            errors,
+            warnings,
+            policy_info,
         }))
     }
 }
