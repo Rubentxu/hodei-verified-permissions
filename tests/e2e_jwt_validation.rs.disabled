@@ -11,8 +11,6 @@
 
 use hodei_permissions_sdk::AuthorizationClient;
 use hodei_permissions_sdk::proto::*;
-use serde_json::json;
-use std::collections::HashMap;
 
 const SQLITE_ENDPOINT: &str = "http://localhost:50051";
 

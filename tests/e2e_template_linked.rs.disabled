@@ -537,4 +537,15 @@ async fn test_template_linked_document_sharing_use_case() {
     println!("    ✓ Bob can comment on shared document");
 
     // Bob cannot edit doc1 (not in template)
-    let resp
+    let resp3 = client
+        .is_authorized(&policy_store_id, "User", "bob", "Action", "edit", "Document", "doc1")
+        .await
+        .unwrap();
+    assert_eq!(resp3.decision, Decision::Deny as i32);
+    println!("    ✓ Bob cannot edit shared document (not in template)");
+
+    // Cleanup
+    client.delete_policy_store(&policy_store_id).await.ok();
+
+    println!("✅ Document sharing use case test PASSED");
+}
