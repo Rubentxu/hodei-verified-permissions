@@ -4,7 +4,6 @@
 //! Run with: cargo test --test e2e_user_stories -- --ignored --nocapture
 
 use hodei_permissions_sdk::AuthorizationClient;
-use hodei_permissions_sdk::proto::*;
 
 const GRPC_ENDPOINT: &str = "http://localhost:50051";
 
@@ -22,13 +21,13 @@ async fn epic_14_hu_14_1_list_policy_stores() {
         .expect("Failed to connect to server");
 
     let response = client
-        .list_policy_stores()
+        .list_policy_stores(None, None)
         .await
         .expect("Failed to list policy stores");
 
     println!("✅ Policy Stores encontrados: {}", response.policy_stores.len());
     for store in &response.policy_stores {
-        println!("   - ID: {}, Descripción: {}", store.policy_store_id, store.description);
+        println!("   - ID: {}, Descripción: {:?}", store.policy_store_id, store.description);
     }
     
     assert!(!response.policy_stores.is_empty() || true, "Should have at least one store or be empty");
@@ -83,7 +82,7 @@ async fn epic_14_hu_14_3_get_policy_store_details() {
 
     println!("✅ Policy Store detalles:");
     println!("   - ID: {}", get_response.policy_store_id);
-    println!("   - Descripción: {}", get_response.description);
+    println!("   - Descripción: {:?}", get_response.description);
     println!("   - Creado: {}", get_response.created_at);
     println!("   - Actualizado: {}", get_response.updated_at);
     
@@ -263,7 +262,7 @@ async fn epic_16_hu_16_1_list_and_filter_policies() {
 
     println!("✅ Políticas encontradas: {}", list_response.policies.len());
     for policy in &list_response.policies {
-        println!("   - ID: {}, Descripción: {}", policy.policy_id, policy.description);
+        println!("   - ID: {}, Descripción: {:?}", policy.policy_id, policy.description);
     }
 
     // Cleanup
