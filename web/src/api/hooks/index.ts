@@ -9,3 +9,10 @@ export {
   useUpdateSchema,
   useValidateSchema,
 } from './useSchemas';
+export {
+  usePolicies,
+  usePolicy,
+  useCreatePolicy,
+  useUpdatePolicy,
+  useDeletePolicy,
+} from './usePolicies';
