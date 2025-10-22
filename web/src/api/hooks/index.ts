@@ -16,3 +16,7 @@ export {
   useUpdatePolicy,
   useDeletePolicy,
 } from './usePolicies';
+export {
+  useTestAuthorization,
+  useValidatePolicy,
+} from './usePlayground';
