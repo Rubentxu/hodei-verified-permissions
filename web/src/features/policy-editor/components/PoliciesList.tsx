@@ -83,8 +83,10 @@ export const PoliciesList: React.FC<PoliciesListProps> = ({
         return (
           <Card
             key={policy.policyId}
-            className="hover:shadow-md transition-shadow cursor-pointer"
+            className="Card hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => onSelectPolicy?.(policy)}
+            role="button"
+            tabIndex={0}
           >
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex-1">

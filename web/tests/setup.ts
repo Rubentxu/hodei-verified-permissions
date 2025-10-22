@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import React from 'react';
 import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
@@ -44,23 +45,15 @@ global.ResizeObserver = class ResizeObserver {
 
 // Mock Monaco Editor
 vi.mock('@monaco-editor/react', () => ({
-  default: vi.fn(({ value, onChange, height = '400px' }) => {
-    return {
-      type: 'div',
-      props: {
-        'data-testid': 'monaco-editor',
-        children: [
-          {
-            type: 'textarea',
-            props: {
-              value,
-              onChange: (e: any) => onChange?.(e.target.value),
-              style: { height, width: '100%' },
-            },
-          },
-        ],
-      },
-    };
+  default: vi.fn(({ value, onChange, height = '400px', ...rest }) => {
+    return React.createElement('textarea', {
+      'data-testid': 'monaco-editor',
+      className: 'monaco-editor',
+      value,
+      onChange: (e: any) => onChange?.(e.target.value),
+      style: { height, width: '100%' },
+      ...rest,
+    });
   }),
 }));
 
@@ -70,56 +63,17 @@ vi.mock('date-fns', () => ({
   formatDistanceToNow: vi.fn(() => 'a few seconds ago'),
 }));
 
-// Mock lucide-react icons
-vi.mock('lucide-react', () => {
-  const MockIcon = (props: any) => {
-    const { className, ...rest } = props;
-    return {
-      type: 'svg',
-      props: { className, ...rest },
-    };
-  };
-  return {
-    Plus: MockIcon,
-    Edit2: MockIcon,
-    Trash2: MockIcon,
-    ChevronRight: MockIcon,
-    Save: MockIcon,
-    X: MockIcon,
-    AlertCircle: MockIcon,
-    CheckCircle: MockIcon,
-    AlertTriangle: MockIcon,
-    Info: MockIcon,
-  };
-});
+// Use real lucide-react icons (no mock)
 
 // Mock React Router
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
   useParams: () => ({}),
   useLocation: () => ({ pathname: '/' }),
-  Link: ({ children, to }: any) => children,
+  Link: ({ children, to, ...rest }: any) => React.createElement('a', { href: typeof to === 'string' ? to : '#', ...rest }, children),
 }));
 
-// Mock React Query
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(({ queryFn }) => ({
-    data: undefined,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  })),
-  useMutation: vi.fn(() => ({
-    mutate: vi.fn(),
-    mutateAsync: vi.fn(),
-    isPending: false,
-    error: null,
-    data: undefined,
-  })),
-  useQueryClient: () => ({
-    invalidateQueries: vi.fn(),
-  }),
-}));
+// (No global mock for React Query) - use real library; tests that need provider should wrap explicitly.
 
 // Mock Zustand
 vi.mock('zustand', () => ({
@@ -129,10 +83,14 @@ vi.mock('zustand', () => ({
   },
 }));
 
-// Mock clsx
-vi.mock('clsx', () => ({
-  default: (...args: any[]) => args.filter(Boolean).join(' '),
-}));
+// Mock clsx (provide both default and named export)
+vi.mock('clsx', () => {
+  const fn = (...args: any[]) => args.filter(Boolean).join(' ');
+  return {
+    default: fn,
+    clsx: fn,
+  };
+});
 
 // Mock class-variance-authority
 vi.mock('class-variance-authority', () => ({

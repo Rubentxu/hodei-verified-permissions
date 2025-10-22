@@ -33,7 +33,7 @@ export const JsonEditor = React.forwardRef<HTMLDivElement, JsonEditorProps>(
     );
 
     return (
-      <div ref={ref}>
+      <div ref={ref} className="json-editor editor-container">
         <CodeEditor
           {...props}
           value={value}

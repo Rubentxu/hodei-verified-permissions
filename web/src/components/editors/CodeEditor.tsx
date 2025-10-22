@@ -15,6 +15,8 @@ export interface CodeEditorProps {
   className?: string;
   theme?: 'light' | 'dark';
   options?: Record<string, unknown>;
+  // Allow extra props like id/aria-* to pass to Editor
+  [key: string]: any;
 }
 
 // Cedar language configuration
@@ -36,6 +38,7 @@ export const CodeEditor = React.forwardRef<HTMLDivElement, CodeEditorProps>(
       className,
       theme = 'light',
       options = {},
+      ...rest
     },
     ref
   ) => {
@@ -71,6 +74,7 @@ export const CodeEditor = React.forwardRef<HTMLDivElement, CodeEditorProps>(
           theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
           options={editorOptions}
           loading={<div className="p-4 text-gray-500">Loading editor...</div>}
+          {...rest}
         />
       </div>
     );

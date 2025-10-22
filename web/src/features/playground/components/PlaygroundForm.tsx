@@ -89,6 +89,7 @@ export const PlaygroundForm: React.FC<PlaygroundFormProps> = ({
               value={context}
               onChange={setContext}
               height="150px"
+              aria-label="Context (JSON)"
             />
           </div>
 
@@ -114,6 +115,7 @@ export const PlaygroundForm: React.FC<PlaygroundFormProps> = ({
               value={entities}
               onChange={setEntities}
               height="150px"
+              aria-label="Entities (JSON)"
             />
           </div>
 

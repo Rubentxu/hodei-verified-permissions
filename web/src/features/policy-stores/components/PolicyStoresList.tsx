@@ -66,7 +66,7 @@ export const PolicyStoresList: React.FC<PolicyStoresListProps> = ({
       {stores.map((store) => (
         <Card
           key={store.policyStoreId}
-          className="hover:shadow-md transition-shadow cursor-pointer"
+          className="Card hover:shadow-md transition-shadow cursor-pointer"
           onClick={() => onSelectStore?.(store)}
         >
           <CardContent className="p-4 flex items-center justify-between">

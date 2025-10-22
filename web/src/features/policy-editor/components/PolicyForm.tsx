@@ -68,13 +68,14 @@ export const PolicyForm: React.FC<PolicyFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cedar Policy Statement *
+              Cedar Policy Statement
             </label>
             <CedarEditor
               value={statement}
               onChange={setStatement}
               onValidationChange={setIsValid}
               height="300px"
+              aria-label="Cedar Policy Statement"
             />
           </div>
 

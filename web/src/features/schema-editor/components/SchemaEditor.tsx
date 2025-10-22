@@ -2,7 +2,7 @@
  * SchemaEditor Component - Edit Cedar schema with validation
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { JsonEditor } from '../../../components/editors';
 import { Card, CardContent, CardHeader, CardTitle, Alert } from '../../../components';
 import { isValidSchema } from '../../../utils/validators';
@@ -48,6 +48,26 @@ export const SchemaEditor = React.forwardRef<HTMLDivElement, SchemaEditorProps>(
       },
       [onChange, onValidationChange]
     );
+
+    // Validate on initial mount and when external value changes
+    useEffect(() => {
+      if (value !== undefined) {
+        if (value.trim()) {
+          const ok = isValidSchema(value);
+          if (!ok) {
+            setValidationError('Invalid Cedar schema structure');
+            onValidationChange?.(false);
+          } else {
+            setValidationError(null);
+            onValidationChange?.(true);
+          }
+        } else {
+          // Empty value considered neutral; do not set error, but notify false
+          onValidationChange?.(false);
+        }
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
 
     return (
       <div ref={ref} className="space-y-4">
