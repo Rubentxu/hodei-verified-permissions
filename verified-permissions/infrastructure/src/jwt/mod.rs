@@ -4,8 +4,16 @@
 //! for use in authorization decisions.
 
 pub mod validator;
+pub mod transforms;
+pub mod jwks_cache;
+pub mod claims_mapper;
+pub mod providers;
+pub mod issuer_detection;
 
 pub use validator::JwtValidator;
+pub use transforms::ValueTransform;
+pub use jwks_cache::JwksCache;
+pub use issuer_detection::{extract_issuer_from_token, extract_subject_from_token, extract_claims_from_token};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

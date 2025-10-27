@@ -2,24 +2,27 @@
 
 use crate::models::{Project, Task, TaskStatus};
 use dashmap::DashMap;
+use hodei_permissions_sdk::AuthorizationClient;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub tasks: Arc<DashMap<String, Task>>,
     pub projects: Arc<DashMap<String, Project>>,
+    pub auth_client: Arc<AuthorizationClient>,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    pub fn new(auth_client: Arc<AuthorizationClient>) -> Self {
         Self {
             tasks: Arc::new(DashMap::new()),
             projects: Arc::new(DashMap::new()),
+            auth_client,
         }
     }
 
-    pub fn with_sample_data() -> Self {
-        let state = Self::new();
+    pub fn with_sample_data(auth_client: Arc<AuthorizationClient>) -> Self {
+        let state = Self::new(auth_client);
         
         // Create sample projects
         let project1 = Project::new(
@@ -133,11 +136,5 @@ impl AppState {
         }
         
         self.projects.remove(id).map(|(_, project)| project)
-    }
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
     }
 }

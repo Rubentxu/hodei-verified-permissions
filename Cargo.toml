@@ -70,6 +70,12 @@ async-trait = "0.1"
 # Configuration
 toml = "0.9.8"
 
+# Regex support
+regex = "1.10"
+
+# Base64 encoding/decoding
+base64 = "0.22"
+
 [dev-dependencies]
 testcontainers = { version = "0.25.0", features = ["blocking"] }
 testcontainers-modules = { version = "0.13.0", features = ["postgres", "surrealdb"] }

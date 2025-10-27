@@ -49,3 +49,9 @@ reqwest.workspace = true
 
 # Configuration
 toml.workspace = true
+
+# Base64 encoding/decoding
+base64.workspace = true
+
+# Regex support
+regex.workspace = true

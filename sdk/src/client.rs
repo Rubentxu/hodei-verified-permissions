@@ -627,3 +627,203 @@ fn parse_entity_id(s: String) -> Result<EntityIdentifier> {
         entity_id: parts[1].trim_matches('"').to_string(),
     })
 }
+
+// Implement AuthorizationClientTrait for AuthorizationClient
+#[async_trait::async_trait]
+impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
+    async fn is_authorized(
+        &self,
+        policy_store_id: &str,
+        principal: &str,
+        action: &str,
+        resource: &str,
+    ) -> Result<IsAuthorizedResponse> {
+        AuthorizationClient::is_authorized(self, policy_store_id, principal, action, resource).await
+    }
+
+    async fn is_authorized_with_context(
+        &self,
+        request: IsAuthorizedRequest,
+    ) -> Result<IsAuthorizedResponse> {
+        AuthorizationClient::is_authorized_with_context(self, request).await
+    }
+
+    async fn batch_is_authorized(
+        &self,
+        policy_store_id: &str,
+        requests: Vec<IsAuthorizedRequest>,
+    ) -> Result<BatchIsAuthorizedResponse> {
+        AuthorizationClient::batch_is_authorized(self, policy_store_id, requests).await
+    }
+
+    async fn create_policy_store(
+        &self,
+        description: Option<String>,
+    ) -> Result<CreatePolicyStoreResponse> {
+        AuthorizationClient::create_policy_store(self, description).await
+    }
+
+    async fn get_policy_store(&self, policy_store_id: &str) -> Result<GetPolicyStoreResponse> {
+        AuthorizationClient::get_policy_store(self, policy_store_id).await
+    }
+
+    async fn list_policy_stores(
+        &self,
+        max_results: Option<i32>,
+        next_token: Option<String>,
+    ) -> Result<ListPolicyStoresResponse> {
+        AuthorizationClient::list_policy_stores(self, max_results, next_token).await
+    }
+
+    async fn delete_policy_store(&self, policy_store_id: &str) -> Result<DeletePolicyStoreResponse> {
+        AuthorizationClient::delete_policy_store(self, policy_store_id).await
+    }
+
+    async fn put_schema(
+        &self,
+        policy_store_id: &str,
+        schema: &str,
+    ) -> Result<PutSchemaResponse> {
+        AuthorizationClient::put_schema(self, policy_store_id, schema).await
+    }
+
+    async fn get_schema(&self, policy_store_id: &str) -> Result<GetSchemaResponse> {
+        AuthorizationClient::get_schema(self, policy_store_id).await
+    }
+
+    async fn create_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+        statement: &str,
+        description: Option<String>,
+    ) -> Result<CreatePolicyResponse> {
+        AuthorizationClient::create_policy(self, policy_store_id, policy_id, statement, description).await
+    }
+
+    async fn get_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+    ) -> Result<GetPolicyResponse> {
+        AuthorizationClient::get_policy(self, policy_store_id, policy_id).await
+    }
+
+    async fn list_policies(&self, policy_store_id: &str) -> Result<ListPoliciesResponse> {
+        AuthorizationClient::list_policies(self, policy_store_id).await
+    }
+
+    async fn update_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+        statement: &str,
+        description: Option<String>,
+    ) -> Result<UpdatePolicyResponse> {
+        AuthorizationClient::update_policy(self, policy_store_id, policy_id, statement, description).await
+    }
+
+    async fn delete_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+    ) -> Result<DeletePolicyResponse> {
+        AuthorizationClient::delete_policy(self, policy_store_id, policy_id).await
+    }
+
+    async fn create_identity_source(
+        &self,
+        policy_store_id: &str,
+        configuration: IdentitySourceConfiguration,
+        claims_mapping: Option<ClaimsMappingConfiguration>,
+        description: Option<String>,
+    ) -> Result<CreateIdentitySourceResponse> {
+        AuthorizationClient::create_identity_source(self, policy_store_id, configuration, claims_mapping, description).await
+    }
+
+    async fn get_identity_source(
+        &self,
+        policy_store_id: &str,
+        identity_source_id: &str,
+    ) -> Result<GetIdentitySourceResponse> {
+        AuthorizationClient::get_identity_source(self, policy_store_id, identity_source_id).await
+    }
+
+    async fn list_identity_sources(
+        &self,
+        policy_store_id: &str,
+    ) -> Result<ListIdentitySourcesResponse> {
+        AuthorizationClient::list_identity_sources(self, policy_store_id).await
+    }
+
+    async fn delete_identity_source(
+        &self,
+        policy_store_id: &str,
+        identity_source_id: &str,
+    ) -> Result<DeleteIdentitySourceResponse> {
+        AuthorizationClient::delete_identity_source(self, policy_store_id, identity_source_id).await
+    }
+
+    async fn create_policy_template(
+        &self,
+        policy_store_id: &str,
+        template_id: &str,
+        statement: &str,
+        description: Option<String>,
+    ) -> Result<CreatePolicyTemplateResponse> {
+        AuthorizationClient::create_policy_template(self, policy_store_id, template_id, statement, description).await
+    }
+
+    async fn get_policy_template(
+        &self,
+        policy_store_id: &str,
+        template_id: &str,
+    ) -> Result<GetPolicyTemplateResponse> {
+        AuthorizationClient::get_policy_template(self, policy_store_id, template_id).await
+    }
+
+    async fn list_policy_templates(
+        &self,
+        policy_store_id: &str,
+    ) -> Result<ListPolicyTemplatesResponse> {
+        AuthorizationClient::list_policy_templates(self, policy_store_id).await
+    }
+
+    async fn delete_policy_template(
+        &self,
+        policy_store_id: &str,
+        template_id: &str,
+    ) -> Result<DeletePolicyTemplateResponse> {
+        AuthorizationClient::delete_policy_template(self, policy_store_id, template_id).await
+    }
+
+    async fn create_policy_from_template(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+        template_id: &str,
+        principal: &str,
+        resource: &str,
+        description: Option<String>,
+    ) -> Result<CreatePolicyResponse> {
+        AuthorizationClient::create_policy_from_template(self, policy_store_id, policy_id, template_id, principal, resource, description).await
+    }
+
+    async fn is_authorized_with_token(
+        &self,
+        policy_store_id: &str,
+        identity_source_id: &str,
+        access_token: &str,
+        action: &str,
+        resource: &str,
+    ) -> Result<IsAuthorizedResponse> {
+        AuthorizationClient::is_authorized_with_token(self, policy_store_id, identity_source_id, access_token, action, resource).await
+    }
+
+    async fn is_authorized_with_token_and_context(
+        &self,
+        request: IsAuthorizedWithTokenRequest,
+    ) -> Result<IsAuthorizedResponse> {
+        AuthorizationClient::is_authorized_with_token_and_context(self, request).await
+    }
+}

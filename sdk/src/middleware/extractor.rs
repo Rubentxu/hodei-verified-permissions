@@ -249,3 +249,160 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("expected 'Bearer"));
     }
 }
+
+/// Parameterized extractor that supports path parameters
+///
+/// This extractor allows you to define path parameter patterns and extract
+/// them from the URI path. It's useful for RESTful APIs where resource IDs
+/// are part of the path.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use hodei_permissions_sdk::middleware::ParameterizedExtractor;
+/// use std::collections::HashMap;
+///
+/// let mut params = HashMap::new();
+/// params.insert("resource_id".to_string(), "123".to_string());
+/// params.insert("action".to_string(), "read".to_string());
+///
+/// let extractor = ParameterizedExtractor::new(
+///     "policy-store-id",
+///     "identity-source-id",
+///     params,
+/// );
+/// ```
+#[derive(Debug, Clone)]
+pub struct ParameterizedExtractor {
+    /// Policy store ID
+    pub policy_store_id: String,
+    /// Identity source ID
+    pub identity_source_id: String,
+    /// Path parameters extracted from the URI
+    pub path_parameters: std::collections::HashMap<String, String>,
+}
+
+impl ParameterizedExtractor {
+    /// Create a new parameterized extractor
+    pub fn new(
+        policy_store_id: impl Into<String>,
+        identity_source_id: impl Into<String>,
+        path_parameters: std::collections::HashMap<String, String>,
+    ) -> Self {
+        Self {
+            policy_store_id: policy_store_id.into(),
+            identity_source_id: identity_source_id.into(),
+            path_parameters,
+        }
+    }
+
+    /// Get a path parameter value
+    pub fn get_parameter(&self, key: &str) -> Option<&str> {
+        self.path_parameters.get(key).map(|s| s.as_str())
+    }
+
+    /// Set a path parameter
+    pub fn set_parameter(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        self.path_parameters.insert(key.into(), value.into());
+    }
+}
+
+#[async_trait]
+impl<B> AuthorizationRequestExtractor<B> for ParameterizedExtractor
+where
+    B: Send + Sync,
+{
+    type Error = crate::middleware::MiddlewareError;
+
+    async fn extract(&self, req: &Request<B>) -> Result<AuthorizationRequestParts, Self::Error> {
+        // Extract JWT token from Authorization header
+        let _token = DefaultExtractor::extract_token(req)?;
+
+        // Map HTTP method to action
+        let action = match req.method().as_str() {
+            "GET" | "HEAD" => "Action::\"read\"",
+            "POST" => "Action::\"create\"",
+            "PUT" | "PATCH" => "Action::\"update\"",
+            "DELETE" => "Action::\"delete\"",
+            method => return Err(crate::middleware::MiddlewareError::ExtractionFailed(
+                format!("Unsupported HTTP method: {}", method)
+            )),
+        };
+
+        // Build resource from path and parameters
+        let path = req.uri().path();
+        let mut resource = if path.is_empty() || path == "/" {
+            "Resource::\"root\"".to_string()
+        } else {
+            format!("Resource::\"{}\"", path.trim_start_matches('/'))
+        };
+
+        // Append path parameters to resource if available
+        if !self.path_parameters.is_empty() {
+            let params_str = self
+                .path_parameters
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join(",");
+            resource = format!("{}?{}", resource, params_str);
+        }
+
+        // Principal will be extracted from JWT by the server
+        let principal = String::new();
+
+        Ok(AuthorizationRequestParts {
+            principal,
+            action: action.to_string(),
+            resource,
+            context: None,
+        })
+    }
+}
+
+#[cfg(test)]
+mod parameterized_tests {
+    use super::*;
+    use http::{Method, Request};
+    use std::collections::HashMap;
+
+    #[tokio::test]
+    async fn test_parameterized_extractor_with_params() {
+        let mut params = HashMap::new();
+        params.insert("resource_id".to_string(), "doc-123".to_string());
+        params.insert("version".to_string(), "2".to_string());
+
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri("/api/documents/123")
+            .header("Authorization", "Bearer test_token")
+            .body(())
+            .unwrap();
+
+        let extractor = ParameterizedExtractor::new("store-123", "identity-456", params);
+        let parts = extractor.extract(&req).await.unwrap();
+
+        assert_eq!(parts.action, "Action::\"read\"");
+        assert!(parts.resource.contains("resource_id=doc-123"));
+        assert!(parts.resource.contains("version=2"));
+    }
+
+    #[test]
+    fn test_parameterized_extractor_get_parameter() {
+        let mut params = HashMap::new();
+        params.insert("user_id".to_string(), "user-456".to_string());
+
+        let extractor = ParameterizedExtractor::new("store-123", "identity-456", params);
+        assert_eq!(extractor.get_parameter("user_id"), Some("user-456"));
+        assert_eq!(extractor.get_parameter("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_parameterized_extractor_set_parameter() {
+        let params = HashMap::new();
+        let mut extractor = ParameterizedExtractor::new("store-123", "identity-456", params);
+        
+        extractor.set_parameter("resource_id", "res-789");
+        assert_eq!(extractor.get_parameter("resource_id"), Some("res-789"));
+    }
+}

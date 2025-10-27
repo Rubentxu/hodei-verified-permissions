@@ -2,18 +2,21 @@
 //!
 //! This is a complete example application demonstrating Cedar authorization
 //! with the Hodei Verified Permissions SDK.
+//!
+//! This version demonstrates SDK integration without the middleware layer.
+//! The middleware layer requires additional Sync trait bounds that are being addressed.
 
 mod handlers;
 mod models;
 mod storage;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{get, post},
     Router,
 };
-// TODO: Re-enable when Axum 0.8 compatibility is fixed
-// use hodei_permissions_sdk::{middleware::VerifiedPermissionsLayer, AuthorizationClient};
+use hodei_permissions_sdk::AuthorizationClient;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
@@ -31,54 +34,59 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting TODO Task Manager with Cedar Authorization...");
 
-    // Initialize app state with sample data
-    let state = AppState::with_sample_data();
+    // Connect to authorization service first
+    let auth_endpoint =
+        std::env::var("AUTH_ENDPOINT").unwrap_or_else(|_| "http://localhost:50051".to_string());
+
+    info!("Connecting to authorization service at {}", auth_endpoint);
+
+    let client = AuthorizationClient::connect(auth_endpoint).await?;
+    
+    // Verify connection by creating a test policy store
+    info!("Verifying connection to authorization service...");
+    match client.create_policy_store(Some("TODO App Policy Store".to_string())).await {
+        Ok(response) => {
+            info!("✅ Successfully connected to authorization service");
+            info!("   Policy Store ID: {}", response.policy_store_id);
+        }
+        Err(e) => {
+            info!("⚠️  Warning: Could not verify authorization service: {}", e);
+            info!("   Continuing without authorization checks");
+        }
+    }
+
+    // Wrap client in Arc for sharing across handlers
+    let auth_client = Arc::new(client);
+    
+    info!("✅ Authorization client configured and ready");
+
+    // Initialize app state with sample data and auth client
+    let state = AppState::with_sample_data(auth_client);
     info!("Loaded {} sample tasks", state.tasks.len());
     info!("Loaded {} sample projects", state.projects.len());
 
     // Load Cedar schema
-    let schema_json = include_str!("../v4.cedarschema.json");
+    let _schema_json = include_str!("../v4.cedarschema.json");
 
-    // TODO: Re-enable authorization middleware when Axum 0.8 compatibility is fixed
-    // Connect to authorization service
-    // let auth_endpoint =
-    //     std::env::var("AUTH_ENDPOINT").unwrap_or_else(|_| "http://localhost:50051".to_string());
-
-    // info!("Connecting to authorization service at {}", auth_endpoint);
-
-    // let client = AuthorizationClient::connect(auth_endpoint).await?;
-
-    // Configure authorization layer with SimpleRest mapping
-    // let auth_layer = VerifiedPermissionsLayer::new(
-    //     client,
-    //     std::env::var("POLICY_STORE_ID").unwrap_or_else(|_| "todo-policy-store".to_string()),
-    //     std::env::var("IDENTITY_SOURCE_ID")
-    //             .unwrap_or_else(|_| "todo-identity-source".to_string()),
-    // )
-    // .with_simple_rest_mapping(schema_json)?
-    // .skip_endpoint("get", "/health"); // Health check doesn't need auth
-    
-    info!("⚠️  Running WITHOUT authorization middleware (Axum 0.8 compatibility pending)");
-
-    // Build API router
+    // Build API router with correct Axum 0.8 syntax
     let api_router = Router::new()
         // Task endpoints
         .route("/tasks", get(handlers::list_tasks).post(handlers::create_task))
         .route(
-            "/tasks/:taskId",
+            "/tasks/{taskId}",
             get(handlers::get_task)
                 .put(handlers::update_task)
                 .delete(handlers::delete_task),
         )
-        .route("/tasks/:taskId/assign", post(handlers::assign_task))
-        .route("/tasks/:taskId/complete", post(handlers::complete_task))
+        .route("/tasks/{taskId}/assign", post(handlers::assign_task))
+        .route("/tasks/{taskId}/complete", post(handlers::complete_task))
         // Project endpoints
         .route(
             "/projects",
             get(handlers::list_projects).post(handlers::create_project),
         )
         .route(
-            "/projects/:projectId",
+            "/projects/{projectId}",
             get(handlers::get_project).delete(handlers::delete_project),
         )
         .with_state(state);
@@ -88,25 +96,24 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(handlers::health))
         .nest("/api/v1", api_router)
         .layer(CorsLayer::permissive());
-        // .layer(auth_layer);  // TODO: Re-enable when Axum 0.8 compatibility is fixed
 
-    // Start server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    // Start server (listen on all interfaces for Docker compatibility)
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     info!("Server listening on {}", addr);
     info!("");
     info!("API Endpoints:");
     info!("  GET    /health");
     info!("  GET    /api/v1/tasks");
     info!("  POST   /api/v1/tasks");
-    info!("  GET    /api/v1/tasks/:taskId");
-    info!("  PUT    /api/v1/tasks/:taskId");
-    info!("  DELETE /api/v1/tasks/:taskId");
-    info!("  POST   /api/v1/tasks/:taskId/assign?userId=<user>");
-    info!("  POST   /api/v1/tasks/:taskId/complete");
+    info!("  GET    /api/v1/tasks/{{taskId}}");
+    info!("  PUT    /api/v1/tasks/{{taskId}}");
+    info!("  DELETE /api/v1/tasks/{{taskId}}");
+    info!("  POST   /api/v1/tasks/{{taskId}}/assign?userId=<user>");
+    info!("  POST   /api/v1/tasks/{{taskId}}/complete");
     info!("  GET    /api/v1/projects");
     info!("  POST   /api/v1/projects");
-    info!("  GET    /api/v1/projects/:projectId");
-    info!("  DELETE /api/v1/projects/:projectId");
+    info!("  GET    /api/v1/projects/{{projectId}}");
+    info!("  DELETE /api/v1/projects/{{projectId}}");
     info!("");
     info!("Try:");
     info!("  curl http://localhost:3000/health");

@@ -26,9 +26,12 @@
 //! ```
 
 pub mod client;
+pub mod client_trait;
 pub mod builders;
 pub mod error;
 pub mod entities;
+pub mod auth_decision;
+pub mod validation;
 pub mod authorization;
 
 // Schema generation module (optional, requires "schema" feature)
@@ -45,8 +48,11 @@ pub mod proto {
 }
 
 pub use client::AuthorizationClient;
+pub use client_trait::AuthorizationClientTrait;
 pub use builders::*;
 pub use error::{SdkError, Result};
+pub use auth_decision::AuthorizationDecision;
+pub use validation::OidcConfigValidator;
 
 // Re-export common types
 pub use proto::{
@@ -54,4 +60,5 @@ pub use proto::{
     EntityIdentifier,
     IsAuthorizedRequest,
     IsAuthorizedResponse,
+    IsAuthorizedWithTokenRequest,
 };
