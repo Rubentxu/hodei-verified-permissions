@@ -1,14 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { healthCheck } from '@/lib/grpc/node-client';
+import { NextResponse } from 'next/server';
+import { healthClient } from '@/lib/grpc/node-client';
 
 export async function GET() {
-  console.log('[API health] start');
   try {
-    const ok = await healthCheck();
-    console.log('[API health] result:', ok);
-    return NextResponse.json({ status: ok ? 'Connected' : 'Error' }, { status: ok ? 200 : 503 });
-  } catch (e: any) {
-    console.error('[API health] error', e);
-    return NextResponse.json({ status: 'Error', error: e.message }, { status: 503 });
+    const response = await new Promise((resolve, reject) => {
+      healthClient.check({ service: '' }, (error: any, res: any) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(res);
+      });
+    });
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('Health check error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

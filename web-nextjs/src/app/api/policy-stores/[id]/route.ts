@@ -1,24 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getPolicyStore, deletePolicyStore } from '@/lib/grpc/node-client';
+import { NextResponse } from 'next/server';
+import { authorizationControlClient } from '@/lib/grpc/node-client';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
-    const store = await getPolicyStore(id);
-    return NextResponse.json(store);
-  } catch (e: any) {
-    console.error('[API policy-stores [id] GET] error', e);
-    return NextResponse.json({ error: e.message }, { status: 404 });
+    const { id } = params;
+    const response = await new Promise((resolve, reject) => {
+      authorizationControlClient.getPolicyStore({ policy_store_id: id }, (error: any, res: any) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(res);
+      });
+    });
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('GetPolicyStore error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
-    await deletePolicyStore(id);
-    return NextResponse.json({}, { status: 204 });
-  } catch (e: any) {
-    console.error('[API policy-stores [id] DELETE] error', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const { id } = params;
+    const response = await new Promise((resolve, reject) => {
+      authorizationControlClient.deletePolicyStore({ policy_store_id: id }, (error: any, res: any) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(res);
+      });
+    });
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('DeletePolicyStore error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

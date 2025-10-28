@@ -1,23 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { listPolicyStores, createPolicyStore } from '@/lib/grpc/node-client';
+import { NextResponse } from 'next/server';
+import { authorizationControlClient } from '@/lib/grpc/node-client';
 
 export async function GET() {
   try {
-    const stores = await listPolicyStores();
-    return NextResponse.json(stores);
-  } catch (e: any) {
-    console.error('[API policy-stores GET] error', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const response = await new Promise((resolve, reject) => {
+      authorizationControlClient.listPolicyStores({}, (error: any, res: any) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(res);
+      });
+    });
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('ListPolicyStores error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const result = await createPolicyStore(body.description);
-    return NextResponse.json(result, { status: 201 });
-  } catch (e: any) {
-    console.error('[API policy-stores POST] error', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    const { description } = await request.json();
+    const response = await new Promise((resolve, reject) => {
+      authorizationControlClient.createPolicyStore({ description }, (error: any, res: any) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(res);
+      });
+    });
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('CreatePolicyStore error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
