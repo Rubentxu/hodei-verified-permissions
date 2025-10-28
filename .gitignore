@@ -1,8 +1,9 @@
 # Archivos ignorados para Hodei Verified Permissions
 
 # Rust
-# Directorio de artefactos de compilación de Rust
-/target/
+# Directorios de artefactos de compilación de Rust (en cualquier parte del proyecto)
+target/
+
 # Archivos de respaldo generados por el editor (ej. al guardar)
 **/*.rs.bk
 # Información de depuración de Windows
@@ -42,11 +43,18 @@ Thumbs.db
 *.db-wal
 
 # Next.js / Node.js (para el subproyecto web-nextjs)
-web-nextjs/.next/
-web-nextjs/node_modules/
+**/.next/
+**/node_modules/
 # package-lock.json debe ser rastreado para aplicaciones para asegurar compilaciones reproducibles.
 # Solo se ignoraría si este fuera un proyecto de librería.
-web-nextjs/package-lock.json
+# web-nextjs/package-lock.json
 
 # Archivos generados o temporales específicos del proyecto
 .windsurf/
+
+# ficheros de bloqueo de dependencias
+Cargo.lock
+**/Cargo.lock
+package-lock.json
+**/package-lock.json
+
