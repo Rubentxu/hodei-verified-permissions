@@ -1,24 +1,52 @@
-# Rust build artifacts
-/target
+# Archivos ignorados para Hodei Verified Permissions
+
+# Rust
+# Directorio de artefactos de compilación de Rust
+/target/
+# Archivos de respaldo generados por el editor (ej. al guardar)
 **/*.rs.bk
+# Información de depuración de Windows
 *.pdb
-Cargo.lock
+# Archivos de información de compilación de Rust
+.rustc_info.json
 
-# Database files
-*.db
-*.db-shm
-*.db-wal
+# Dependencias
+# Cargo.lock debe ser rastreado para aplicaciones para asegurar compilaciones reproducibles.
+# Solo se ignoraría si este fuera un proyecto de librería.
+# Cargo.lock
 
-# IDE
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDEs y Editores
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
 
-# OS
-.DS_Store
-Thumbs.db
-.idea
+# Archivos de logs y temporales
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
 
-examples/todo-app/target
+# Archivos de base de datos local
+*.db
+*.db-shm
+*.db-wal
+
+# Next.js / Node.js (para el subproyecto web-nextjs)
+web-nextjs/.next/
+web-nextjs/node_modules/
+# package-lock.json debe ser rastreado para aplicaciones para asegurar compilaciones reproducibles.
+# Solo se ignoraría si este fuera un proyecto de librería.
+web-nextjs/package-lock.json
+
+# Archivos generados o temporales específicos del proyecto
+.windsurf/
