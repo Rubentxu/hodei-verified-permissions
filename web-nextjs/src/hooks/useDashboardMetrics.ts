@@ -155,5 +155,13 @@ export const useDashboardData = () => {
     isLoading: metrics.isLoading || activity.isLoading || health.isLoading,
     isError: metrics.isError || activity.isError || health.isError,
     error: metrics.error || activity.error || health.error,
+    refetch: async () => {
+      // Refetch all queries in parallel
+      await Promise.all([
+        metrics.refetch(),
+        activity.refetch(),
+        health.refetch(),
+      ]);
+    },
   };
 };

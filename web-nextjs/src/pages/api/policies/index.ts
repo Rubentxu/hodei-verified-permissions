@@ -33,7 +33,10 @@ const createPolicySchema = z.object({
       }).optional()
     }).optional()
   }).refine(
-    (data) => data.definition.static_policy || data.definition.template_linked_policy,
+    (data) => {
+      const definition = (data as any).definition;
+      return definition.static_policy || definition.template_linked_policy;
+    },
     {
       message: 'Policy must have either static_policy or template_linked_policy'
     }

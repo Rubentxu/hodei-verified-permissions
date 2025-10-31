@@ -22,7 +22,10 @@ const createIdentitySourceSchema = z.object({
       scopes: z.array(z.string()).default(['openid', 'profile', 'email']),
     }).optional(),
   }).refine(
-    (data) => data.config.cognito || data.config.oidc,
+    (data) => {
+      const config = data as any;
+      return config.cognito || config.oidc;
+    },
     {
       message: 'Must provide either cognito or oidc configuration'
     }

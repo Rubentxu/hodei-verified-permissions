@@ -291,6 +291,32 @@ export const grpcClients = {
     });
   },
 
+  updatePolicy: (request: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.updatePolicy(request, (err: any, response: any) => {
+        if (err) {
+          console.error('gRPC updatePolicy error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  deletePolicy: (request: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.deletePolicy(request, (err: any, response: any) => {
+        if (err) {
+          console.error('gRPC deletePolicy error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
   testAuthorization: (request: TestAuthorizationRequest): Promise<TestAuthorizationResponse> => {
     return new Promise((resolve, reject) => {
       authorizationControlClient.testAuthorization(request, (err: any, response: TestAuthorizationResponse) => {
@@ -304,15 +330,6 @@ export const grpcClients = {
     });
   }
 };
-
-// Health check client
-const healthClient = {
-  check: async (request: any) => {
-    return { status: 'SERVING' };
-  },
-};
-
-export { healthClient };
 
 // Export types for use in API routes
 export type {

@@ -20,8 +20,12 @@ export default async function handler(
   }
 
   try {
-    // TODO: En producción, consultar logs reales del backend
-    // Por ahora, mock data estructurado basado en actividad típica
+    // TODO: MOCK DATA - Para activity feed en tiempo real sería necesario:
+    // 1. Endpoint de logs en el backend Rust
+    // 2. Sistema de auditoría/activity tracking
+    // 3. Base de datos de eventos/actividades
+    //
+    // Por ahora, MOCK DATA estructurado (NO es real, solo para demo/UI)
     const activities: Activity[] = [
       {
         id: '1',
@@ -91,6 +95,9 @@ export default async function handler(
 
     res.status(200).json({
       success: true,
+      data_source: 'MOCK_DATA_DEMO_ONLY',
+      is_real_data: false,
+      note: 'Activity feed is MOCK DATA for demo purposes. Real activity tracking requires backend logs implementation.',
       activities: recentActivities,
       total: recentActivities.length,
       timestamp: new Date().toISOString(),
