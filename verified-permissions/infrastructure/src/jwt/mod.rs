@@ -14,6 +14,7 @@ pub use validator::JwtValidator;
 pub use transforms::ValueTransform;
 pub use jwks_cache::JwksCache;
 pub use issuer_detection::{extract_issuer_from_token, extract_subject_from_token, extract_claims_from_token};
+pub use claims_mapper::{ClaimsMappingConfig, ClaimsMapper, ParentMapping};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

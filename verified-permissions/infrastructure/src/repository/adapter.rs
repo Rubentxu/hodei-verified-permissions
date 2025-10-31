@@ -28,6 +28,8 @@ impl RepositoryAdapter {
             description: model.description,
             created_at: model.created_at,
             updated_at: model.updated_at,
+            default_identity_source_id: None,
+            identity_source_ids: Vec::new(),
         })
     }
 

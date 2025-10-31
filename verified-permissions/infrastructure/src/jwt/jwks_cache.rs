@@ -39,11 +39,21 @@ pub struct Jwk {
 }
 
 /// Cached JWKS entry with metadata
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct CachedJwks {
     keys: HashMap<String, DecodingKey>,
     fetched_at: Instant,
     jwks_uri: String,
+}
+
+impl std::fmt::Debug for CachedJwks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CachedJwks")
+            .field("keys_count", &self.keys.len())
+            .field("fetched_at", &self.fetched_at)
+            .field("jwks_uri", &self.jwks_uri)
+            .finish()
+    }
 }
 
 /// Configuration for JWKS cache

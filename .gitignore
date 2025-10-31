@@ -58,3 +58,6 @@ Cargo.lock
 package-lock.json
 **/package-lock.json
 
+web-nextjs/test-results
+web-nextjs/playwright-report/
+.kilocode/mcp.json

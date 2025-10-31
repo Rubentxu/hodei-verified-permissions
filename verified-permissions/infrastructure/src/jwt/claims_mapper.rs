@@ -1,9 +1,36 @@
 //! Claims mapping to Cedar entities
 
 use crate::error::{AuthorizationError, Result};
-use crate::jwt::ValidatedClaims;
-use crate::proto::{Entity, EntityIdentifier};
+use crate::jwt::{ValidatedClaims, ValueTransform};
 use std::collections::HashMap;
+
+/// Simplified entity identifier (avoids proto dependency)
+#[derive(Debug, Clone)]
+pub struct EntityId {
+    pub entity_type: String,
+    pub entity_id: String,
+}
+
+/// Simplified entity representation (avoids proto dependency)
+#[derive(Debug, Clone)]
+pub struct EntityData {
+    pub identifier: Option<EntityId>,
+    pub attributes: HashMap<String, String>,
+    pub parents: Vec<EntityId>,
+}
+
+/// Mapping of a JWT claim to a parent entity
+#[derive(Debug, Clone)]
+pub struct ParentMapping {
+    /// Path to the claim in the JWT (e.g., "groups", "cognito:groups")
+    pub claim_path: String,
+    
+    /// Entity type for the parent (e.g., "Group", "Role")
+    pub entity_type: String,
+    
+    /// Optional transformation to apply to the claim value
+    pub transform: ValueTransform,
+}
 
 /// Configuration for mapping JWT claims to Cedar entities
 #[derive(Debug, Clone)]
@@ -11,11 +38,14 @@ pub struct ClaimsMappingConfig {
     /// Claim to use as principal entity ID (default: "sub")
     pub principal_id_claim: String,
     
-    /// Claim containing group membership
+    /// Claim containing group membership (deprecated, use parent_mappings instead)
     pub group_claim: Option<String>,
     
     /// Map of Cedar attribute names to JWT claim names
     pub attribute_mappings: HashMap<String, String>,
+    
+    /// Mappings for parent entities (groups, roles, etc.)
+    pub parent_mappings: Vec<ParentMapping>,
 }
 
 impl Default for ClaimsMappingConfig {
@@ -24,6 +54,7 @@ impl Default for ClaimsMappingConfig {
             principal_id_claim: "sub".to_string(),
             group_claim: Some("groups".to_string()),
             attribute_mappings: HashMap::new(),
+            parent_mappings: Vec::new(),
         }
     }
 }
@@ -37,7 +68,7 @@ impl ClaimsMapper {
         claims: &ValidatedClaims,
         config: &ClaimsMappingConfig,
         principal_type: &str,
-    ) -> Result<(EntityIdentifier, Vec<Entity>)> {
+    ) -> Result<(EntityId, Vec<EntityData>)> {
         // Extract principal ID
         let principal_id = if config.principal_id_claim == "sub" {
             claims.sub.clone()
@@ -55,7 +86,7 @@ impl ClaimsMapper {
                 .to_string()
         };
 
-        let principal = EntityIdentifier {
+        let principal = EntityId {
             entity_type: principal_type.to_string(),
             entity_id: principal_id.clone(),
         };
@@ -80,7 +111,7 @@ impl ClaimsMapper {
                 if let Some(groups_array) = groups_value.as_array() {
                     for group in groups_array {
                         if let Some(group_str) = group.as_str() {
-                            parents.push(EntityIdentifier {
+                            parents.push(EntityId {
                                 entity_type: "Role".to_string(), // or "Group"
                                 entity_id: group_str.to_string(),
                             });
@@ -91,7 +122,7 @@ impl ClaimsMapper {
         }
 
         // Create principal entity
-        let principal_entity = Entity {
+        let principal_entity = EntityData {
             identifier: Some(principal.clone()),
             attributes,
             parents,
@@ -105,7 +136,7 @@ impl ClaimsMapper {
         claims: &ValidatedClaims,
         config: &ClaimsMappingConfig,
         principal_type: &str,
-    ) -> Result<Vec<Entity>> {
+    ) -> Result<Vec<EntityData>> {
         let (_, entities) = Self::map_to_principal(claims, config, principal_type)?;
         Ok(entities)
     }
