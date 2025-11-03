@@ -47,7 +47,12 @@ interface GetPolicyStoreRequest {
 
 interface GetPolicyStoreResponse {
   policy_store_id: string;
+  name?: string;
   description?: string;
+  status?: string;
+  version?: string;
+  author?: string;
+  tags?: string; // JSON string of tags array
   created_at: string;
   updated_at: string;
 }
@@ -59,13 +64,30 @@ interface ListPolicyStoresRequest {
 
 interface PolicyStoreItem {
   policy_store_id: string;
+  name?: string;
   description?: string;
+  status?: string;
+  version?: string;
+  author?: string;
+  tags?: string; // JSON string of tags array
   created_at: string;
+  updated_at?: string;
 }
 
 interface ListPolicyStoresResponse {
   policy_stores: PolicyStoreItem[];
   next_token?: string;
+}
+
+interface UpdatePolicyStoreRequest {
+  policy_store_id: string;
+  description?: string;
+}
+
+interface UpdatePolicyStoreResponse {
+  policy_store_id: string;
+  description?: string;
+  updated_at: string;
 }
 
 interface PutSchemaRequest {
@@ -113,6 +135,167 @@ interface ValidationIssue {
   message: string;
   location?: string;
   issue_type: string;
+}
+
+interface GetPolicyStoreAuditLogRequest {
+  policy_store_id: string;
+}
+
+interface PolicyStoreAuditLogEntry {
+  id?: number;
+  policy_store_id: string;
+  action: string;
+  user_id: string;
+  changes?: string;
+  ip_address?: string;
+  timestamp?: string;
+}
+
+interface GetPolicyStoreAuditLogResponse {
+  audit_logs: PolicyStoreAuditLogEntry[];
+}
+
+interface UpdatePolicyStoreTagsRequest {
+  policy_store_id: string;
+  tags: string[];
+}
+
+interface UpdatePolicyStoreTagsResponse {
+  success: boolean;
+  tags: string[];
+}
+
+// Version Control / Snapshot Management interfaces
+interface CreatePolicyStoreSnapshotRequest {
+  policy_store_id: string;
+  description?: string;
+}
+
+interface CreatePolicyStoreSnapshotResponse {
+  snapshot_id: string;
+  policy_store_id: string;
+  created_at: string;
+  description: string;
+}
+
+interface GetPolicyStoreSnapshotRequest {
+  policy_store_id: string;
+  snapshot_id: string;
+}
+
+interface PolicySummary {
+  policy_id: string;
+  description?: string;
+  statement: string;
+}
+
+interface GetPolicyStoreSnapshotResponse {
+  snapshot_id: string;
+  policy_store_id: string;
+  description: string;
+  created_at: string;
+  policy_count: number;
+  has_schema: boolean;
+  schema_json?: string;
+  policies?: PolicySummary[];
+}
+
+interface ListPolicyStoreSnapshotsRequest {
+  policy_store_id: string;
+  max_results?: number;
+  next_token?: string;
+}
+
+interface SnapshotItem {
+  snapshot_id: string;
+  policy_store_id: string;
+  description?: string;
+  created_at: string;
+  policy_count: number;
+  has_schema: boolean;
+  size_bytes: number;
+}
+
+interface ListPolicyStoreSnapshotsResponse {
+  snapshots: SnapshotItem[];
+  next_token?: string;
+}
+
+interface RollbackToSnapshotRequest {
+  policy_store_id: string;
+  snapshot_id: string;
+  description?: string;
+}
+
+interface RollbackToSnapshotResponse {
+  policy_store_id: string;
+  snapshot_id: string;
+  rolled_back_at: string;
+  policies_restored: number;
+  schema_restored: boolean;
+}
+
+interface DeleteSnapshotRequest {
+  policy_store_id: string;
+  snapshot_id: string;
+}
+
+interface DeleteSnapshotResponse {
+  snapshot_id: string;
+}
+
+// Batch Policy Management interfaces
+interface BatchCreatePoliciesRequest {
+  policy_store_id: string;
+  policies: BatchPolicyItem[];
+}
+
+interface BatchPolicyItem {
+  policy_id: string;
+  definition: any;
+  description?: string;
+}
+
+interface BatchCreatePoliciesResponse {
+  results: BatchPolicyResult[];
+  errors: string[];
+}
+
+interface BatchPolicyResult {
+  policy_id: string;
+  created_at: string;
+  error?: string;
+}
+
+interface BatchUpdatePoliciesRequest {
+  policy_store_id: string;
+  policies: BatchPolicyItem[];
+}
+
+interface BatchUpdatePoliciesResponse {
+  results: BatchUpdatePolicyResult[];
+  errors: string[];
+}
+
+interface BatchUpdatePolicyResult {
+  policy_id: string;
+  updated_at: string;
+  error?: string;
+}
+
+interface BatchDeletePoliciesRequest {
+  policy_store_id: string;
+  policy_ids: string[];
+}
+
+interface BatchDeletePoliciesResponse {
+  results: BatchDeletePolicyResult[];
+  errors: string[];
+}
+
+interface BatchDeletePolicyResult {
+  policy_id: string;
+  error?: string;
 }
 
 const VERIFIED_PERMISSIONS_ADDR = process.env.VERIFIED_PERMISSIONS_ADDR || 'localhost:50051';
@@ -226,6 +409,32 @@ export const grpcClients = {
     });
   },
 
+  updatePolicyStore: (request: UpdatePolicyStoreRequest): Promise<UpdatePolicyStoreResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.updatePolicyStore(request, (err: any, response: UpdatePolicyStoreResponse) => {
+        if (err) {
+          console.error('gRPC updatePolicyStore error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  deletePolicyStore: (request: { policy_store_id: string }): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.deletePolicyStore(request, (err: any, response: any) => {
+        if (err) {
+          console.error('gRPC deletePolicyStore error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
   putSchema: (request: PutSchemaRequest): Promise<PutSchemaResponse> => {
     return new Promise((resolve, reject) => {
       authorizationControlClient.putSchema(request, (err: any, response: PutSchemaResponse) => {
@@ -328,6 +537,138 @@ export const grpcClients = {
         }
       });
     });
+  },
+
+  getPolicyStoreAuditLog: (request: GetPolicyStoreAuditLogRequest): Promise<GetPolicyStoreAuditLogResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.getPolicyStoreAuditLog(request, (err: any, response: GetPolicyStoreAuditLogResponse) => {
+        if (err) {
+          console.error('gRPC getPolicyStoreAuditLog error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  updatePolicyStoreTags: (request: UpdatePolicyStoreTagsRequest): Promise<UpdatePolicyStoreTagsResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.updatePolicyStoreTags(request, (err: any, response: UpdatePolicyStoreTagsResponse) => {
+        if (err) {
+          console.error('gRPC updatePolicyStoreTags error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  // Version Control / Snapshot Management
+  createPolicyStoreSnapshot: (request: CreatePolicyStoreSnapshotRequest): Promise<CreatePolicyStoreSnapshotResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.createPolicyStoreSnapshot(request, (err: any, response: CreatePolicyStoreSnapshotResponse) => {
+        if (err) {
+          console.error('gRPC createPolicyStoreSnapshot error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  getPolicyStoreSnapshot: (request: GetPolicyStoreSnapshotRequest): Promise<GetPolicyStoreSnapshotResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.getPolicyStoreSnapshot(request, (err: any, response: GetPolicyStoreSnapshotResponse) => {
+        if (err) {
+          console.error('gRPC getPolicyStoreSnapshot error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  listPolicyStoreSnapshots: (request: ListPolicyStoreSnapshotsRequest): Promise<ListPolicyStoreSnapshotsResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.listPolicyStoreSnapshots(request, (err: any, response: ListPolicyStoreSnapshotsResponse) => {
+        if (err) {
+          console.error('gRPC listPolicyStoreSnapshots error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  rollbackToSnapshot: (request: RollbackToSnapshotRequest): Promise<RollbackToSnapshotResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.rollbackToSnapshot(request, (err: any, response: RollbackToSnapshotResponse) => {
+        if (err) {
+          console.error('gRPC rollbackToSnapshot error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  deleteSnapshot: (request: DeleteSnapshotRequest): Promise<DeleteSnapshotResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.deleteSnapshot(request, (err: any, response: DeleteSnapshotResponse) => {
+        if (err) {
+          console.error('gRPC deleteSnapshot error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  // Batch Policy Management
+  batchCreatePolicies: (request: BatchCreatePoliciesRequest): Promise<BatchCreatePoliciesResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.batchCreatePolicies(request, (err: any, response: BatchCreatePoliciesResponse) => {
+        if (err) {
+          console.error('gRPC batchCreatePolicies error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  batchUpdatePolicies: (request: BatchUpdatePoliciesRequest): Promise<BatchUpdatePoliciesResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.batchUpdatePolicies(request, (err: any, response: BatchUpdatePoliciesResponse) => {
+        if (err) {
+          console.error('gRPC batchUpdatePolicies error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  },
+
+  batchDeletePolicies: (request: BatchDeletePoliciesRequest): Promise<BatchDeletePoliciesResponse> => {
+    return new Promise((resolve, reject) => {
+      authorizationControlClient.batchDeletePolicies(request, (err: any, response: BatchDeletePoliciesResponse) => {
+        if (err) {
+          console.error('gRPC batchDeletePolicies error:', err);
+          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
+        } else {
+          resolve(response);
+        }
+      });
+    });
   }
 };
 
@@ -344,11 +685,40 @@ export type {
   ListPolicyStoresRequest,
   ListPolicyStoresResponse,
   PolicyStoreItem,
+  UpdatePolicyStoreRequest,
+  UpdatePolicyStoreResponse,
   PutSchemaRequest,
   PutSchemaResponse,
   GetSchemaRequest,
   GetSchemaResponse,
   TestAuthorizationRequest,
   TestAuthorizationResponse,
-  ValidationIssue
+  ValidationIssue,
+  GetPolicyStoreAuditLogRequest,
+  PolicyStoreAuditLogEntry,
+  GetPolicyStoreAuditLogResponse,
+  UpdatePolicyStoreTagsRequest,
+  UpdatePolicyStoreTagsResponse,
+  CreatePolicyStoreSnapshotRequest,
+  CreatePolicyStoreSnapshotResponse,
+  GetPolicyStoreSnapshotRequest,
+  GetPolicyStoreSnapshotResponse,
+  ListPolicyStoreSnapshotsRequest,
+  ListPolicyStoreSnapshotsResponse,
+  SnapshotItem,
+  RollbackToSnapshotRequest,
+  RollbackToSnapshotResponse,
+  DeleteSnapshotRequest,
+  DeleteSnapshotResponse,
+  PolicySummary,
+  BatchCreatePoliciesRequest,
+  BatchCreatePoliciesResponse,
+  BatchUpdatePoliciesRequest,
+  BatchUpdatePoliciesResponse,
+  BatchDeletePoliciesRequest,
+  BatchDeletePoliciesResponse,
+  BatchPolicyItem,
+  BatchPolicyResult,
+  BatchUpdatePolicyResult,
+  BatchDeletePolicyResult
 };

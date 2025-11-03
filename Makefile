@@ -57,6 +57,10 @@ help:
 	@echo "  $(YELLOW)make lint$(NC)               - Run clippy linter"
 	@echo "  $(YELLOW)make check$(NC)              - Check code without building"
 	@echo "  $(YELLOW)make doc$(NC)                - Generate documentation"
+	@echo "  $(YELLOW)make dev-start$(NC)          - Start development environment (improved)"
+	@echo "  $(YELLOW)make dev-stop$(NC)           - Stop all services and cleanup"
+	@echo "  $(YELLOW)make dev-status$(NC)         - Show status of all services"
+	@echo "  $(YELLOW)make dev-clean$(NC)          - Stop services and clean PID files"
 	@echo ""
 	@echo "$(GREEN)Utility Targets:$(NC)"
 	@echo "  $(YELLOW)make info$(NC)               - Show project info"
@@ -368,9 +372,166 @@ bff-health:
 	@curl -s http://localhost:3000/api/health | jq . || echo "BFF not responding"
 	@pkill -f "npm start" 2>/dev/null || true
 
+# ============================================================================
+# POLICY STORE TEST TARGETS (Phases 1-3.1)
+# ============================================================================
+
+# Test Policy Store Comprehensive (Backend)
+test-e2e-policy-store: docker-up
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Policy Store Tests (Backend gRPC)                      ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Testing: CRUD, Metrics, Audit, Tags, Snapshots, Batch${NC}"
+	@echo "$(YELLOW)Waiting for services to be ready...$(NC)"
+	sleep 15
+	cargo test --test e2e_policy_store_comprehensive --features containers -- --ignored --nocapture
+	@echo "$(GREEN)✅ Policy Store E2E tests completed!$(NC)"
+
+# Test Snapshots Feature Only
+test-e2e-snapshots: docker-up
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Snapshot & Version History Tests                        ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Testing: Create, List, Rollback, Delete Snapshots${NC}"
+	sleep 15
+	cargo test --test integration_full_workflow::integration_complete_workflow --features containers -- --ignored --nocapture
+	@echo "$(GREEN)✅ Snapshot tests completed!$(NC)"
+
+# Test Batch Operations
+test-e2e-batch: docker-up
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Batch Operations Tests                                  ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Testing: Batch Create, Update, Delete${NC}"
+	sleep 15
+	cargo test --test e2e_policy_store_comprehensive tc_040_batch_create_policies tc_041_batch_update_policies tc_042_batch_delete_policies --features containers -- --ignored --nocapture
+	@echo "$(GREEN)✅ Batch operations tests completed!$(NC)"
+
+# Test Authorization Feature
+test-e2e-authorization: docker-up
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Authorization Tests                                     ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Testing: ALLOW/DENY decisions with context${NC}"
+	sleep 15
+	cargo test --test e2e_policy_store_comprehensive tc_050_authorization_basic tc_051_authorization_with_context --features containers -- --ignored --nocapture
+	@echo "$(GREEN)✅ Authorization tests completed!$(NC)"
+
+# Test Integration Full Workflow
+test-integration-full: docker-up
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Integration Test - Complete Workflow                        ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Running full lifecycle test (all features)${NC}"
+	sleep 15
+	cargo test --test integration_full_workflow --features containers -- --ignored --nocapture
+	@echo "$(GREEN)✅ Integration test completed!$(NC)"
+
+# Run all Policy Store Tests (Backend)
+test-policy-store-all: test-e2e-policy-store test-e2e-snapshots test-e2e-batch test-e2e-authorization test-integration-full
+	@echo "$(GREEN)✅ All Policy Store tests completed!$(NC)"
+
+# ============================================================================
+# FRONTEND E2E TEST TARGETS (Playwright)
+# ============================================================================
+
+# Install Playwright browsers
+test-e2e-install:
+	@echo "$(BLUE)Installing Playwright browsers...$(NC)"
+	cd web-nextjs && npx playwright install --with-deps
+	@echo "$(GREEN)✅ Playwright browsers installed${NC}"
+
+# Run Policy Store UI Tests
+test-e2e-ui: build-server bff-build
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Policy Store UI Tests (Playwright)                      ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Starting server...$(NC)"
+	@mkdir -p /home/rubentxu/hodei-data
+	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
+	@echo "$(YELLOW)Server PID: $(shell pidof hodei-verified-permissions)${NC}"
+	@sleep 5
+	@echo "$(YELLOW)Starting frontend...$(NC)"
+	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
+	@echo "$(YELLOW)Frontend PID: $(shell pidof "next dev")${NC}"
+	@sleep 10
+	@echo "$(YELLOW)Running tests...$(NC)"
+	cd web-nextjs && npx playwright test policy-stores.spec.ts
+	@echo "$(GREEN)✅ UI tests completed!${NC}"
+	@echo "$(YELLOW)Killing processes...${NC}"
+	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
+	@pkill -9 -f "next dev" 2>/dev/null || true
+
+# Run Snapshot UI Tests
+test-e2e-snapshots-ui: build-server bff-build
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  E2E Snapshot UI Tests (Playwright)                          ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@mkdir -p /home/rubentxu/hodei-data
+	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
+	@sleep 5
+	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
+	@sleep 10
+	cd web-nextjs && npx playwright test snapshots.spec.ts
+	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
+	@pkill -9 -f "next dev" 2>/dev/null || true
+
+# Run all Frontend Tests
+test-e2e-ui-all: build-server bff-build
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  All E2E UI Tests (Playwright)                               ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@mkdir -p /home/rubentxu/hodei-data
+	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
+	@sleep 5
+	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
+	@sleep 10
+	cd web-nextjs && npx playwright test policy-stores.spec.ts snapshots.spec.ts
+	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
+	@pkill -9 -f "next dev" 2>/dev/null || true
+
+# ============================================================================
+# PERFORMANCE TEST TARGETS
+# ============================================================================
+
+# Run Performance Tests
+test-performance:
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Performance Tests                                           ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Note: Requires server running on localhost:50051${NC)"
+	@echo "$(YELLOW)Starting server...$(NC)"
+	@mkdir -p /home/rubentxu/hodei-data test-results/performance
+	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
+	@sleep 5
+	@echo "$(YELLOW)Running performance tests...$(NC)"
+	bash ./scripts/test-performance.sh
+	@echo "$(GREEN)✅ Performance tests completed!${NC}"
+	@echo "$(YELLOW)Results saved to test-results/performance/${NC}"
+	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
+
+# ============================================================================
+# COMBINED TEST TARGETS
+# ============================================================================
+
+# Run all Policy Store Tests (Backend + Frontend)
+test-e2e-policy-store-all: test-policy-store-all test-e2e-ui-all
+	@echo "$(GREEN)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)║  ALL POLICY STORE TESTS COMPLETED!                           ║$(NC)"
+	@echo "$(GREEN)╚════════════════════════════════════════════════════════════╝$(NC)"
+
+# Quick validation for Policy Store feature
+test-policy-store-quick: build-server
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Quick Policy Store Validation                               ║${NC}"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo "$(YELLOW)Running basic unit and integration tests...$(NC)"
+	cargo test --lib policy_store -- --nocapture
+	@echo "$(GREEN)✅ Quick validation passed!${NC}"
+
 # Development targets for integrated server and frontend
 dev-start:
-	@bash ./scripts/dev-start.sh
+	@bash ./scripts/dev-start-improved.sh
 
 dev-logs:
 	@tail -f /tmp/rust-server.log
@@ -386,4 +547,16 @@ dev-test:
 dev-stop: kill-all
 	@echo "$(GREEN)Development environment stopped$(NC)"
 
-.PHONY: watch validate ci dev-setup bff-build bff-dev bff-test bff-health dev-start dev-logs dev-logs-frontend dev-test dev-stop
+# Display status of all services
+dev-status:
+	@bash ./scripts/manage-pids.sh status
+
+# Clean all PID files and kill all processes
+dev-clean: kill-all
+	@echo "$(YELLOW)Cleaning PID files...$(NC)"
+	@rm -rf ~/.hodei-pids
+	@echo "$(GREEN)✅ All PID files cleaned$(NC)"
+
+.PHONY: watch validate ci dev-setup bff-build bff-dev bff-test bff-health dev-start dev-logs dev-logs-frontend dev-test dev-stop dev-status dev-clean
+.PHONY: test-e2e-policy-store test-e2e-snapshots test-e2e-batch test-e2e-authorization test-integration-full test-policy-store-all
+.PHONY: test-e2e-install test-e2e-ui test-e2e-snapshots-ui test-e2e-ui-all test-performance test-e2e-policy-store-all test-policy-store-quick

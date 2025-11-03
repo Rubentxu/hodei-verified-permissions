@@ -6,6 +6,7 @@ use hodei_domain::{
     Action, AuthorizationDecision, AuthorizationEvaluator, AuthorizationLog, CedarPolicy,
     DomainError, DomainResult, IdentitySource, IdentitySourceType, Policy, PolicyId,
     PolicyRepository, PolicyStore, PolicyStoreId, PolicyTemplate, Principal, Resource, Schema,
+    Snapshot, SnapshotPolicy, RollbackResult,
 };
 
 use super::{models, SqliteRepository};
@@ -23,9 +24,20 @@ impl RepositoryAdapter {
 
     fn map_policy_store(model: models::PolicyStore) -> DomainResult<PolicyStore> {
         let id = PolicyStoreId::new(model.id)?;
+        let tags: Vec<String> = serde_json::from_str(&model.tags)
+            .unwrap_or_else(|_| Vec::new());
+        let status = match model.status.as_str() {
+            "inactive" => hodei_domain::PolicyStoreStatus::Inactive,
+            _ => hodei_domain::PolicyStoreStatus::Active,
+        };
         Ok(PolicyStore {
             id,
+            name: model.name,
             description: model.description,
+            status,
+            version: model.version,
+            author: model.author,
+            tags,
             created_at: model.created_at,
             updated_at: model.updated_at,
             default_identity_source_id: None,
@@ -157,6 +169,15 @@ impl PolicyRepository for RepositoryAdapter {
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         models.into_iter().map(Self::map_policy_store).collect()
+    }
+
+    async fn update_policy_store(&self, id: &PolicyStoreId, description: Option<String>) -> DomainResult<PolicyStore> {
+        let model = self
+            .sqlite_repo
+            .update_policy_store(Self::policy_store_id_str(id), description)
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+        Self::map_policy_store(model)
     }
 
     async fn delete_policy_store(&self, id: &PolicyStoreId) -> DomainResult<()> {
@@ -394,6 +415,138 @@ impl PolicyRepository for RepositoryAdapter {
             .delete_policy_template(
                 Self::policy_store_id_str(policy_store_id),
                 template_id,
+            )
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+        Ok(())
+    }
+
+    // Snapshot / Version Control Operations
+    async fn create_policy_store_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        description: Option<String>,
+    ) -> DomainResult<Snapshot> {
+        let model = self
+            .sqlite_repo
+            .create_policy_store_snapshot(Self::policy_store_id_str(policy_store_id), description.as_deref())
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+
+        Ok(Snapshot {
+            snapshot_id: model.snapshot_id,
+            policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
+            description: model.description,
+            created_at: model.created_at,
+            policy_count: model.policy_count,
+            has_schema: model.has_schema,
+            schema_json: model.schema_json,
+            policies: model.policies.into_iter()
+                .map(|p| SnapshotPolicy {
+                    policy_id: p.policy_id,
+                    description: p.description,
+                    statement: p.statement,
+                })
+                .collect(),
+            size_bytes: model.size_bytes,
+        })
+    }
+
+    async fn get_policy_store_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+    ) -> DomainResult<Snapshot> {
+        let model = self
+            .sqlite_repo
+            .get_policy_store_snapshot(
+                Self::policy_store_id_str(policy_store_id),
+                snapshot_id,
+            )
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+
+        Ok(Snapshot {
+            snapshot_id: model.snapshot_id,
+            policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
+            description: model.description,
+            created_at: model.created_at,
+            policy_count: model.policy_count,
+            has_schema: model.has_schema,
+            schema_json: model.schema_json,
+            policies: model.policies.into_iter()
+                .map(|p| SnapshotPolicy {
+                    policy_id: p.policy_id,
+                    description: p.description,
+                    statement: p.statement,
+                })
+                .collect(),
+            size_bytes: model.size_bytes,
+        })
+    }
+
+    async fn list_policy_store_snapshots(
+        &self,
+        policy_store_id: &PolicyStoreId,
+    ) -> DomainResult<Vec<Snapshot>> {
+        let models = self
+            .sqlite_repo
+            .list_policy_store_snapshots(Self::policy_store_id_str(policy_store_id))
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+
+        models.into_iter()
+            .map(|model| {
+                Ok(Snapshot {
+                    snapshot_id: model.snapshot_id,
+                    policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
+                    description: model.description,
+                    created_at: model.created_at,
+                    policy_count: model.policy_count,
+                    has_schema: model.has_schema,
+                    schema_json: model.schema_json,
+                    policies: Vec::new(), // List view doesn't include policies
+                    size_bytes: model.size_bytes,
+                })
+            })
+            .collect()
+    }
+
+    async fn rollback_to_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+        description: Option<String>,
+    ) -> DomainResult<RollbackResult> {
+        let model = self
+            .sqlite_repo
+            .rollback_to_snapshot(
+                Self::policy_store_id_str(policy_store_id),
+                snapshot_id,
+                description.as_deref(),
+            )
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+
+        Ok(RollbackResult {
+            policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
+            snapshot_id: model.snapshot_id,
+            rolled_back_at: model.rolled_back_at,
+            policies_restored: model.policies_restored,
+            schema_restored: model.schema_restored,
+        })
+    }
+
+    async fn delete_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+    ) -> DomainResult<()> {
+        self
+            .sqlite_repo
+            .delete_snapshot(
+                Self::policy_store_id_str(policy_store_id),
+                snapshot_id,
             )
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;

@@ -253,7 +253,7 @@ mod tests {
     fn test_transform_chain_complex() {
         let transform = ValueTransform::Chain(vec![
             ValueTransform::RegexCapture {
-                pattern: r"(\w+)@(\w+\.\w+)".to_string(),
+                pattern: r"(\w+\.\w+)@(\w+\.\w+)".to_string(),
                 group: 1,
             },
             ValueTransform::Prefix("Principal::".to_string()),
@@ -261,7 +261,7 @@ mod tests {
 
         assert_eq!(
             transform.apply("john.doe@example.com").unwrap(),
-            "Principal::john"
+            "Principal::john.doe"
         );
     }
 

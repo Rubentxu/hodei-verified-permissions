@@ -34,6 +34,9 @@ pub trait PolicyRepository: Send + Sync {
     /// Lists all Policy Stores
     async fn list_policy_stores(&self) -> DomainResult<Vec<PolicyStore>>;
     
+    /// Updates a Policy Store description
+    async fn update_policy_store(&self, id: &PolicyStoreId, description: Option<String>) -> DomainResult<PolicyStore>;
+
     /// Deletes a Policy Store and all its content (cascade)
     async fn delete_policy_store(&self, id: &PolicyStoreId) -> DomainResult<()>;
     
@@ -152,11 +155,50 @@ pub trait PolicyRepository: Send + Sync {
         policy_store_id: &PolicyStoreId,
         template_id: &str,
     ) -> DomainResult<()>;
-    
+
+    // ============================================================================
+    // Snapshot / Version Control Operations
+    // ============================================================================
+
+    /// Creates a snapshot of a policy store (all policies and schema)
+    async fn create_policy_store_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        description: Option<String>,
+    ) -> DomainResult<Snapshot>;
+
+    /// Gets a snapshot by ID
+    async fn get_policy_store_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+    ) -> DomainResult<Snapshot>;
+
+    /// Lists all snapshots for a policy store
+    async fn list_policy_store_snapshots(
+        &self,
+        policy_store_id: &PolicyStoreId,
+    ) -> DomainResult<Vec<Snapshot>>;
+
+    /// Rolls back a policy store to a specific snapshot
+    async fn rollback_to_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+        description: Option<String>,
+    ) -> DomainResult<RollbackResult>;
+
+    /// Deletes a snapshot
+    async fn delete_snapshot(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        snapshot_id: &str,
+    ) -> DomainResult<()>;
+
     // ============================================================================
     // Audit Operations
     // ============================================================================
-    
+
     /// Logs an authorization decision for auditing
     async fn log_authorization(&self, log: AuthorizationLog) -> DomainResult<()>;
 }

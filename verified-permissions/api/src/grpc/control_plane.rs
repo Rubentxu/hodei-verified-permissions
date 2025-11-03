@@ -127,6 +127,32 @@ impl AuthorizationControl for AuthorizationControlService {
         Ok(Response::new(DeletePolicyStoreResponse {}))
     }
 
+    async fn update_policy_store(
+        &self,
+        request: Request<UpdatePolicyStoreRequest>,
+    ) -> Result<Response<UpdatePolicyStoreResponse>, Status> {
+        let req = request.into_inner();
+        info!("Updating policy store: {}", req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let store = self
+            .repository
+            .update_policy_store(&policy_store_id, req.description)
+            .await
+            .map_err(|e| {
+                error!("Failed to update policy store: {}", e);
+                Status::internal(format!("Failed to update policy store: {}", e))
+            })?;
+
+        Ok(Response::new(UpdatePolicyStoreResponse {
+            policy_store_id: store.id.into_string(),
+            description: store.description,
+            updated_at: store.updated_at.to_rfc3339(),
+        }))
+    }
+
     async fn put_schema(
         &self,
         request: Request<PutSchemaRequest>,
@@ -1057,6 +1083,429 @@ impl AuthorizationControl for AuthorizationControlService {
             errors,
             warnings,
             policy_info,
+        }))
+    }
+
+    // ========================================================================
+    // Version Control / Snapshot Management
+    // ========================================================================
+
+    async fn create_policy_store_snapshot(
+        &self,
+        request: Request<CreatePolicyStoreSnapshotRequest>,
+    ) -> Result<Response<CreatePolicyStoreSnapshotResponse>, Status> {
+        let req = request.into_inner();
+        info!("Creating snapshot for policy store: {}", req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let snapshot = self
+            .repository
+            .create_policy_store_snapshot(&policy_store_id, req.description)
+            .await
+            .map_err(|e| {
+                error!("Failed to create snapshot: {}", e);
+                Status::internal(format!("Failed to create snapshot: {}", e))
+            })?;
+
+        Ok(Response::new(CreatePolicyStoreSnapshotResponse {
+            snapshot_id: snapshot.snapshot_id,
+            policy_store_id: snapshot.policy_store_id.into_string(),
+            created_at: snapshot.created_at.to_rfc3339(),
+            description: snapshot.description.unwrap_or_default(),
+        }))
+    }
+
+    async fn get_policy_store_snapshot(
+        &self,
+        request: Request<GetPolicyStoreSnapshotRequest>,
+    ) -> Result<Response<GetPolicyStoreSnapshotResponse>, Status> {
+        let req = request.into_inner();
+        info!("Getting snapshot {} from policy store: {}", req.snapshot_id, req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let snapshot = self
+            .repository
+            .get_policy_store_snapshot(&policy_store_id, &req.snapshot_id)
+            .await
+            .map_err(|e| {
+                error!("Failed to get snapshot: {}", e);
+                Status::not_found(format!("Snapshot not found: {}", e))
+            })?;
+
+        Ok(Response::new(GetPolicyStoreSnapshotResponse {
+            snapshot_id: snapshot.snapshot_id,
+            policy_store_id: snapshot.policy_store_id.into_string(),
+            description: snapshot.description.unwrap_or_default(),
+            created_at: snapshot.created_at.to_rfc3339(),
+            policy_count: snapshot.policy_count,
+            has_schema: snapshot.has_schema,
+            schema_json: snapshot.schema_json.unwrap_or_default(),
+            policies: snapshot.policies.into_iter().map(|p| PolicySummary {
+                policy_id: p.policy_id,
+                description: p.description,
+                statement: p.statement,
+            }).collect(),
+        }))
+    }
+
+    async fn list_policy_store_snapshots(
+        &self,
+        request: Request<ListPolicyStoreSnapshotsRequest>,
+    ) -> Result<Response<ListPolicyStoreSnapshotsResponse>, Status> {
+        let req = request.into_inner();
+        info!("Listing snapshots for policy store: {}", req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let snapshots = self
+            .repository
+            .list_policy_store_snapshots(&policy_store_id)
+            .await
+            .map_err(|e| {
+                error!("Failed to list snapshots: {}", e);
+                Status::internal(format!("Failed to list snapshots: {}", e))
+            })?;
+
+        let items = snapshots
+            .into_iter()
+            .map(|snapshot| SnapshotItem {
+                snapshot_id: snapshot.snapshot_id,
+                policy_store_id: snapshot.policy_store_id.into_string(),
+                description: snapshot.description,
+                created_at: snapshot.created_at.to_rfc3339(),
+                policy_count: snapshot.policy_count,
+                has_schema: snapshot.has_schema,
+                size_bytes: snapshot.size_bytes,
+            })
+            .collect();
+
+        Ok(Response::new(ListPolicyStoreSnapshotsResponse {
+            snapshots: items,
+            next_token: None,
+        }))
+    }
+
+    async fn rollback_to_snapshot(
+        &self,
+        request: Request<RollbackToSnapshotRequest>,
+    ) -> Result<Response<RollbackToSnapshotResponse>, Status> {
+        let req = request.into_inner();
+        info!("Rolling back to snapshot {} for policy store: {}", req.snapshot_id, req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let result = self
+            .repository
+            .rollback_to_snapshot(&policy_store_id, &req.snapshot_id, req.description)
+            .await
+            .map_err(|e| {
+                error!("Failed to rollback to snapshot: {}", e);
+                Status::internal(format!("Failed to rollback to snapshot: {}", e))
+            })?;
+
+        Ok(Response::new(RollbackToSnapshotResponse {
+            policy_store_id: result.policy_store_id.into_string(),
+            snapshot_id: result.snapshot_id,
+            rolled_back_at: result.rolled_back_at.to_rfc3339(),
+            policies_restored: result.policies_restored,
+            schema_restored: result.schema_restored,
+        }))
+    }
+
+    async fn delete_snapshot(
+        &self,
+        request: Request<DeleteSnapshotRequest>,
+    ) -> Result<Response<DeleteSnapshotResponse>, Status> {
+        let req = request.into_inner();
+        info!("Deleting snapshot {} from policy store: {}", req.snapshot_id, req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        self.repository
+            .delete_snapshot(&policy_store_id, &req.snapshot_id)
+            .await
+            .map_err(|e| {
+                error!("Failed to delete snapshot: {}", e);
+                Status::internal(format!("Failed to delete snapshot: {}", e))
+            })?;
+
+        Ok(Response::new(DeleteSnapshotResponse {
+            snapshot_id: req.snapshot_id,
+        }))
+    }
+
+    // ========================================================================
+    // Batch Policy Management
+    // ========================================================================
+
+    async fn batch_create_policies(
+        &self,
+        request: Request<BatchCreatePoliciesRequest>,
+    ) -> Result<Response<BatchCreatePoliciesResponse>, Status> {
+        let req = request.into_inner();
+        info!("Batch creating {} policies for store {}", req.policies.len(), req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let mut results = Vec::new();
+        let mut errors = Vec::new();
+
+        for item in req.policies {
+            let policy_id = match PolicyId::new(item.policy_id.clone()) {
+                Ok(id) => id,
+                Err(e) => {
+                    errors.push(format!("Invalid policy ID {}: {}", item.policy_id, e));
+                    results.push(BatchPolicyResult {
+                        policy_id: item.policy_id,
+                        created_at: String::new(),
+                        error: Some(format!("Invalid policy ID: {}", e)),
+                    });
+                    continue;
+                }
+            };
+
+            let statement = match item.definition.unwrap().policy_type {
+                Some(policy_definition::PolicyType::Static(static_policy)) => {
+                    static_policy.statement
+                }
+                Some(_) => {
+                    errors.push(format!("Only static policies supported in batch create"));
+                    results.push(BatchPolicyResult {
+                        policy_id: item.policy_id,
+                        created_at: String::new(),
+                        error: Some("Only static policies supported".to_string()),
+                    });
+                    continue;
+                }
+                None => {
+                    errors.push(format!("Policy definition required for {}", item.policy_id));
+                    results.push(BatchPolicyResult {
+                        policy_id: item.policy_id,
+                        created_at: String::new(),
+                        error: Some("Policy definition required".to_string()),
+                    });
+                    continue;
+                }
+            };
+
+            // Validate Cedar policy syntax
+            if let Err(e) = CedarPolicyType::from_str(&statement) {
+                errors.push(format!("Invalid policy syntax for {}: {}", item.policy_id, e));
+                results.push(BatchPolicyResult {
+                    policy_id: item.policy_id,
+                    created_at: String::new(),
+                    error: Some(format!("Invalid policy syntax: {}", e)),
+                });
+                continue;
+            }
+
+            let cedar_policy = match CedarPolicy::new(statement) {
+                Ok(policy) => policy,
+                Err(e) => {
+                    errors.push(format!("Failed to create policy {}: {}", item.policy_id, e));
+                    results.push(BatchPolicyResult {
+                        policy_id: item.policy_id,
+                        created_at: String::new(),
+                        error: Some(format!("Failed to create policy: {}", e)),
+                    });
+                    continue;
+                }
+            };
+
+            match self
+                .repository
+                .create_policy(&policy_store_id, &policy_id, &cedar_policy, item.description)
+                .await
+            {
+                Ok(policy) => {
+                    results.push(BatchPolicyResult {
+                        policy_id: policy.policy_id.into_string(),
+                        created_at: policy.created_at.to_rfc3339(),
+                        error: None,
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to create policy {}: {}", item.policy_id, e);
+                    errors.push(format!("Failed to create policy {}: {}", item.policy_id, e));
+                    results.push(BatchPolicyResult {
+                        policy_id: item.policy_id,
+                        created_at: String::new(),
+                        error: Some(format!("Failed to create policy: {}", e)),
+                    });
+                }
+            }
+        }
+
+        Ok(Response::new(BatchCreatePoliciesResponse {
+            results,
+            errors,
+        }))
+    }
+
+    async fn batch_update_policies(
+        &self,
+        request: Request<BatchUpdatePoliciesRequest>,
+    ) -> Result<Response<BatchUpdatePoliciesResponse>, Status> {
+        let req = request.into_inner();
+        info!("Batch updating {} policies for store {}", req.policies.len(), req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let mut results = Vec::new();
+        let mut errors = Vec::new();
+
+        for item in req.policies {
+            let policy_id = match PolicyId::new(item.policy_id.clone()) {
+                Ok(id) => id,
+                Err(e) => {
+                    errors.push(format!("Invalid policy ID {}: {}", item.policy_id, e));
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: item.policy_id,
+                        updated_at: String::new(),
+                        error: Some(format!("Invalid policy ID: {}", e)),
+                    });
+                    continue;
+                }
+            };
+
+            let statement = match item.definition.unwrap().policy_type {
+                Some(policy_definition::PolicyType::Static(static_policy)) => {
+                    static_policy.statement
+                }
+                Some(_) => {
+                    errors.push(format!("Only static policies supported in batch update"));
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: item.policy_id,
+                        updated_at: String::new(),
+                        error: Some("Only static policies supported".to_string()),
+                    });
+                    continue;
+                }
+                None => {
+                    errors.push(format!("Policy definition required for {}", item.policy_id));
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: item.policy_id,
+                        updated_at: String::new(),
+                        error: Some("Policy definition required".to_string()),
+                    });
+                    continue;
+                }
+            };
+
+            // Validate Cedar policy syntax
+            if let Err(e) = CedarPolicyType::from_str(&statement) {
+                errors.push(format!("Invalid policy syntax for {}: {}", item.policy_id, e));
+                results.push(BatchUpdatePolicyResult {
+                    policy_id: item.policy_id,
+                    updated_at: String::new(),
+                    error: Some(format!("Invalid policy syntax: {}", e)),
+                });
+                continue;
+            }
+
+            let cedar_policy = match CedarPolicy::new(statement) {
+                Ok(policy) => policy,
+                Err(e) => {
+                    errors.push(format!("Failed to update policy {}: {}", item.policy_id, e));
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: item.policy_id,
+                        updated_at: String::new(),
+                        error: Some(format!("Failed to update policy: {}", e)),
+                    });
+                    continue;
+                }
+            };
+
+            match self
+                .repository
+                .update_policy(&policy_store_id, &policy_id, &cedar_policy, item.description)
+                .await
+            {
+                Ok(policy) => {
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: policy.policy_id.into_string(),
+                        updated_at: policy.updated_at.to_rfc3339(),
+                        error: None,
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to update policy {}: {}", item.policy_id, e);
+                    errors.push(format!("Failed to update policy {}: {}", item.policy_id, e));
+                    results.push(BatchUpdatePolicyResult {
+                        policy_id: item.policy_id,
+                        updated_at: String::new(),
+                        error: Some(format!("Failed to update policy: {}", e)),
+                    });
+                }
+            }
+        }
+
+        Ok(Response::new(BatchUpdatePoliciesResponse {
+            results,
+            errors,
+        }))
+    }
+
+    async fn batch_delete_policies(
+        &self,
+        request: Request<BatchDeletePoliciesRequest>,
+    ) -> Result<Response<BatchDeletePoliciesResponse>, Status> {
+        let req = request.into_inner();
+        info!("Batch deleting {} policies for store {}", req.policy_ids.len(), req.policy_store_id);
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        let mut results = Vec::new();
+        let mut errors = Vec::new();
+
+        for policy_id_str in req.policy_ids {
+            let policy_id = match PolicyId::new(policy_id_str.clone()) {
+                Ok(id) => id,
+                Err(e) => {
+                    errors.push(format!("Invalid policy ID {}: {}", policy_id_str, e));
+                    results.push(BatchDeletePolicyResult {
+                        policy_id: policy_id_str,
+                        error: Some(format!("Invalid policy ID: {}", e)),
+                    });
+                    continue;
+                }
+            };
+
+            match self
+                .repository
+                .delete_policy(&policy_store_id, &policy_id)
+                .await
+            {
+                Ok(_) => {
+                    results.push(BatchDeletePolicyResult {
+                        policy_id: policy_id_str,
+                        error: None,
+                    });
+                }
+                Err(e) => {
+                    error!("Failed to delete policy {}: {}", policy_id_str, e);
+                    errors.push(format!("Failed to delete policy {}: {}", policy_id_str, e));
+                    results.push(BatchDeletePolicyResult {
+                        policy_id: policy_id_str,
+                        error: Some(format!("Failed to delete policy: {}", e)),
+                    });
+                }
+            }
+        }
+
+        Ok(Response::new(BatchDeletePoliciesResponse {
+            results,
+            errors,
         }))
     }
 }

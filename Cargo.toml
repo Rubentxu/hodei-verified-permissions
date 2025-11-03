@@ -97,3 +97,12 @@ required-features = ["containers"]
 name = "e2e_policy_store_tests"
 path = "tests/e2e_policy_store_tests.rs"
 required-features = ["containers"]
+
+[[test]]
+name = "e2e_basic_working"
+path = "verified-permissions/main/tests/e2e_basic_working.rs"
+required-features = ["containers"]
+
+[[test]]
+name = "e2e_docker_working"
+path = "verified-permissions/main/tests/e2e_docker_working.rs"

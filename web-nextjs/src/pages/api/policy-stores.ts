@@ -8,6 +8,10 @@ const createPolicyStoreSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500, 'Description too long')
 });
 
+const updatePolicyStoreSchema = z.object({
+  description: z.string().min(1, 'Description is required').max(500, 'Description too long')
+});
+
 const listPolicyStoresSchema = z.object({
   max_results: z.string().optional(),
   next_token: z.string().optional()

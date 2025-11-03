@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| {
             info!("DATABASE_URL not set, using default SQLite");
-            "sqlite:///app/data/hodei.db".to_string()
+            "sqlite:///home/rubentxu/hodei-data/hodei.db".to_string()
         });
     
     info!("Connecting to database: {}", database_url);

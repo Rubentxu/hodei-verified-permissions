@@ -5,6 +5,24 @@ use std::fmt;
 
 use crate::errors::{DomainError, DomainResult};
 
+/// Status of a Policy Store
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PolicyStoreStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "inactive")]
+    Inactive,
+}
+
+impl fmt::Display for PolicyStoreStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PolicyStoreStatus::Active => write!(f, "active"),
+            PolicyStoreStatus::Inactive => write!(f, "inactive"),
+        }
+    }
+}
+
 /// Policy Store identifier
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PolicyStoreId(String);

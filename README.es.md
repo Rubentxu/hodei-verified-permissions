@@ -325,4 +325,22 @@ Copyright (c) 2025 Hodei Team
 
 ---
 
+Para iniciar el entorno completo:
+$ make dev-start              # Inicia Rust server + Next.js frontend
+
+Para detener servicios:
+$ make dev-stop               # Detiene todos los procesos
+
+Para ver logs:
+$ make dev-logs               # Logs del servidor Rust
+$ make dev-logs-frontend      # Logs de Next.js
+
+Para probar conectividad:
+$ make dev-test               # Test de conexión gRPC
+
+Para ejecutar tests:
+$ cargo test --lib            # Tests unitarios
+$ cargo test --test '*'       # Tests de integración
+
+
 **Construido con ❤️ usando Rust y Cedar**

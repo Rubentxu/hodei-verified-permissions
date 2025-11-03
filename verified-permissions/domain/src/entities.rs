@@ -10,7 +10,16 @@ use crate::value_objects::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyStore {
     pub id: PolicyStoreId,
+    pub name: Option<String>,
     pub description: Option<String>,
+    /// Current status of the policy store (active/inactive)
+    pub status: PolicyStoreStatus,
+    /// Version number for versioning support
+    pub version: String,
+    /// Author/owner of the policy store
+    pub author: String,
+    /// List of tags for categorization
+    pub tags: Vec<String>,
     /// List of identity source IDs associated with this policy store
     pub identity_source_ids: Vec<String>,
     /// Default identity source ID to use when not explicitly specified
@@ -24,7 +33,12 @@ impl PolicyStore {
         let now = Utc::now();
         Self {
             id,
+            name: None,
             description,
+            status: PolicyStoreStatus::Active,
+            version: "1.0".to_string(),
+            author: "system".to_string(),
+            tags: Vec::new(),
             identity_source_ids: Vec::new(),
             default_identity_source_id: None,
             created_at: now,
@@ -184,6 +198,74 @@ impl PolicyTemplate {
             updated_at: now,
         }
     }
+}
+
+/// Snapshot entity - Represents a point-in-time snapshot of a policy store
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Snapshot {
+    pub snapshot_id: String,
+    pub policy_store_id: PolicyStoreId,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub policy_count: i32,
+    pub has_schema: bool,
+    pub schema_json: Option<String>,
+    pub policies: Vec<SnapshotPolicy>,
+    pub size_bytes: i64,
+}
+
+impl Snapshot {
+    pub fn new(
+        snapshot_id: String,
+        policy_store_id: PolicyStoreId,
+        description: Option<String>,
+        policy_count: i32,
+        has_schema: bool,
+        schema_json: Option<String>,
+        policies: Vec<SnapshotPolicy>,
+        size_bytes: i64,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            snapshot_id,
+            policy_store_id,
+            description,
+            created_at: now,
+            policy_count,
+            has_schema,
+            schema_json,
+            policies,
+            size_bytes,
+        }
+    }
+}
+
+/// Policy summary within a snapshot
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SnapshotPolicy {
+    pub policy_id: String,
+    pub description: Option<String>,
+    pub statement: String,
+}
+
+impl SnapshotPolicy {
+    pub fn new(policy_id: String, description: Option<String>, statement: String) -> Self {
+        Self {
+            policy_id,
+            description,
+            statement,
+        }
+    }
+}
+
+/// Result of a rollback operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RollbackResult {
+    pub policy_store_id: PolicyStoreId,
+    pub snapshot_id: String,
+    pub rolled_back_at: DateTime<Utc>,
+    pub policies_restored: i32,
+    pub schema_restored: bool,
 }
 
 #[cfg(test)]

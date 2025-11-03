@@ -6,7 +6,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyStore {
     pub id: String,
+    pub name: Option<String>,
     pub description: Option<String>,
+    pub status: String, // "active" or "inactive"
+    pub version: String,
+    pub author: String,
+    pub tags: String, // JSON serialized vector of strings
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -59,4 +64,47 @@ pub struct AuthorizationLog {
     pub resource: String,
     pub decision: String,
     pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyStoreAuditLog {
+    pub id: i64,
+    pub policy_store_id: String,
+    pub action: String, // "CREATE", "UPDATE", "DELETE"
+    pub user_id: String,
+    pub changes: Option<String>, // JSON string of changes
+    pub ip_address: Option<String>,
+    pub timestamp: DateTime<Utc>,
+}
+
+/// Snapshot database model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Snapshot {
+    pub snapshot_id: String,
+    pub policy_store_id: String,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub policy_count: i32,
+    pub has_schema: bool,
+    pub schema_json: Option<String>,
+    pub policies: Vec<SnapshotPolicy>,
+    pub size_bytes: i64,
+}
+
+/// Policy within a snapshot
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SnapshotPolicy {
+    pub policy_id: String,
+    pub description: Option<String>,
+    pub statement: String,
+}
+
+/// Result of rollback operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RollbackResult {
+    pub policy_store_id: String,
+    pub snapshot_id: String,
+    pub rolled_back_at: DateTime<Utc>,
+    pub policies_restored: i32,
+    pub schema_restored: bool,
 }
