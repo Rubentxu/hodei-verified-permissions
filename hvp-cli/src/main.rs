@@ -47,6 +47,33 @@ enum Commands {
         #[arg(long, short = 'o', default_value = "./policies")]
         output: PathBuf,
     },
+
+    /// Generate least privilege policies from OpenAPI specification
+    GenerateLeastPrivilege {
+        /// Path to the OpenAPI spec file (JSON format)
+        #[arg(long, value_name = "FILE")]
+        spec: PathBuf,
+
+        /// Cedar namespace for your application
+        #[arg(long)]
+        namespace: String,
+
+        /// Base path of your API (optional)
+        #[arg(long)]
+        base_path: Option<String>,
+
+        /// Output directory for generated files
+        #[arg(long, short = 'o', default_value = "./authorization")]
+        output: PathBuf,
+
+        /// Generate role-based policies (comma-separated list)
+        #[arg(long, default_value = "admin,developer,viewer")]
+        roles: String,
+
+        /// Analysis mode: strict, moderate, or permissive
+        #[arg(long, default_value = "strict")]
+        mode: String,
+    },
 }
 
 #[tokio::main]
@@ -73,7 +100,152 @@ async fn main() -> Result<()> {
         Commands::GeneratePolicies { schema, output } => {
             generate_policies(schema, output).await?;
         }
+        Commands::GenerateLeastPrivilege {
+            spec,
+            namespace,
+            base_path,
+            output,
+            roles,
+            mode,
+        } => {
+            generate_least_privilege(spec, namespace, base_path, output, roles, mode).await?;
+        }
     }
+
+    Ok(())
+}
+
+async fn generate_least_privilege(
+    spec_path: PathBuf,
+    namespace: String,
+    base_path: Option<String>,
+    output_dir: PathBuf,
+    roles_str: String,
+    mode_str: String,
+) -> Result<()> {
+    info!("Reading OpenAPI spec from: {}", spec_path.display());
+
+    // Check if API spec file exists
+    if !spec_path.exists() {
+        anyhow::bail!("OpenAPI spec file not found: {}", spec_path.display());
+    }
+
+    // Read OpenAPI spec
+    let spec_content = fs::read_to_string(&spec_path)
+        .await
+        .context("Failed to read OpenAPI spec file")?;
+
+    // Validate JSON
+    let _: serde_json::Value =
+        serde_json::from_str(&spec_content).context("Invalid JSON in OpenAPI spec file")?;
+
+    info!(
+        "Generating least privilege policies with namespace: {}",
+        namespace
+    );
+
+    // Parse roles
+    let roles: Vec<String> = roles_str
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if roles.is_empty() {
+        anyhow::bail!("At least one role must be specified");
+    }
+
+    info!("Roles: {}", roles.join(", "));
+
+    // Parse privilege mode
+    let mode = verified_permissions_sdk::policies::PrivilegeMode::parse(&mode_str)
+        .map_err(|e| anyhow::anyhow!("Invalid privilege mode: {}", e))?;
+
+    info!("Privilege mode: {}", mode);
+
+    // Generate schema first
+    let generator = verified_permissions_sdk::schema::SimpleRestSchemaGenerator::new();
+    let schema_bundle = generator
+        .generate_simple_rest_schema(&spec_content, &namespace, base_path.as_deref())
+        .await
+        .context("Failed to generate Cedar schema")?;
+
+    // Generate least privilege policies
+    let policy_roles = vec![
+        verified_permissions_sdk::policies::Role::admin(),
+        verified_permissions_sdk::policies::Role::developer(),
+        verified_permissions_sdk::policies::Role::viewer(),
+    ];
+
+    let policy_generator = verified_permissions_sdk::policies::LeastPrivilegeGenerator::new(
+        namespace.clone(),
+        policy_roles,
+        mode,
+    );
+
+    let policy_bundle = policy_generator
+        .generate_from_openapi(&spec_content, &schema_bundle)
+        .context("Failed to generate policy bundle")?;
+
+    // Create output directory
+    fs::create_dir_all(&output_dir)
+        .await
+        .context("Failed to create output directory")?;
+
+    // Write schema files
+    let v4_schema_path = output_dir.join("v4.cedarschema.json");
+    fs::write(&v4_schema_path, &schema_bundle.v4)
+        .await
+        .context("Failed to write v4 schema file")?;
+    info!("✓ Cedar schema v4 generated: {}", v4_schema_path.display());
+
+    // Write policies
+    let policies_dir = output_dir.join("policies");
+    fs::create_dir_all(&policies_dir)
+        .await
+        .context("Failed to create policies directory")?;
+
+    for (i, policy) in policy_bundle.policies.iter().enumerate() {
+        let policy_path = policies_dir.join(format!("policy_{}.cedar", i + 1));
+        fs::write(&policy_path, &policy.content)
+            .await
+            .context(format!(
+                "Failed to write policy file {}",
+                policy_path.display()
+            ))?;
+        info!("✓ Cedar policy generated: {}", policy_path.display());
+    }
+
+    // Write security report
+    let report_path = output_dir.join("security_report.md");
+    let report_content = format!(
+        "# Security Analysis Report\n\n## Summary\n{}\n\n## Warnings\n",
+        policy_bundle.security_report.summary()
+    );
+
+    fs::write(&report_path, report_content)
+        .await
+        .context("Failed to write security report")?;
+    info!("✓ Security report generated: {}", report_path.display());
+
+    // Display summary
+    info!("\nAuthorization bundle successfully generated!");
+    info!("  Namespace: {}", namespace);
+    info!("  Policies: {}", policy_bundle.policies.len());
+    info!("  Roles: {}", roles.join(", "));
+    info!(
+        "  Security score: {}/100",
+        policy_bundle.security_report.score()
+    );
+
+    if !policy_bundle.security_report.warnings().is_empty() {
+        info!("\nSecurity warnings:");
+        for warning in policy_bundle.security_report.warnings() {
+            info!("  ⚠️  {}", warning.message());
+        }
+    }
+
+    info!("\nAll files written to: {}", output_dir.display());
 
     Ok(())
 }

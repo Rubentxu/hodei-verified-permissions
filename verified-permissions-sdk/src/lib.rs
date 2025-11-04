@@ -58,6 +58,10 @@ pub mod validation;
 #[cfg(feature = "schema")]
 pub mod schema;
 
+// Policy generation module (optional, requires "schema" feature)
+#[cfg(feature = "schema")]
+pub mod policies;
+
 // Middleware module (optional, requires "middleware" feature)
 #[cfg(feature = "middleware")]
 pub mod middleware;
