@@ -1,14 +1,16 @@
-# 🚀 Hodei Verified Permissions
-
 <div align="center">
 
-<img src="docs/assets/hodei-verified-permissions.jpg" alt="Hodei Verified Permissions Logo" width="800">
+# 🚀 Hodei Verified Permissions
+
+<img src="docs/assets/hodei-verified-permissions.jpg" alt="Hodei Verified Permissions Logo" width="600" style="margin-bottom: 10px;">
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/rubentxu/hodei-verified-permissions/blob/main/LICENSE)
 [![codecov](https://codecov.io/gh/rubentxu/hodei-verified-permissions/branch/main/graph/badge.svg)](https://codecov.io/gh/rubentxu/hodei-verified-permissions)
 
 </div>
+
+<br>
 
 > **Servicio de autorización de grado productivo** basado en AWS Verified Permissions con el motor de políticas Cedar, registro de auditoría completo y arquitectura hexagonal.
 
