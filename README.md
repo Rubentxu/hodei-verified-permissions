@@ -58,7 +58,6 @@ span
 
 ## 🏗 Architecture
 
-    B["Next.js API Routes"]
 ### SDK Architecture (v0.2.0)
 
 ```mermaid
@@ -107,13 +106,17 @@ graph TD
     style B2 fill:#e8f5e9
     style B3 fill:#e8f5e9
     style C1 fill:#fff8e1
-### Prerequisites
+```
+
+## 📋 Prerequisites
 
 - **Rust** 1.70+ with `cargo`
 - **Node.js** 18+ with `npm`
 - **Postman** v10+ (for gRPC testing)
 
-### One-Command Setup
+## 🚀 One-Command Setup
+
+```mermaid
 graph TD
     subgraph "Frontend Layer"
         A["Next.js Web App"]
@@ -128,7 +131,7 @@ graph TD
 
     subgraph "Backend Layer"
         C["gRPC Server Tonic"]
-### Manual Setup
+        D["AuthorizationControlService<br/>Policy CRUD"]
         E["AuthorizationDataService<br/>Authorization Checks"]
         F["Audit Interceptor<br/>Event Publishing"]
     end

@@ -1,8 +1,8 @@
-<div align="center">
+span
 
 # 🚀 Hodei Verified Permissions
 
-<img src="docs/assets/hodei-verified-permissions.png" alt="Hodei Verified Permissions Logo" width="600" style="margin-bottom: 10px;">
+<img src="docs/assets/hodei-verified-permissions.png" alt="Hodei Verified Permissions Logo" width="800" style="margin-bottom: 0px;">
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/rubentxu/hodei-verified-permissions/blob/main/LICENSE)
@@ -12,62 +12,134 @@
 
 <br>
 
-> **Servicio de autorización de grado productivo** basado en AWS Verified Permissions con el motor de políticas Cedar, registro de auditoría completo y arquitectura hexagonal.
+> **Production-grade Authorization Service** based on AWS Verified Permissions with Cedar Policy Engine, complete audit trail, and hexagonal architecture.
+
+## 🎯 SDK Architecture Overview
+
+**Hodei v0.2.0** introduces a clean separation between Data Plane and Control Plane operations:
+
+- **`verified-permissions-sdk`** - Lightweight SDK for **authorization checking** (Data Plane)
+- **`verified-permissions-sdk-admin`** - Programmatic library for **policy management** (Control Plane)
+- **`hvp` CLI** - Command-line interface built on `verified-permissions-sdk-admin`
 
 [![asciicast](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
 
-## ✨ Características
+## ✨ Features
 
-### 🎯 Capacidades centrales
-- **Cedar Policy Engine** - Control de acceso basado en atributos (estándar industrial)
-- **gRPC API** - Interfaz de alto rendimiento y tipada
-- **Registro de auditoría completo** - Registro de eventos compatible con AWS CloudTrail
-- **Event Sourcing** - Transparencia total de todas las operaciones
-- **Webhooks** - Integración en tiempo real con sistemas externos
-- **Arquitectura Hexagonal** - Código limpio, mantenible y testeable
+### 🎯 Core Capabilities
 
-### 📊 Nivel empresarial
-- **Registro de auditoría completo** - Cada llamada API registrada con metadatos
-- **Integración con bases de datos externas** - Publicación de eventos a sistemas externos
-- **Interfaz de consulta avanzada** - Filtrado de eventos por tipo, fecha, recurso
-- **Monitoreo en tiempo real** - Interfaz web para operaciones en vivo
-- **Versionado de políticas** - Instantáneas y capacidad de rollback
-- **Operaciones por lotes** - Comprobaciones de autorización en bloque eficientes
+- **Cedar Policy Engine** - Industry-standard attribute-based access control
+- **gRPC API** - High-performance, type-safe service interface
+- **Comprehensive Audit Trail** - AWS CloudTrail-compatible event logging
+- **Event Sourcing** - Complete transparency of all operations
+- **Webhooks** - Real-time integration with external systems
+- **Hexagonal Architecture** - Clean, maintainable, testable code
 
-### 🛠 Experiencia de desarrollador
-- **Comandos Makefile** - Configuración de desarrollo con un solo comando
-- **Suite de pruebas completa** - Tests unitarios e integrados
-- **Colección de Postman** - Pruebas de API listas para usar
-- **Documentación autogenerada** - OpenAPI y reflexión gRPC
-- **Soporte Docker** - Despliegue en contenedores
-- **SDK TypeScript** - Biblioteca para integración en frontend
+### 📊 Enterprise-Grade
 
-## 🏗 Arquitectura
+- **Complete Audit Log** - Every API call tracked with metadata
+- **External Database Integration** - Publish events to external systems
+- **Postman Collection** - Ready-to-use API testing
+- **Real-time Monitoring** - Web interface for live operations
+- **Policy Versioning** - Snapshot and rollback capabilities
+- **TypeScript SDK** - Frontend integration library
+
+### 🛠 Developer Experience
+
+- **Separate SDKs for Data/Control Plane** - Clean architecture following AWS pattern
+- **Lightweight Authorization SDK** - Only what you need for permission checks
+- **Programmatic Admin Library** - Full policy management for automation
+- **CLI Tool** - Command-line interface for human operators
+- **Backwards Compatibility** - Gradual migration path from v0.1.x
+- **Makefile Commands** - One-command development setup
+- **Full Test Suite** - Unit and integration tests
+- **Auto-generated Documentation** - OpenAPI & gRPC reflection
+- **Docker Support** - Containerized deployment
+
+## 🏗 Architecture
+
+### SDK Architecture (v0.2.0)
 
 ```mermaid
 graph TD
-    subgraph "Capa Frontend"
+    subgraph "Client Applications"
+        A1["Your Application<br/>Checking Permissions"]
+        A2["Admin Tool<br/>Managing Policies"]
+        A3["CI/CD Pipeline<br/>Automating Setup"]
+    end
+
+    subgraph "SDK Layer"
+        B1["verified-permissions-sdk<br/>📦 Data Plane<br/>Authorization Checks"]
+        B2["verified-permissions-sdk-admin<br/>📦 Control Plane<br/>Policy Management"]
+        B3["hodei CLI<br/>Command Line Tool"]
+    end
+
+    subgraph "Backend"
+        C1["gRPC Server<br/>Tonic"]
+        C2["AuthorizationDataService<br/>Permission Evaluation"]
+        C3["AuthorizationControlService<br/>Policy CRUD"]
+    end
+
+    subgraph "Infrastructure"
+        D1["Cedar Engine<br/>Policy Evaluation"]
+        D2["Database<br/>Policy Store"]
+        D3["Audit Log<br/>Event Store"]
+    end
+
+    A1 --> B1
+    A2 --> B2
+    A3 --> B2
+    B3 --> B2
+    B1 --> C1
+    B2 --> C1
+    C1 --> C2
+    C1 --> C3
+    C2 --> D1
+    C2 --> D2
+    C3 --> D2
+    C3 --> D3
+
+    style A1 fill:#e3f2fd
+    style A2 fill:#f3e5f5
+    style A3 fill:#fff3e0
+    style B1 fill:#e8f5e9
+    style B2 fill:#e8f5e9
+    style B3 fill:#e8f5e9
+    style C1 fill:#fff8e1
+```
+
+## 📋 Prerequisites
+
+- **Rust** 1.70+ with `cargo`
+- **Node.js** 18+ with `npm`
+- **Postman** v10+ (for gRPC testing)
+
+## 🚀 One-Command Setup
+
+```mermaid
+graph TD
+    subgraph "Frontend Layer"
         A["Next.js Web App"]
         A1["Dashboard"]
         A2["Playground"]
         A3["Audit Viewer"]
     end
 
-    subgraph "Capa API"
-        B["Next.js API Routes"]
+    subgraph "API Layer"
+        B["Next.js API Routes<br/>HTTP to gRPC Proxy"]
     end
 
-    subgraph "Capa Backend"
+    subgraph "Backend Layer"
         C["gRPC Server Tonic"]
-        D["AuthorizationControlService<br/>Operaciones CRUD"]
-        E["AuthorizationDataService<br/>Comprobaciones de autorización"]
-        F["Audit Interceptor<br/>Publicación de eventos"]
+        D["AuthorizationControlService<br/>Policy CRUD"]
+        E["AuthorizationDataService<br/>Authorization Checks"]
+        F["Audit Interceptor<br/>Event Publishing"]
     end
 
-    subgraph "Capa de Infraestructura"
-        G["Repositorio<br/>SQLite/PostgreSQL"]
-        H["Infraestructura de eventos<br/>Bus & Store"]
-        I["Motor Cedar<br/>Evaluación de políticas"]
+    subgraph "Infrastructure Layer"
+        G["Repository Layer<br/>SQLite/PostgreSQL"]
+        H["Event Infrastructure<br/>Event Bus & Store"]
+        I["Cedar Policy Engine<br/>Policy Evaluation"]
     end
 
     A --> B
@@ -91,72 +163,302 @@ graph TD
     style H fill:#fce4ec
     style I fill:#fce4ec
 ```
+### Key Components
 
-### Componentes clave
+- **Frontend (Next.js)**: Web interface with dashboard, playground, and audit viewer
+- **API Routes**: Serverless functions handling HTTP requests and proxying to gRPC
+- **gRPC Server (Tonic)**: High-performance backend with three main services
+- **Repository Layer**: Data persistence using SQLx with SQLite/PostgreSQL support
+- **Event Infrastructure**: Audit logging and webhook publishing
+- **Cedar Policy Engine**: Core authorization logic and policy evaluation
 
-- **Frontend (Next.js)**: Interfaz web con dashboard, playground y visualizador de auditoría
-- **Rutas API**: Funciones serverless que manejan peticiones HTTP y las proxy al gRPC
-- **Servidor gRPC (Tonic)**: Backend de alto rendimiento con servicios principales
-- **Capa de repositorio**: Persistencia usando SQLx con soporte para SQLite/PostgreSQL
-- **Infraestructura de eventos**: Registro de auditoría y publicación por webhook
-- **Motor Cedar**: Lógica central de autorización y evaluación de políticas
+## 📦 SDK Components
 
-## 🚀 Inicio rápido
+Hodei v0.2.0 provides three complementary components for different use cases:
 
-### Requisitos previos
+### 1. verified-permissions-sdk (Data Plane)
 
-- **Rust** 1.70+ con `cargo`
-- **Node.js** 18+ con `npm`
-- **Postman** v10+ (para pruebas gRPC)
+Lightweight SDK focused exclusively on **authorization checking**. Perfect for applications that need to check permissions.
 
-### Configuración con un comando
+```rust
+use hodei_permissions_sdk::{Client, IsAuthorizedRequestBuilder, EntityBuilder};
+
+let mut sdk = Client::connect("http://localhost:50051").await?;
+
+// Build and execute authorization request
+let request = IsAuthorizedRequestBuilder::new("read", "document:123")
+    .with_principal(EntityBuilder::new("User", "alice").build())
+    .with_context(serde_json::json!({"department": "engineering"}))
+    .build();
+
+let response = sdk.is_authorized("ps_store_id", request).await?;
+
+if response.decision == "Allow" {
+    // User is authorized!
+}
+```
+**Use when:**
+
+- ✅ Building applications that check permissions
+- ✅ Web servers, microservices, APIs
+- ✅ Need fast, lightweight authorization checks
+- ✅ Following AWS Verified Permissions pattern
+
+**Learn more:** [sdk/README.md](sdk/README.md)
+
+### 2. verified-permissions-sdk-admin (Control Plane)
+
+Programmatic library for **full policy management**. Ideal for automation, CI/CD, and admin tools.
+
+```rust
+use sdk_admin::HodeiAdmin;
+
+let mut admin = HodeiAdmin::connect("http://localhost:50051").await?;
+
+// Create and configure policy store
+let store = admin
+    .create_policy_store("production", Some("Production policies".to_string()))
+    .await?;
+
+// Upload schema
+let schema = r#"{"entities": {...}}"#;
+admin.put_schema(&store.policy_store_id, schema).await?;
+
+// Create policies
+admin.create_policy(
+    &store.policy_store_id,
+    "admin-policy",
+    "permit(principal, action, resource) when {...}",
+    Some("Admin access policy".to_string()),
+).await?;
+```
+**Use when:**
+
+- ✅ Setting up new policy stores
+- ✅ Managing schemas and policies
+- ✅ Automation and CI/CD pipelines
+- ✅ Admin tools and dashboards
+
+**Learn more:** [verified-permissions-sdk-admin/README.md](verified-permissions-sdk-admin/README.md)
+
+### 3. hodei CLI (Command Line)
+
+Human-friendly command-line interface built on top of `verified-permissions-sdk-admin`.
 
 ```bash
-# Clonar y arrancar todo
+# Create a policy store
+hodei create policy-store --name production --description "Production"
+
+# Upload schema
+hodei put schema ps_123 policies/schema.json
+
+# Create policies
+hodei create policy ps_123 admin-policy --file policy.cedar
+
+# Check authorization
+hodei check ps_123 User::"alice" read Document::"doc123"
+```
+**Use when:**
+
+- ✅ Interactive administration
+- ✅ Quick tasks and debugging
+- ✅ Human operators
+- ✅ Development and testing
+
+**Learn more:** Run `hodei --help`
+
+### Choosing the Right SDK
+
+
+| Scenario                                  | Use                              |
+| ----------------------------------------- | -------------------------------- |
+| Web application checking user permissions | `verified-permissions-sdk`       |
+| Setting up environments via automation    | `verified-permissions-sdk-admin` |
+| CI/CD pipeline configuration              | `verified-permissions-sdk-admin` |
+| Interactive policy management             | `hvp` CLI                        |
+| Microservices authorization               | `verified-permissions-sdk`       |
+| Administrative dashboards                 | `verified-permissions-sdk-admin` |
+
+## 🚀 Quick Start
+
+### Start the Server
+
+```bash
+# Clone and start everything
 git clone https://github.com/rubentxu/hodei-verified-permissions.git
 cd hodei-verified-permissions
 
-# Iniciar todos los servicios (servidor + interfaz web)
+# Start all services (server + web interface)
 make dev
 ```
+That's it! Services will be available at:
 
-¡Eso es todo! Los servicios estarán disponibles en:
 - **gRPC API**: `localhost:50051`
-- **Interfaz web**: `http://localhost:3000`
+- **Web Interface**: `http://localhost:3000`
 
-### Configuración manual
+### Using the SDKs
+
+#### 1. Authorization Checking (Data Plane)
 
 ```bash
-# 1. Instalar Rust
+cd sdk
+
+# Run basic usage example
+cargo run --example basic_usage
+```
+**For your application:**
+
+```toml
+[dependencies]
+verified-permissions-sdk = { path = "../sdk" }
+tokio = { version = "1.40", features = ["macros"] }
+```
+```rust
+use hodei_permissions_sdk::{Client, IsAuthorizedRequestBuilder, EntityBuilder};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::connect("http://localhost:50051").await?;
+  
+    let request = IsAuthorizedRequestBuilder::new("read", "document:123")
+        .with_principal(EntityBuilder::new("User", "alice").build())
+        .build();
+  
+    let response = client.is_authorized("ps_store_id", request).await?;
+    println!("Decision: {}", response.decision);
+    Ok(())
+}
+```
+#### 2. Policy Management (Control Plane)
+
+```bash
+cd verified-permissions-sdk-admin
+
+# Run basic usage example
+cargo run --example basic_usage
+
+# Run batch operations example
+cargo run --example batch_operations
+```
+**For your application:**
+
+```toml
+[dependencies]
+verified-permissions-sdk-admin = { path = "../verified-permissions-sdk-admin" }
+tokio = { version = "1.40", features = ["macros"] }
+```
+```rust
+use sdk_admin::HodeiAdmin;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut admin = HodeiAdmin::connect("http://localhost:50051").await?;
+  
+    let store = admin
+        .create_policy_store("my-app", Some("My application".to_string()))
+        .await?;
+  
+    println!("Created store: {}", store.policy_store_id);
+    Ok(())
+}
+```
+#### 3. Command Line Interface
+
+```bash
+# Build the CLI
+make build-cli
+
+# Create a policy store
+hodei create policy-store --name production --description "Production environment"
+
+# Upload schema
+hodei put schema ps_abc123 schemas/my-schema.json
+
+# Create a policy
+hodei create policy ps_abc123 admin-policy --file admin.cedar
+
+# Check authorization
+hodei check ps_abc123 User::"alice" read Document::"doc123"
+```
+### Full Server Setup (Manual)
+
+```bash
+# 1. Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 
-# 2. Instalar dependencias de Node.js
+# 2. Install Node.js dependencies
 cd web-nextjs && npm install && cd ..
 
-# 3. Inicializar base de datos
+# 3. Initialize database
 make db-init
 
-# 4. Iniciar servidor gRPC (terminal 1)
+# 4. Start gRPC server (terminal 1)
 make server
 
-# 5. Iniciar interfaz web (terminal 2)
+# 5. Start web interface (terminal 2)
 make web
 ```
+## 🔄 Migration from v0.1.x
 
-## 📖 Ejemplos de uso
+**v0.2.0 introduces breaking changes** to align with AWS Verified Permissions architecture.
 
-### Crear un Policy Store
+### What Changed
+
+- **Monolithic SDK** → **Separated SDKs** (Data Plane + Control Plane)
+- **Single `Client`** → **Two separate clients** (`Client` for auth checks, `HodeiAdmin` for management)
+- **All operations in one SDK** → **Clean separation** following industry patterns
+
+### Migration Path
+
+**Option 1: Gradual Migration (Recommended)**
+
+- Keep using v0.1.x API with deprecation warnings
+- Gradually migrate to new SDKs as you update code
+- Enable `compat` feature for backwards compatibility
+
+**Option 2: Complete Migration**
+
+- Use `verified-permissions-sdk` for authorization checks
+- Use `verified-permissions-sdk-admin` for policy management
+- Use `hvp` CLI for interactive tasks
+
+### Detailed Guide
+
+📖 **[Complete Migration Guide](docs/MIGRATION_GUIDE_SDK.md)** - Step-by-step instructions with examples
+
+**Quick Example:**
+
+```rust
+// v0.1.x (Deprecated)
+let mut client = Client::connect(endpoint).await?;
+// Both auth checks AND policy management in one client
+let _store = client.create_policy_store("test", None).await?;  // ❌ No longer works
+
+// v0.2.0 (New)
+use hodei_permissions_sdk::Client;
+use sdk_admin::HodeiAdmin;
+
+// For authorization checks
+let sdk = Client::connect(endpoint).await?;
+// ✅ Works - lightweight, focused
+
+// For policy management
+let admin = HodeiAdmin::connect(endpoint).await?;
+// ✅ Works - full control plane API
+```
+## 📖 Usage Examples
+
+### Create a Policy Store
 
 ```bash
-# Usando grpcurl
+# Using grpcurl
 grpcurl -plaintext -d '{
   "name": "Production Store",
   "description": "Main production policy store"
 }' localhost:50051 authorization.AuthorizationControl.CreatePolicyStore
 ```
-
-### Añadir una política
+### Add a Policy
 
 ```bash
 grpcurl -plaintext -d '{
@@ -166,8 +468,7 @@ grpcurl -plaintext -d '{
   "description": "Admin access policy"
 }' localhost:50051 authorization.AuthorizationControl.CreatePolicy
 ```
-
-### Comprobar autorización
+### Check Authorization
 
 ```bash
 grpcurl -plaintext -d '{
@@ -177,8 +478,7 @@ grpcurl -plaintext -d '{
   "resource": "Document::\"doc123\""
 }' localhost:50051 authorization.AuthorizationData/IsAuthorized
 ```
-
-### Consultar registro de auditoría
+### Query Audit Log
 
 ```bash
 grpcurl -plaintext -d '{
@@ -186,264 +486,274 @@ grpcurl -plaintext -d '{
   "max_results": 10
 }' localhost:50051 authorization.AuthorizationControl.GetPolicyStoreAuditLog
 ```
+### Using Postman
 
-### Usar Postman
+1. Import the collection: `postman/VerifiedPermissions.postman_collection.json`
+2. Set environment variable `GRPC_URL` to `localhost:50051`
+3. Run requests in the "Policy Stores" folder
 
-1. Importar la colección: `postman/VerifiedPermissions.postman_collection.json`
-2. Establecer la variable de entorno `GRPC_URL` a `localhost:50051`
-3. Ejecutar las peticiones en la carpeta "Policy Stores"
+## 🧪 Testing
 
-## 🧪 Pruebas
-
-### Ejecutar todas las pruebas
+### Run All Tests
 
 ```bash
-# Tests unitarios
+# Unit tests
 make test-unit
 
-# Tests de integración
+# Integration tests
 make test-integration
 
-# Todas las pruebas con cobertura
+# All tests with coverage
 make test-all
 
-# Modo watch (re-ejecuta al detectar cambios)
+# Watch mode (re-run on changes)
 make test-watch
 ```
+### Test Categories
 
-### Categorías de pruebas
+- **Unit Tests** - Domain events, repository operations, policies
+- **Integration Tests** - End-to-end workflows, database operations
+- **Performance Tests** - Authorization throughput, query optimization
+- **Security Tests** - Policy validation, input sanitization
 
-- **Unit Tests** - Eventos de dominio, operaciones del repositorio, políticas
-- **Integration Tests** - Flujos end-to-end, operaciones de base de datos
-- **Performance Tests** - Rendimiento de comprobaciones de autorización, optimización de consultas
-- **Security Tests** - Validación de políticas, saneamiento de entradas
+## 🛠 Development
 
-## 🛠 Desarrollo
+Hodei Verified Permissions provides a comprehensive set of Makefile commands to streamline development, testing, and deployment workflows. All commands are designed to be idempotent and safe to run multiple times.
 
-Hodei Verified Permissions proporciona un conjunto completo de comandos Makefile para agilizar desarrollo, pruebas y despliegue. Todos los comandos son idempotentes y seguros de ejecutar varias veces.
+### Development Workflow
 
-### Flujo de desarrollo
 
-| Comando | Descripción | Cuándo usar | Salida de ejemplo |
-|---------|-------------|------------|-------------------|
-| `make dev` | Inicia todos los servicios (servidor gRPC + frontend Next.js) en modo desarrollo | Configuración inicial o desarrollo full-stack | Servicios en localhost:50051 (gRPC) y localhost:3000 (web) |
-| `make build` | Compila los componentes Rust en modo debug | Tras cambios, antes de probar | Salida de compilación con tiempos |
-| `make clean` | Elimina artefactos de compilación y caches | Limpiar workspace, resolver problemas de build | Elimina target/, node_modules/.cache, etc. |
-| `make format` | Formatea Rust y TypeScript | Antes de commits, consistencia de estilo | Archivos formateados según guías |
-| `make lint` | Ejecuta linters para Rust y TypeScript | Revisión de calidad de código, CI/CD | Reporta warnings y errores |
-| `make check` | Comprobaciones básicas y type checking | Feedback rápido en desarrollo | Compilación sin build completo |
+| Command      | Description                                                             | When to Use                                | Example Output                                                        |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
+| `make dev`   | Start all services (gRPC server + Next.js frontend) in development mode | First-time setup or full-stack development | Services available at localhost:50051 (gRPC) and localhost:3000 (web) |
+| `make build` | Build all Rust components in debug mode                                 | After code changes, before testing         | Compilation output with build times                                   |
+| `make clean` | Remove all build artifacts and caches                                   | Clean workspace, resolve build issues      | Removes target/, node_modules/.cache, etc.                            |
 
-### Gestión de base de datos
+## 📜 Conventional Commits
 
-| Comando | Descripción | Cuándo usar | Notas |
-|---------|-------------|------------|-------|
-| `make db-init` | Inicializa esquema y datos semilla | Primera instalación o después de limpiar | Crea tablas, índices y datos iniciales |
-| `make db-reset` | Resetea la base de datos a un estado limpio | Pruebas, reinicio de desarrollo | **ADVERTENCIA: Borra todos los datos** |
-| `make db-migrate` | Ejecuta migraciones pendientes | Actualizaciones de esquema | Seguro de ejecutar varias veces |
-| `make db-status` | Muestra conexión y estado del esquema | Troubleshooting | Muestra estado actual de BD |
+We follow the Conventional Commits specification to keep a clear, machine-readable history.
 
-### Operaciones del servidor
+Format:
 
-| Comando | Descripción | Cuándo usar | Puerto |
-|---------|-------------|------------|--------|
-| `make server` | Inicia el servidor gRPC en modo desarrollo | Desarrollo de API, pruebas | 50051 |
-| `make server-release` | Inicia servidor en modo release | Pruebas de rendimiento, entorno similar a prod | 50051 |
-| `make server-logs` | Ver logs en tiempo real del servidor | Debugging, monitoreo | Streams de logs |
+- type(scope): short description
+- Optional body and footer.
+- Common types: feat, fix, docs, refactor, perf, test, chore, ci
 
-### Interfaz web
+Examples:
 
-| Comando | Descripción | Cuándo usar | Puerto |
-|---------|-------------|------------|--------|
-| `make web` | Inicia Next.js en modo desarrollo | Desarrollo frontend | 3000 |
-| `make web-build` | Build de Next.js para producción | Preparación para despliegue | Build optimizado |
-| `make web-start` | Inicia servidor Next.js en producción | Despliegue | 3000 |
+- feat(api): add policy evaluation endpoint
+- fix(db): handle nullable timestamps in audit events
+- docs(readme): add Conventional Commits section (EN/ES)
+- chore(deps): bump tokio to 1.28.0
 
-### Suite de pruebas
+Recommended usage:
 
-| Comando | Descripción | Cuándo usar | Duración |
-|---------|-------------|------------|----------|
-| `make test` | Ejecuta tests unitarios e integración | Feedback de desarrollo | ~30-60s |
-| `make test-unit` | Solo tests unitarios | Feedback rápido, sin DB | ~5-10s |
-| `make test-integration` | Solo tests de integración | Funciones dependientes de BD | ~20-40s |
-| `make test-all` | Todos los tests con cobertura | CI/CD, validación de release | ~2-5min |
-| `make test-watch` | Modo watch para re-ejecutar tests | Desarrollo continuo | Permanente |
-| `make benchmark` | Ejecuta benchmarks de rendimiento | Validación de rendimiento | ~1-2min |
+1. Write a concise subject line (max ~72 chars).
+2. Use the imperative mood: "add", "fix", "remove".
+3. Use scope to indicate the area (e.g. server, web, docs).
+4. Include a body for context and a footer for breaking changes or issue references.
 
-#### Tests especializados
+Conventional Commit to apply for these README changes:
 
-| Comando | Descripción | Requisitos | Propósito |
-|---------|-------------|-----------|----------|
-| `make test-e2e-sqlite` | E2E con SQLite | Ninguno | Pruebas por defecto |
-| `make test-e2e-postgres` | E2E con PostgreSQL | Contenedor PostgreSQL en ejecución | Validación multi-DB |
-| `make test-e2e-surrealdb` | E2E con SurrealDB | Contenedor SurrealDB en ejecución | Validación multi-DB |
-| `make test-e2e-all` | E2E en todas las DBs | Todos los contenedores | Validación completa |
-| `make test-identity-providers` | Integración con IdPs | Keycloak/Zitadel | Pruebas de integración de identidad |
+- docs(readme): add Conventional Commits section (EN/ES)
 
-### Herramientas gRPC
+|---------|-------------|-------------|------|
+| `make web` | Start Next.js development server | Frontend development | 3000 |
+| `make web-build` | Build Next.js for production | Deployment preparation | Generates optimized build |
+| `make web-start` | Start production Next.js server | Production deployment | 3000 |
 
-| Comando | Descripción | Cuándo usar | Salida |
-|---------|-------------|-----------|--------|
-| `make grpc-reflect` | Lista servicios y métodos gRPC disponibles | Exploración API, documentación | Definición de servicios |
-| `make grpc-test` | Prueba conectividad gRPC básica | Health checks, troubleshooting | Estado de conexión |
-| `make grpc-health` | Comprueba salud del servidor vía gRPC | Monitorización | Estado de salud |
+### Testing Suite
 
-### Documentación
 
-| Comando | Descripción | Cuándo usar | Salida |
-|---------|-------------|-----------|--------|
-| `make docs` | Genera documentación Rust | Referencia API, docs offline | HTML en target/doc/ |
-| `make docs-serve` | Sirve documentación localmente | Revisión de docs | Servidor local |
+| Command                 | Description                          | When to Use                   | Duration       |
+| ----------------------- | ------------------------------------ | ----------------------------- | -------------- |
+| `make test`             | Run unit and integration tests       | Development feedback          | ~30-60 seconds |
+| `make test-unit`        | Run only unit tests                  | Fast feedback, no DB required | ~5-10 seconds  |
+| `make test-integration` | Run only integration tests           | Database-dependent features   | ~20-40 seconds |
+| `make test-all`         | Run all tests with coverage          | CI/CD, release validation     | ~2-5 minutes   |
+| `make test-watch`       | Watch mode - re-run tests on changes | Continuous development        | Ongoing        |
+| `make benchmark`        | Run performance benchmarks           | Performance validation        | ~1-2 minutes   |
 
-### Operaciones Docker
+#### Specialized Testing
 
-| Comando | Descripción | Cuándo usar | Requisitos |
-|---------|-------------|-----------|------------|
-| `make docker-build` | Construye la imagen Docker | Despliegue en contenedor | Dockerfile presente |
-| `make docker-run` | Ejecuta el contenedor construido | Pruebas locales | Imagen construida |
 
-### Comandos utilitarios
+| Command                        | Description                         | Prerequisites                | Purpose                  |
+| ------------------------------ | ----------------------------------- | ---------------------------- | ------------------------ |
+| `make test-e2e-sqlite`         | End-to-end tests with SQLite        | None                         | Default DB testing       |
+| `make test-e2e-postgres`       | End-to-end tests with PostgreSQL    | PostgreSQL container running | Multi-DB validation      |
+| `make test-e2e-surrealdb`      | End-to-end tests with SurrealDB     | SurrealDB container running  | Multi-DB validation      |
+| `make test-e2e-all`            | All E2E tests across databases      | All DB containers running    | Comprehensive validation |
+| `make test-identity-providers` | Identity provider integration tests | Keycloak/Zitadel containers  | IdP integration          |
 
-| Comando | Descripción | Cuándo usar | Salida |
-|---------|-------------|-----------|--------|
-| `make status` | Muestra estado de todos los servicios | Panorama general, troubleshooting | Estados y puertos |
-| `make stop` | Detiene todos los servicios | Apagado limpio | Mensajes de confirmación |
-| `make restart` | Reinicia todos los servicios | Cambios de configuración | Secuencia de reinicio |
-| `make install-tools` | Instala dependencias de desarrollo | Setup inicial, CI/CD | Logs de instalación |
+### gRPC Tools
 
-### Ejemplos de uso de comandos
 
-#### Sesión de desarrollo
+| Command             | Description                                  | When to Use                      | Output              |
+| ------------------- | -------------------------------------------- | -------------------------------- | ------------------- |
+| `make grpc-reflect` | List all available gRPC services and methods | API exploration, documentation   | Service definitions |
+| `make grpc-test`    | Test gRPC connectivity and basic operations  | Health checks, troubleshooting   | Connection status   |
+| `make grpc-health`  | Check server health via gRPC                 | Monitoring, load balancer checks | Health status       |
+
+### Documentation
+
+
+| Command           | Description                 | When to Use                 | Output                   |
+| ----------------- | --------------------------- | --------------------------- | ------------------------ |
+| `make docs`       | Generate Rust documentation | API reference, offline docs | HTML docs in target/doc/ |
+| `make docs-serve` | Serve documentation locally | Documentation review        | Local web server         |
+
+### Docker Operations
+
+
+| Command             | Description                    | When to Use             | Prerequisites      |
+| ------------------- | ------------------------------ | ----------------------- | ------------------ |
+| `make docker-build` | Build Docker image             | Container deployment    | Dockerfile present |
+| `make docker-run`   | Run container from built image | Local container testing | Built image        |
+
+### Utility Commands
+
+
+| Command              | Description                      | When to Use                      | Output                   |
+| -------------------- | -------------------------------- | -------------------------------- | ------------------------ |
+| `make status`        | Show status of all services      | System overview, troubleshooting | Service states and ports |
+| `make stop`          | Stop all running services        | Clean shutdown, resource cleanup | Confirmation messages    |
+| `make restart`       | Restart all services             | Configuration changes            | Service restart sequence |
+| `make install-tools` | Install development dependencies | Initial setup, CI/CD             | Tool installation logs   |
+
+### Command Usage Examples
+
+#### Development Session
+
 ```bash
-# Entorno de desarrollo limpio
+# Start fresh development environment
 make clean && make db-reset && make dev
 
-# Ejecutar tests continuamente
+# Run tests continuously while developing
 make test-watch
 
-# Revisar calidad antes del commit
+# Check code quality before commit
 make format && make lint && make test-unit
 ```
+#### Production Deployment
 
-#### Despliegue a producción
 ```bash
-# Compilar y probar release
+# Build and test release
 make build-release && make test-all
 
-# Desplegar con Docker
+# Deploy with Docker
 make docker-build && make docker-run
 ```
+#### Troubleshooting
 
-#### Solución de problemas
 ```bash
-# Ver estado del sistema
+# Check system status
 make status
 
-# Ver logs del servidor para depuración
+# View server logs for debugging
 make server-logs
 
-# Reset total
+# Reset everything if issues
 make stop && make clean && make db-reset
 ```
-
-## 📊 Monitorización
+## 📊 Monitoring
 
 ### Health Check
 
 ```bash
-# Comprobar salud del servicio
+# Check service health
 curl http://localhost:3000/api/health
 ```
-
-### Métricas
+### Metrics
 
 ```bash
-# Ver métricas
+# View metrics
 make metrics
 
-# O vía API
+# Or via API
 curl http://localhost:3000/api/metrics
 ```
+### Audit Log
 
-### Registro de auditoría
+Access the web interface at http://localhost:3000 and navigate to any policy store to view its audit log.
 
-Accede a la interfaz web en http://localhost:3000 y navega a cualquier policy store para ver su registro de auditoría.
+**Filter by**:
 
-**Filtrar por**:
-- Tipo de evento (ApiCalled, PolicyStoreCreated, etc.)
-- Rango de fechas
-- ID del policy store
-- Máximo de resultados
+- Event type (ApiCalled, PolicyStoreCreated, etc.)
+- Date range
+- Policy store ID
+- Maximum results
 
-**Exportar** registros en formato JSON para análisis externo.
+**Export** audit logs in JSON format for external analysis.
 
-## 🔒 Seguridad
+## 🔒 Security
 
-### Autenticación y autorización
-- Soporte de tokens JWT para solicitudes de autorización
-- Control de acceso basado en políticas con Cedar
-- Políticas basadas en roles y atributos
+### Authentication & Authorization
 
-### Seguridad del registro de auditoría
-- Entregas de webhooks firmadas con HMAC
-- Registros de eventos inmutables
-- Verificación criptográfica de integridad
-- Rastreo completo de operaciones
+- JWT token support for authorization requests
+- Policy-based access control with Cedar
+- Role-based and attribute-based policies
 
-### Protección de datos
-- Validación y saneamiento de entradas
-- Prevención de inyección SQL
-- Sandbox para políticas (motor Cedar)
-- Manejo de errores seguro (sin datos sensibles en mensajes)
+### Audit Security
 
-## 📈 Rendimiento
+- HMAC-signed webhook deliveries
+- Immutable event records
+- Cryptographic integrity verification
+- Complete operation tracking
+
+### Data Protection
+
+- Input validation and sanitization
+- SQL injection prevention
+- Policy sandboxing (Cedar engine)
+- Secure error handling (no sensitive data in errors)
+
+## 📈 Performance
 
 ### Benchmarks
 
 ```bash
 make benchmark
 ```
+**Typical Performance**:
 
-**Rendimiento típico**:
-- Comprobaciones de autorización: **< 5ms** por solicitud
-- CRUD de policy store: **< 10ms** por operación
-- Consultas de registro de auditoría: **< 50ms** para 1000 eventos
-- Autorización en lote: **50K+ solicitudes/segundo**
+- Authorization checks: **< 5ms** per request
+- Policy store CRUD: **< 10ms** per operation
+- Audit log queries: **< 50ms** for 1000 events
+- Batch authorization: **50K+ requests/second**
 
-### Optimización
+### Optimization
 
-- **I/O asíncrono** - Operaciones no bloqueantes
-- **Pool de conexiones** - Acceso eficiente a BD
-- **Batching de eventos** - Menos escrituras a BD
-- **Optimización de consultas** - Índices en registros de auditoría
-- **Cache en memoria** - Caché de políticas calientes
+- **Async I/O** - Non-blocking operations
+- **Connection pooling** - Efficient database access
+- **Event batching** - Reduced database writes
+- **Query optimization** - Indexed audit logs
+- **In-memory cache** - Hot policy caching
 
-## 🐳 Despliegue
+## 🐳 Deployment
 
 ### Docker
 
 ```bash
-# Construir imagen
+# Build image
 make docker-build
 
-# Ejecutar contenedor
+# Run container
 make docker-run
 
-# O con docker-compose
+# Or with docker-compose
 docker-compose up -d
 ```
-
-### Producción
+### Production
 
 ```bash
 # Build release
 make build-release
 
-# Ejecutar con variables de entorno
+# Run with environment variables
 DATABASE_URL=sqlite:///data/prod.db \
   API_URL=https://api.example.com \
   make server-release
 ```
-
 ### Kubernetes
 
 ```yaml
@@ -470,50 +780,50 @@ spec:
         - name: DATABASE_URL
           value: "sqlite:///data/prod.db"
 ```
+## 🤝 Contributing
 
-## 🤝 Contribuir
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-¡Se aceptan contribuciones! Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para las directrices.
+### Development Workflow
 
-### Flujo de contribución
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Write** tests for your changes
+4. **Commit** your changes: `git commit -m 'feat: add amazing feature'`
+5. **Push** to the branch: `git push origin feature/amazing-feature`
+6. **Open** a Pull Request
 
-1. **Fork** del repositorio
-2. **Crear** una rama de característica: `git checkout -b feature/amazing-feature`
-3. **Escribir** tests para los cambios
-4. **Commit** de los cambios: `git commit -m 'feat: add amazing feature'`
-5. **Push** a la rama: `git push origin feature/amazing-feature`
-6. **Abrir** un Pull Request
+### Code Standards
 
-### Estándares de código
+- Follow **Rust** and **TypeScript** style guides
+- Write **comprehensive tests** for new features
+- Update **documentation** for API changes
+- Use **Conventional Commits** for commit messages
+- Ensure **all tests pass** before submitting
 
-- Seguir guías de estilo para **Rust** y **TypeScript**
-- Escribir **tests completos** para nuevas funcionalidades
-- Actualizar **documentación** ante cambios de API
-- Usar **Conventional Commits**
-- Asegurar que **todos los tests pasen**
+## 📚 Documentation
 
-## 📚 Documentación
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - Complete API reference
+- **[Audit Trail Guide](verified-permissions/docs/AUDIT_TRAIL_IMPLEMENTATION.md)** - Event sourcing system
+- **[Architecture Guide](verified-permissions/docs/)** - Hexagonal architecture details
+- **[Cedar Policies](https://cedar-policy.github.io/)** - Policy language reference
 
-- **[Documentación API](docs/API_DOCUMENTATION.md)** - Referencia completa
-- **[Guía de registro de auditoría](verified-permissions/docs/AUDIT_TRAIL_IMPLEMENTATION.md)** - Sistema de event sourcing
-- **[Guía de arquitectura](verified-permissions/docs/)** - Detalles de la arquitectura hexagonal
-- **[Políticas Cedar](https://cedar-policy.github.io/)** - Referencia del lenguaje de políticas
+## 📄 License
 
-## 📄 Licencia
+This project is dual-licensed under either:
 
-Este proyecto está dual-licenciado bajo:
-- **MIT License** - Ver [LICENSE-MIT](LICENSE-MIT)
-- **Apache License 2.0** - Ver [LICENSE-APACHE](LICENSE-APACHE)
+- **MIT License** - See [LICENSE-MIT](LICENSE-MIT)
+- **Apache License 2.0** - See [LICENSE-APACHE](LICENSE-APACHE)
 
-## 🙏 Agradecimientos
+## 🙏 Acknowledgments
 
-- [Cedar Policy](https://cedar-policy.github.io/) - Lenguaje de políticas
-- [AWS Verified Permissions](https://aws.amazon.com/verified-permissions/) - Inspiración
-- [Rust](https://www.rust-lang.org/) - Programación de sistemas
-- [Tonic](https://github.com/hyperium/tonic) - Framework gRPC
-- [Next.js](https://nextjs.org/) - Framework React
+- [Cedar Policy](https://cedar-policy.github.io/) - Policy language
+- [AWS Verified Permissions](https://aws.amazon.com/verified-permissions/) - Inspiration
+- [Rust](https://www.rust-lang.org/) - Systems programming
+- [Tonic](https://github.com/hyperium/tonic) - gRPC framework
+- [Next.js](https://nextjs.org/) - React framework
 
-## 📞 Soporte
+## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/rubentxu/hodei-verified-permissions/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/rubentxu/hodei-verified-permissions/discussions)
@@ -524,12 +834,11 @@ Este proyecto está dual-licenciado bajo:
 <div align="center">
 
 **[Website](https://hodei.dev)** •
-**[Documentación](docs/)** •
-**[Ejemplos](examples/)** •
+**[Documentation](docs/)** •
+**[Examples](examples/)** •
 **[Blog](https://blog.hodei.dev)** •
 **[Twitter](https://twitter.com/hodeidev)**
 
-Hecho con ❤️ por el equipo de Hodei
+Made with ❤️ by the Hodei team
 
 </div>
-
