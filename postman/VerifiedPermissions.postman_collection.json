@@ -1,0 +1,546 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Hodei Verified Permissions - gRPC",
+		"description": "Complete gRPC collection for Hodei Verified Permissions API\n\n## Setup Instructions\n\n1. **Install Postman gRPC Support**\n   - Update to Postman v10+ for gRPC support\n\n2. **Configure gRPC Server**\n   - URL: `localhost:50051`\n   - Protocol: gRPC\n   - Enable reflection: Yes\n\n3. **Import Collection**\n   - Import this JSON file into Postman\n\n4. **Environment Variables**\n   ```\n   GRPC_URL: localhost:50051\n   ```\n\n## Usage Examples\n\n### Policy Store Operations\n1. CreatePolicyStore - Create a new policy store\n2. GetPolicyStore - Retrieve policy store details\n3. ListPolicyStores - List all policy stores\n4. UpdatePolicyStore - Update policy store metadata\n5. DeletePolicyStore - Delete a policy store\n\n### Schema Operations\n6. PutSchema - Add or update schema\n7. GetSchema - Retrieve schema\n\n### Policy Management\n8. CreatePolicy - Create a new policy\n9. GetPolicy - Get policy details\n10. ListPolicies - List all policies\n11. UpdatePolicy - Update existing policy\n12. DeletePolicy - Remove policy\n\n### Audit Trail\n13. GetPolicyStoreAuditLog - Query audit events\n\n## Example Flow\n\n```bash\n# 1. Create a policy store\ngrpcurl -plaintext -d '{\n  \"name\": \"Production Store\",\n  \"description\": \"Main production policy store\"\n}' localhost:50051 authorization.AuthorizationControl.CreatePolicyStore\n\n# 2. Get the policy store\ngrpcurl -plaintext -d '{\n  \"policy_store_id\": \"<ID_FROM_STEP_1>\"\n}' localhost:50051 authorization.AuthorizationControl.GetPolicyStore\n\n# 3. Query audit log\ngrpcurl -plaintext -d '{\n  \"policy_store_id\": \"<ID_FROM_STEP_1>\",\n  \"max_results\": 10\n}' localhost:50051 authorization.AuthorizationControl.GetPolicyStoreAuditLog\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Policy Stores",
+			"item": [
+				{
+					"name": "Create Policy Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Production Store\",\n  \"description\": \"Main production policy store\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/CreatePolicyStore",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"CreatePolicyStore"
+							]
+						},
+						"description": "Creates a new policy store with name and description"
+					}
+				},
+				{
+					"name": "Get Policy Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/GetPolicyStore",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"GetPolicyStore"
+							]
+						},
+						"description": "Retrieves detailed information about a specific policy store"
+					}
+				},
+				{
+					"name": "List Policy Stores",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/ListPolicyStores",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"ListPolicyStores"
+							]
+						},
+						"description": "Lists all policy stores in the system"
+					}
+				},
+				{
+					"name": "Update Policy Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"name\": \"Updated Store Name\",\n  \"description\": \"Updated description\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/UpdatePolicyStore",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"UpdatePolicyStore"
+							]
+						},
+						"description": "Updates policy store metadata (name and/or description)"
+					}
+				},
+				{
+					"name": "Delete Policy Store",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/DeletePolicyStore",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"DeletePolicyStore"
+							]
+						},
+						"description": "Deletes a policy store and all its content"
+					}
+				}
+			],
+			"description": "CRUD operations for policy stores"
+		},
+		{
+			"name": "Schema",
+			"item": [
+				{
+					"name": "Put Schema",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"schema\": \"{\\n  \\\"entities\\\": {\\n    \\\"User\\\": {\\n      \\\"shape\\\": {\\n        \\\"type\\\": \\\"record\\\",\\n        \\\"attributes\\\": {\\n          \\\"id\\\": {\\n            \\\"type\\\": \\\"String\\\"\\n          },\\n          \\\"role\\\": {\\n            \\\"type\\\": \\\"String\\\"\\n          }\\n        }\\n      }\\n    }\\n  }\\n}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/PutSchema",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"PutSchema"
+							]
+						},
+						"description": "Creates or updates the schema for a policy store"
+					}
+				},
+				{
+					"name": "Get Schema",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/GetSchema",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"GetSchema"
+							]
+						},
+						"description": "Retrieves the schema for a policy store"
+					}
+				}
+			],
+			"description": "Schema management operations"
+		},
+		{
+			"name": "Policies",
+			"item": [
+				{
+					"name": "Create Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"policy_id\": \"policy_001\",\n  \"statement\": \"permit(principal, action, resource);\",\n  \"description\": \"Allow all operations\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/CreatePolicy",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"CreatePolicy"
+							]
+						},
+						"description": "Creates a new Cedar policy in the policy store"
+					}
+				},
+				{
+					"name": "Get Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"policy_id\": \"policy_001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/GetPolicy",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"GetPolicy"
+							]
+						},
+						"description": "Retrieves a specific policy by ID"
+					}
+				},
+				{
+					"name": "List Policies",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/ListPolicies",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"ListPolicies"
+							]
+						},
+						"description": "Lists all policies in a policy store"
+					}
+				},
+				{
+					"name": "Update Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"policy_id\": \"policy_001\",\n  \"statement\": \"permit(principal, action, resource) when { context.time in daytime };\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/UpdatePolicy",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"UpdatePolicy"
+							]
+						},
+						"description": "Updates an existing policy"
+					}
+				},
+				{
+					"name": "Delete Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"policy_id\": \"policy_001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/DeletePolicy",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"DeletePolicy"
+							]
+						},
+						"description": "Deletes a policy from the policy store"
+					}
+				}
+			],
+			"description": "Policy CRUD operations"
+		},
+		{
+			"name": "Audit Trail",
+			"item": [
+				{
+					"name": "Get Policy Store Audit Log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"max_results\": 50,\n  \"event_types\": [\"ApiCalled\", \"ApiCompleted\", \"PolicyStoreCreated\", \"PolicyStoreUpdated\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationControl/GetPolicyStoreAuditLog",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationControl",
+								"GetPolicyStoreAuditLog"
+							]
+						},
+						"description": "Retrieves audit log entries for a policy store with optional filtering"
+					}
+				}
+			],
+			"description": "Audit trail operations"
+		},
+		{
+			"name": "Authorization",
+			"item": [
+				{
+					"name": "Is Authorized",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"principal\": \"User::\\\"alice\\\"\",\n  \"action\": \"Action::\\\"viewDocument\\\"\",\n  \"resource\": \"Document::\\\"doc123\\\"\",\n  \"context\": \"{}\",\n  \"entities\": []\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationData/IsAuthorized",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationData",
+								"IsAuthorized"
+							]
+						},
+						"description": "Evaluates an authorization request"
+					}
+				},
+				{
+					"name": "Batch Is Authorized",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"policy_store_id\": \"{{POLICY_STORE_ID}}\",\n  \"requests\": [\n    {\n      \"principal\": \"User::\\\"alice\\\"\",\n      \"action\": \"Action::\\\"viewDocument\\\"\",\n      \"resource\": \"Document::\\\"doc123\\\"\"\n    },\n    {\n      \"principal\": \"User::\\\"bob\\\"\",\n      \"action\": \"Action::\\\"deleteDocument\\\"\",\n      \"resource\": \"Document::\\\"doc456\\\"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{GRPC_URL}}/authorization.AuthorizationData/BatchIsAuthorized",
+							"host": [
+								"{{GRPC_URL}}"
+							],
+							"path": [
+								"authorization.AuthorizationData",
+								"BatchIsAuthorized"
+							]
+						},
+						"description": "Evaluates multiple authorization requests in batch"
+					}
+				}
+			],
+			"description": "Authorization evaluation operations"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set default policy store ID if not set",
+					"if (!pm.environment.get('POLICY_STORE_ID')) {",
+					"    pm.environment.set('POLICY_STORE_ID', 'ps_default_123');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "GRPC_URL",
+			"value": "localhost:50051",
+			"type": "default"
+		},
+		{
+			"key": "POLICY_STORE_ID",
+			"value": "",
+			"type": "default"
+		}
+	]
+}
