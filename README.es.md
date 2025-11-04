@@ -32,39 +32,71 @@
 
 ## 📊 Rendimiento
 
-| Operación | Latencia | Rendimiento |
-|-----------|---------|------------|
-| **IsAuthorized** (en caché) | ~100μs | >100K ops/s |
-| **BatchIsAuthorized** (30 peticiones) | ~3ms | >10K batch/s |
-| **CreatePolicy** | ~1-2ms | ~1K ops/s |
+
+| Operación                            | Latencia | Rendimiento  |
+| ------------------------------------- | -------- | ------------ |
+| **IsAuthorized** (en caché)          | ~100μs  | >100K ops/s  |
+| **BatchIsAuthorized** (30 peticiones) | ~3ms     | >10K batch/s |
+| **CreatePolicy**                      | ~1-2ms   | ~1K ops/s    |
 
 ## 🏗️ Arquitectura
 
 ```mermaid
-graph TB
-    subgraph "Servidor gRPC"
-        Client[Petición Cliente] --> Metrics[Capa de Métricas<br/>Monitoreo sin bloqueos]
-        Metrics --> AuthService[AuthorizationService<br/>latencia ~100μs]
-        AuthService --> Cache[CacheManager<br/>En Memoria]
-        Cache --> ReloadTask[Tarea de Recarga en Segundo Plano<br/>Cada 5 minutos]
-        Cache --> PolicyCache[PolicyStoreCache<br/>Protegido con RwLock]
+graph TD
+    subgraph "Capa Frontend"
+        A[Aplicación Web Next.js]
+        A1[Dashboard]
+        A2[Playground]
+        A3[Visor de Auditoría]
     end
-    
-    subgraph "Capa de Almacenamiento"
-        PolicyCache --> Repository[PolicyRepository<br/>Trait]
-        Repository --> SQLite[(SQLite<br/>✅ Producción)]
-        Repository --> Postgres[(PostgreSQL<br/>✅ Producción)]
-        Repository --> SurrealDB[(SurrealDB<br/>✅ Producción)]
+
+    subgraph "Capa API"
+        B[Rutas API de Next.js]
     end
-    
-    subgraph "Motor Cedar"
-        AuthService --> Cedar[Motor de Políticas Cedar<br/>Compatible con AWS]
+
+    subgraph "Capa Backend"
+        C[Servidor gRPC Tonic]
+        D[AuthorizationControlService<br/>Operaciones CRUD]
+        E[AuthorizationDataService<br/>Verificaciones de Autorización]
+        F[Interceptor de Auditoría<br/>Publicación de Eventos]
     end
-    
-    style AuthService fill:#90EE90
-    style Cache fill:#87CEEB
-    style Cedar fill:#FFD700
+
+    subgraph "Capa Infraestructura"
+        G[Capa de Repositorio<br/>SQLite/PostgreSQL]
+        H[Infraestructura de Eventos<br/>Bus de Eventos & Almacén]
+        I[Motor de Políticas Cedar<br/>Evaluación de Políticas]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+    D --> G
+    E --> G
+    F --> H
+    G --> I
+    H --> I
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#fff3e0
+    style G fill:#fce4ec
+    style H fill:#fce4ec
+    style I fill:#fce4ec
 ```
+
+### Componentes Clave
+
+- **Frontend (Next.js)**: Interfaz web con dashboard, playground y visor de auditoría
+- **Rutas API**: Funciones serverless que manejan peticiones HTTP y proxy a gRPC
+- **Servidor gRPC (Tonic)**: Backend de alto rendimiento con tres servicios principales
+- **Capa de Repositorio**: Persistencia de datos usando SQLx con soporte SQLite/PostgreSQL
+- **Infraestructura de Eventos**: Registro de auditoría y publicación de webhooks
+- **Motor de Políticas Cedar**: Lógica de autorización y evaluación de políticas
 
 ## 🚀 Inicio Rápido
 
@@ -136,7 +168,7 @@ sequenceDiagram
     Client->>SDK: is_authorized(principal, action, resource)
     SDK->>Server: Petición gRPC
     Server->>Cache: Verificar Caché PolicyStore
-    
+  
     alt Acierto de Caché
         Cache-->>Server: Devolver Políticas
     else Fallo de Caché
@@ -144,12 +176,12 @@ sequenceDiagram
         DB-->>Server: Devolver Políticas
         Server->>Cache: Actualizar Caché
     end
-    
+  
     Server->>Cedar: Evaluar(políticas, petición)
     Cedar-->>Server: Decisión (Allow/Deny)
     Server-->>SDK: Respuesta gRPC
     SDK-->>Client: Decisión
-    
+  
     Note over Server,Cache: ~100μs con caché
     Note over Server,DB: ~1-2ms sin caché
 ```
@@ -341,6 +373,5 @@ $ make dev-test               # Test de conexión gRPC
 Para ejecutar tests:
 $ cargo test --lib            # Tests unitarios
 $ cargo test --test '*'       # Tests de integración
-
 
 **Construido con ❤️ usando Rust y Cedar**
