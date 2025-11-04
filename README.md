@@ -39,27 +39,27 @@
 ```mermaid
 graph TD
     subgraph "Frontend Layer"
-        A[Next.js Web App]
-        A1[Dashboard]
-        A2[Playground]
-        A3[Audit Viewer]
+        A["Next.js Web App"]
+        A1["Dashboard"]
+        A2["Playground"]
+        A3["Audit Viewer"]
     end
 
     subgraph "API Layer"
-        B[Next.js API Routes]
+        B["Next.js API Routes"]
     end
 
     subgraph "Backend Layer"
-        C[gRPC Server (Tonic)]
-        D[AuthorizationControlService<br/>CRUD Operations]
-        E[AuthorizationDataService<br/>Authorization Checks]
-        F[Audit Interceptor<br/>Event Publishing]
+        C["gRPC Server Tonic"]
+        D["AuthorizationControlService<br/>CRUD Operations"]
+        E["AuthorizationDataService<br/>Authorization Checks"]
+        F["Audit Interceptor<br/>Event Publishing"]
     end
 
     subgraph "Infrastructure Layer"
-        G[Repository Layer<br/>SQLite/PostgreSQL]
-        H[Event Infrastructure<br/>Event Bus & Store]
-        I[Cedar Policy Engine<br/>Policy Evaluation]
+        G["Repository Layer<br/>SQLite/PostgreSQL"]
+        H["Event Infrastructure<br/>Event Bus & Store"]
+        I["Cedar Policy Engine<br/>Policy Evaluation"]
     end
 
     A --> B
