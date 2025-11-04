@@ -520,7 +520,7 @@ make test-watch
 
 Hodei Verified Permissions provides a comprehensive set of Makefile commands to streamline development, testing, and deployment workflows. All commands are designed to be idempotent and safe to run multiple times.
 
-### Development Workflow
+### Flujo de Desarrollo
 
 
 | Command      | Description                                                             | When to Use                                | Example Output                                                        |
@@ -663,7 +663,7 @@ make stop && make clean && make db-reset
 # Check service health
 curl http://localhost:3000/api/health
 ```
-### Metrics
+### Métricas
 
 ```bash
 # View metrics
@@ -685,7 +685,7 @@ Access the web interface at http://localhost:3000 and navigate to any policy sto
 
 **Export** audit logs in JSON format for external analysis.
 
-## 🔒 Security
+## 🔒 Seguridad
 
 ### Authentication & Authorization
 
@@ -707,7 +707,7 @@ Access the web interface at http://localhost:3000 and navigate to any policy sto
 - Policy sandboxing (Cedar engine)
 - Secure error handling (no sensitive data in errors)
 
-## 📈 Performance
+## 📈 Rendimiento
 
 ### Benchmarks
 
@@ -729,7 +729,7 @@ make benchmark
 - **Query optimization** - Indexed audit logs
 - **In-memory cache** - Hot policy caching
 
-## 🐳 Deployment
+## 🐳 Despliegue
 
 ### Docker
 
@@ -780,11 +780,11 @@ spec:
         - name: DATABASE_URL
           value: "sqlite:///data/prod.db"
 ```
-## 🤝 Contributing
+## 🤝 Contribuciones
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Development Workflow
+### Flujo de Desarrollo
 
 1. **Fork** the repository
 2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
@@ -793,7 +793,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 5. **Push** to the branch: `git push origin feature/amazing-feature`
 6. **Open** a Pull Request
 
-### Code Standards
+### Estándares de Código
 
 - Follow **Rust** and **TypeScript** style guides
 - Write **comprehensive tests** for new features
@@ -801,14 +801,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - Use **Conventional Commits** for commit messages
 - Ensure **all tests pass** before submitting
 
-## 📚 Documentation
+## 📚 Documentación
 
 - **[API Documentation](docs/API_DOCUMENTATION.md)** - Complete API reference
 - **[Audit Trail Guide](verified-permissions/docs/AUDIT_TRAIL_IMPLEMENTATION.md)** - Event sourcing system
 - **[Architecture Guide](verified-permissions/docs/)** - Hexagonal architecture details
 - **[Cedar Policies](https://cedar-policy.github.io/)** - Policy language reference
 
-## 📄 License
+## 📄 Licencia
 
 This project is dual-licensed under either:
 
