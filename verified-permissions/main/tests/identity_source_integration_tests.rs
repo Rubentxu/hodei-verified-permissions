@@ -8,7 +8,7 @@ async fn test_identity_source_crud() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
 
     // Create a policy store first
-    let store = repo.create_policy_store(Some("Test Store".to_string()))
+    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .unwrap();
 
@@ -58,7 +58,7 @@ async fn test_identity_source_crud() {
 #[tokio::test]
 async fn test_multiple_identity_sources() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store(Some("Test Store".to_string()))
+    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .unwrap();
 
@@ -86,7 +86,7 @@ async fn test_multiple_identity_sources() {
 #[tokio::test]
 async fn test_identity_source_not_found() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store(Some("Test Store".to_string()))
+    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .unwrap();
 
@@ -98,7 +98,7 @@ async fn test_identity_source_not_found() {
 #[tokio::test]
 async fn test_identity_source_cascade_delete() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store(Some("Test Store".to_string()))
+    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .unwrap();
 

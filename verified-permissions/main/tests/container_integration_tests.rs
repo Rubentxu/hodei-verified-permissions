@@ -69,7 +69,7 @@ async fn test_surreal_repository_with_containers() {
 /// PostgreSQL-specific tests
 async fn postgres_specific_tests(repo: &dyn PolicyRepository) {
     // Test UUID generation
-    let store = repo.create_policy_store(Some("UUID Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "UUID Test".to_string()).await.unwrap();
 
     // PostgreSQL uses UUIDs, so the ID should be a valid UUID
     assert_eq!(store.id.len(), 36); // UUID v4 length
@@ -91,14 +91,14 @@ async fn postgres_specific_tests(repo: &dyn PolicyRepository) {
 /// SurrealDB-specific tests
 async fn surreal_specific_tests(repo: &dyn PolicyRepository) {
     // Test record ID generation
-    let store = repo.create_policy_store(Some("Record ID Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Record ID Test".to_string()).await.unwrap();
 
     // SurrealDB generates unique IDs
     assert!(!store.id.is_empty());
 
     // Test SurrealQL graph-like operations
-    let user_store = repo.create_policy_store(Some("User Store".to_string())).await.unwrap();
-    let admin_store = repo.create_policy_store(Some("Admin Store".to_string())).await.unwrap();
+    let user_store = repo.create_policy_store("Test Store".to_string(), "User Store".to_string()).await.unwrap();
+    let admin_store = repo.create_policy_store("Test Store".to_string(), "Admin Store".to_string()).await.unwrap();
 
     // Both stores should be accessible
     let retrieved_user = repo.get_policy_store(&user_store.id).await.unwrap();
@@ -121,7 +121,7 @@ async fn test_repository_consistency() {
     let sqlite_repo = create_repository(&sqlite_config).await.expect("SQLite repo creation failed");
 
     // Run basic tests to ensure consistency
-    let store = sqlite_repo.create_policy_store(Some("Consistency Test".to_string())).await.unwrap();
+    let store = sqlite_repo.create_policy_store("Test Store".to_string(), "Consistency Test".to_string()).await.unwrap();
     let retrieved = sqlite_repo.get_policy_store(&store.id).await.unwrap();
 
     assert_eq!(retrieved.id, store.id);
@@ -164,7 +164,7 @@ mod cache_integration_tests {
         let auth_service = AuthorizationService::new(cache_manager);
 
         // Create policy store with policy
-        let store = repo.create_policy_store(Some("Integration Test".to_string())).await.unwrap();
+        let store = repo.create_policy_store("Test Store".to_string(), "Integration Test".to_string()).await.unwrap();
 
         let schema = r#"{"": {"entityTypes": {"User": {}, "Document": {}}, "actions": {"view": {}}}}"#;
         repo.put_schema(&store.id, schema.to_string()).await.unwrap();

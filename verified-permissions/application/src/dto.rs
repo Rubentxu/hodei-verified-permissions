@@ -9,13 +9,21 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePolicyStoreRequest {
+    pub name: String,
     pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyStoreResponse {
     pub id: String,
+    pub name: String,
     pub description: Option<String>,
+    pub status: String,
+    pub version: String,
+    pub author: String,
+    pub tags: Vec<String>,
+    pub identity_source_ids: Vec<String>,
+    pub default_identity_source_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

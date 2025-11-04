@@ -1,21 +1,25 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Plus, X } from 'lucide-react';
-import { usePolicyStoreTags, useAllTags } from '@/hooks/usePolicyStores';
+import React, { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, X, Tag } from "lucide-react";
+import { usePolicyStoreTags, useAllTags } from "@/hooks/usePolicyStores";
 
 interface TagManagerProps {
   policyStoreId: string;
   readonly?: boolean;
 }
 
-const TagManager: React.FC<TagManagerProps> = ({ policyStoreId, readonly = false }) => {
-  const { tags, isLoading, addTag, removeTag } = usePolicyStoreTags(policyStoreId);
+const TagManager: React.FC<TagManagerProps> = ({
+  policyStoreId,
+  readonly = false,
+}) => {
+  const { tags, isLoading, addTag, removeTag } =
+    usePolicyStoreTags(policyStoreId);
   const { data: allTags = [] } = useAllTags();
-  const [newTag, setNewTag] = useState('');
+  const [newTag, setNewTag] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -25,12 +29,12 @@ const TagManager: React.FC<TagManagerProps> = ({ policyStoreId, readonly = false
 
     try {
       await addTag(trimmedTag);
-      setNewTag('');
+      setNewTag("");
       setSuggestions([]);
       setShowSuggestions(false);
     } catch (error) {
-      console.error('Failed to add tag:', error);
-      alert('Failed to add tag: ' + (error as Error).message);
+      console.error("Failed to add tag:", error);
+      alert("Failed to add tag: " + (error as Error).message);
     }
   };
 
@@ -38,17 +42,18 @@ const TagManager: React.FC<TagManagerProps> = ({ policyStoreId, readonly = false
     try {
       await removeTag(tag);
     } catch (error) {
-      console.error('Failed to remove tag:', error);
-      alert('Failed to remove tag: ' + (error as Error).message);
+      console.error("Failed to remove tag:", error);
+      alert("Failed to remove tag: " + (error as Error).message);
     }
   };
 
   const handleInputChange = (value: string) => {
     setNewTag(value);
     if (value.trim()) {
-      const filtered = allTags.filter(tag =>
-        tag.toLowerCase().includes(value.toLowerCase()) &&
-        !tags.includes(tag)
+      const filtered = allTags.filter(
+        (tag) =>
+          tag.toLowerCase().includes(value.toLowerCase()) &&
+          !tags.includes(tag),
       );
       setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
       setShowSuggestions(true);
@@ -59,10 +64,10 @@ const TagManager: React.FC<TagManagerProps> = ({ policyStoreId, readonly = false
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleAddTag(newTag);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setShowSuggestions(false);
     }
   };
@@ -76,18 +81,22 @@ const TagManager: React.FC<TagManagerProps> = ({ policyStoreId, readonly = false
       <div className="flex flex-wrap gap-2">
         {tags.length > 0 ? (
           tags.map((tag, index) => (
-            <Badge key={index} variant="outline" className="px-3 py-1">
+            <span
+              key={index}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors"
+            >
+              <Tag className="w-3 h-3" />
               {tag}
               {!readonly && (
                 <button
                   onClick={() => handleRemoveTag(tag)}
-                  className="ml-2 hover:text-red-600"
+                  className="ml-1 p-0.5 hover:bg-blue-200 rounded-full transition-colors"
                   title="Remove tag"
                 >
                   <X className="w-3 h-3" />
                 </button>
               )}
-            </Badge>
+            </span>
           ))
         ) : (
           <span className="text-sm text-gray-500">No tags</span>

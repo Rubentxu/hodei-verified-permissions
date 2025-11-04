@@ -29,7 +29,7 @@ async fn tc_001_policy_store_crud_lifecycle() {
 
     // CREATE
     let store = client
-        .create_policy_store(Some(test_description.clone()))
+        .create_policy_store("Test Store".to_string(), test_description.clone())
         .await
         .expect("Failed to create policy store");
 
@@ -81,7 +81,7 @@ async fn tc_002_policy_store_metrics_real_data() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Metrics Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Metrics Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -114,7 +114,7 @@ async fn tc_003_policy_store_pagination() {
     let mut store_ids = Vec::new();
     for i in 0..10 {
         let store = client
-            .create_policy_store(Some(format!("Store {}", i)))
+            .create_policy_store("Test Store".to_string(), format!("Store {}", i))
             .await
             .unwrap();
         store_ids.push(store.policy_store_id);
@@ -160,7 +160,7 @@ async fn tc_010_audit_log_policy_store_operations() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Audit Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Audit Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -202,7 +202,7 @@ async fn tc_011_audit_log_user_tracking() {
 
     // Create store and perform operations
     let store = client
-        .create_policy_store(Some("User Tracking Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "User Tracking Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -238,7 +238,7 @@ async fn tc_020_tags_add_remove_update() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Tags Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Tags Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -299,11 +299,11 @@ async fn tc_021_tag_autocomplete() {
 
     // Create stores with common tags
     let store1 = client
-        .create_policy_store(Some("Store 1".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store 1".to_string())
         .await
         .unwrap();
     let store2 = client
-        .create_policy_store(Some("Store 2".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store 2".to_string())
         .await
         .unwrap();
 
@@ -345,11 +345,11 @@ async fn tc_022_filter_by_tags_and_status() {
 
     // Create stores with different tags and statuses
     let store1 = client
-        .create_policy_store(Some("Active Store 1".to_string()))
+        .create_policy_store("Test Store".to_string(), "Active Store 1".to_string())
         .await
         .unwrap();
     let store2 = client
-        .create_policy_store(Some("Active Store 2".to_string()))
+        .create_policy_store("Test Store".to_string(), "Active Store 2".to_string())
         .await
         .unwrap();
 
@@ -390,7 +390,7 @@ async fn tc_030_snapshot_create_list_get() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Snapshot Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Snapshot Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -451,7 +451,7 @@ async fn tc_031_snapshot_rollback() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Rollback Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Rollback Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -529,7 +529,7 @@ async fn tc_032_snapshot_delete() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Delete Snapshot Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Delete Snapshot Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -584,7 +584,7 @@ async fn tc_040_batch_create_policies() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Batch Create Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Batch Create Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -651,7 +651,7 @@ async fn tc_041_batch_update_policies() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Batch Update Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Batch Update Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -724,7 +724,7 @@ async fn tc_042_batch_delete_policies() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Batch Delete Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Batch Delete Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -806,7 +806,7 @@ async fn tc_043_batch_operations_error_handling() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Batch Error Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Batch Error Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -871,7 +871,7 @@ async fn tc_050_authorization_basic() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Authorization Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Authorization Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -957,7 +957,7 @@ async fn tc_051_authorization_with_context() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Context Authorization Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Context Authorization Test".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -1021,7 +1021,7 @@ async fn tc_100_integration_all_features() {
 
     // 1. Create policy store with tags
     let store = client
-        .create_policy_store(Some("Integration Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Integration Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 

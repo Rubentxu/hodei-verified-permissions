@@ -102,9 +102,10 @@ impl AuthorizationClient {
     /// Create a new policy store
     pub async fn create_policy_store(
         &self,
+        name: String,
         description: Option<String>,
     ) -> Result<CreatePolicyStoreResponse> {
-        let request = CreatePolicyStoreRequest { description };
+        let request = CreatePolicyStoreRequest { name, description };
 
         let response = self
             .control_client
@@ -658,9 +659,10 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
 
     async fn create_policy_store(
         &self,
+        name: String,
         description: Option<String>,
     ) -> Result<CreatePolicyStoreResponse> {
-        AuthorizationClient::create_policy_store(self, description).await
+        AuthorizationClient::create_policy_store(self, name, description).await
     }
 
     async fn get_policy_store(&self, policy_store_id: &str) -> Result<GetPolicyStoreResponse> {
@@ -675,15 +677,14 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         AuthorizationClient::list_policy_stores(self, max_results, next_token).await
     }
 
-    async fn delete_policy_store(&self, policy_store_id: &str) -> Result<DeletePolicyStoreResponse> {
+    async fn delete_policy_store(
+        &self,
+        policy_store_id: &str,
+    ) -> Result<DeletePolicyStoreResponse> {
         AuthorizationClient::delete_policy_store(self, policy_store_id).await
     }
 
-    async fn put_schema(
-        &self,
-        policy_store_id: &str,
-        schema: &str,
-    ) -> Result<PutSchemaResponse> {
+    async fn put_schema(&self, policy_store_id: &str, schema: &str) -> Result<PutSchemaResponse> {
         AuthorizationClient::put_schema(self, policy_store_id, schema).await
     }
 
@@ -698,7 +699,8 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         statement: &str,
         description: Option<String>,
     ) -> Result<CreatePolicyResponse> {
-        AuthorizationClient::create_policy(self, policy_store_id, policy_id, statement, description).await
+        AuthorizationClient::create_policy(self, policy_store_id, policy_id, statement, description)
+            .await
     }
 
     async fn get_policy(
@@ -720,7 +722,8 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         statement: &str,
         description: Option<String>,
     ) -> Result<UpdatePolicyResponse> {
-        AuthorizationClient::update_policy(self, policy_store_id, policy_id, statement, description).await
+        AuthorizationClient::update_policy(self, policy_store_id, policy_id, statement, description)
+            .await
     }
 
     async fn delete_policy(
@@ -738,7 +741,14 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         claims_mapping: Option<ClaimsMappingConfiguration>,
         description: Option<String>,
     ) -> Result<CreateIdentitySourceResponse> {
-        AuthorizationClient::create_identity_source(self, policy_store_id, configuration, claims_mapping, description).await
+        AuthorizationClient::create_identity_source(
+            self,
+            policy_store_id,
+            configuration,
+            claims_mapping,
+            description,
+        )
+        .await
     }
 
     async fn get_identity_source(
@@ -771,7 +781,14 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         statement: &str,
         description: Option<String>,
     ) -> Result<CreatePolicyTemplateResponse> {
-        AuthorizationClient::create_policy_template(self, policy_store_id, template_id, statement, description).await
+        AuthorizationClient::create_policy_template(
+            self,
+            policy_store_id,
+            template_id,
+            statement,
+            description,
+        )
+        .await
     }
 
     async fn get_policy_template(
@@ -806,7 +823,16 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         resource: &str,
         description: Option<String>,
     ) -> Result<CreatePolicyResponse> {
-        AuthorizationClient::create_policy_from_template(self, policy_store_id, policy_id, template_id, principal, resource, description).await
+        AuthorizationClient::create_policy_from_template(
+            self,
+            policy_store_id,
+            policy_id,
+            template_id,
+            principal,
+            resource,
+            description,
+        )
+        .await
     }
 
     async fn is_authorized_with_token(
@@ -817,7 +843,15 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         action: &str,
         resource: &str,
     ) -> Result<IsAuthorizedResponse> {
-        AuthorizationClient::is_authorized_with_token(self, policy_store_id, identity_source_id, access_token, action, resource).await
+        AuthorizationClient::is_authorized_with_token(
+            self,
+            policy_store_id,
+            identity_source_id,
+            access_token,
+            action,
+            resource,
+        )
+        .await
     }
 
     async fn is_authorized_with_token_and_context(

@@ -27,3 +27,8 @@ chrono.workspace = true
 
 # UUID generation
 uuid.workspace = true
+
+[dev-dependencies]
+# Test utilities
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+sqlx = { workspace = true, default-features = false, features = ["runtime-tokio-rustls", "sqlite"] }

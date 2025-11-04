@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyStore {
     pub id: String,
-    pub name: Option<String>,
+    pub name: String,
     pub description: Option<String>,
     pub status: String, // "active" or "inactive"
     pub version: String,
     pub author: String,
-    pub tags: String, // JSON serialized vector of strings
+    pub tags: String,                // JSON serialized vector of strings
+    pub identity_source_ids: String, // JSON serialized vector of strings
+    pub default_identity_source_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,8 +40,8 @@ pub struct Policy {
 pub struct IdentitySource {
     pub id: String,
     pub policy_store_id: String,
-    pub configuration_type: String, // "cognito" or "oidc"
-    pub configuration_json: String, // JSON serialized configuration
+    pub configuration_type: String,          // "cognito" or "oidc"
+    pub configuration_json: String,          // JSON serialized configuration
     pub claims_mapping_json: Option<String>, // JSON serialized claims mapping
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -107,4 +109,15 @@ pub struct RollbackResult {
     pub rolled_back_at: DateTime<Utc>,
     pub policies_restored: i32,
     pub schema_restored: bool,
+}
+
+/// Audit log entry model for event sourcing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditLogEntry {
+    pub event_id: String,
+    pub event_type: String,
+    pub aggregate_id: String,
+    pub event_data: String, // JSON serialized event data
+    pub occurred_at: DateTime<Utc>,
+    pub version: u32,
 }

@@ -26,7 +26,7 @@ async fn integration_complete_workflow() {
 
     let store_description = format!("Integration Test Store - {}", Utc::now().timestamp());
     let store = client
-        .create_policy_store(Some(store_description.clone()))
+        .create_policy_store("Test Store".to_string(), store_description.clone())
         .await
         .expect("Failed to create policy store");
 
@@ -397,7 +397,7 @@ async fn integration_stress_test() {
         let handle = tokio::spawn(async move {
             let description = format!("Stress Test Store {}", i);
             let store = client_clone
-                .create_policy_store(Some(description))
+                .create_policy_store("Test Store".to_string(), description)
                 .await
                 .expect("Failed to create store");
 

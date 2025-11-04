@@ -9,10 +9,10 @@ package authorization;
 service AuthorizationData {
   // Evaluate a single authorization request
   rpc IsAuthorized(IsAuthorizedRequest) returns (IsAuthorizedResponse);
-  
+
   // Evaluate multiple authorization requests in a single call
   rpc BatchIsAuthorized(BatchIsAuthorizedRequest) returns (BatchIsAuthorizedResponse);
-  
+
   // Evaluate authorization with JWT token
   rpc IsAuthorizedWithToken(IsAuthorizedWithTokenRequest) returns (IsAuthorizedResponse);
 }
@@ -21,19 +21,19 @@ service AuthorizationData {
 message IsAuthorizedRequest {
   // The policy store to evaluate against
   string policy_store_id = 1;
-  
+
   // The principal making the request (e.g., "User::\"alice\"")
   EntityIdentifier principal = 2;
-  
+
   // The action being performed (e.g., "Action::\"viewDocument\"")
   EntityIdentifier action = 3;
-  
+
   // The resource being accessed (e.g., "Document::\"doc123\"")
   EntityIdentifier resource = 4;
-  
+
   // Additional context for the request (e.g., IP address, time)
   optional string context = 5; // JSON string
-  
+
   // Entity data slice for attribute-based evaluation
   repeated Entity entities = 6;
 }
@@ -42,10 +42,10 @@ message IsAuthorizedRequest {
 message IsAuthorizedResponse {
   // The decision result
   Decision decision = 1;
-  
+
   // IDs of policies that determined this decision
   repeated string determining_policies = 2;
-  
+
   // Any errors that occurred during evaluation
   repeated string errors = 3;
 }
@@ -75,13 +75,13 @@ message BatchIsAuthorizedResponse {
 service AuthorizationControl {
   // Create a new policy store
   rpc CreatePolicyStore(CreatePolicyStoreRequest) returns (CreatePolicyStoreResponse);
-  
+
   // Get policy store details
   rpc GetPolicyStore(GetPolicyStoreRequest) returns (GetPolicyStoreResponse);
-  
+
   // List all policy stores
   rpc ListPolicyStores(ListPolicyStoresRequest) returns (ListPolicyStoresResponse);
-  
+
   // Delete a policy store
   rpc DeletePolicyStore(DeletePolicyStoreRequest) returns (DeletePolicyStoreResponse);
 
@@ -90,56 +90,56 @@ service AuthorizationControl {
 
   // Put or update schema for a policy store
   rpc PutSchema(PutSchemaRequest) returns (PutSchemaResponse);
-  
+
   // Get schema for a policy store
   rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse);
-  
+
   // Create a new policy
   rpc CreatePolicy(CreatePolicyRequest) returns (CreatePolicyResponse);
-  
+
   // Get a policy
   rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse);
-  
+
   // Update a policy
   rpc UpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse);
-  
+
   // Delete a policy
   rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse);
-  
+
   // List policies in a policy store
   rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse);
-  
+
   // Create an identity source
   rpc CreateIdentitySource(CreateIdentitySourceRequest) returns (CreateIdentitySourceResponse);
-  
+
   // Get identity source details
   rpc GetIdentitySource(GetIdentitySourceRequest) returns (GetIdentitySourceResponse);
-  
+
   // List identity sources
   rpc ListIdentitySources(ListIdentitySourcesRequest) returns (ListIdentitySourcesResponse);
-  
+
   // Delete an identity source
   rpc DeleteIdentitySource(DeleteIdentitySourceRequest) returns (DeleteIdentitySourceResponse);
-  
+
   // Create a policy template (Épica 6)
   rpc CreatePolicyTemplate(CreatePolicyTemplateRequest) returns (CreatePolicyTemplateResponse);
-  
+
   // Get policy template details
   rpc GetPolicyTemplate(GetPolicyTemplateRequest) returns (GetPolicyTemplateResponse);
-  
+
   // List policy templates
   rpc ListPolicyTemplates(ListPolicyTemplatesRequest) returns (ListPolicyTemplatesResponse);
-  
+
   // Delete a policy template
   rpc DeletePolicyTemplate(DeletePolicyTemplateRequest) returns (DeletePolicyTemplateResponse);
-  
+
   // ========================================================================
   // Playground / Testing Endpoints
   // ========================================================================
-  
+
   // Test authorization without persisting policies (Playground)
   rpc TestAuthorization(TestAuthorizationRequest) returns (TestAuthorizationResponse);
-  
+
   // Validate policy syntax and semantics against schema
   rpc ValidatePolicy(ValidatePolicyRequest) returns (ValidatePolicyResponse);
 
@@ -174,6 +174,12 @@ service AuthorizationControl {
 
   // Batch delete multiple policies at once
   rpc BatchDeletePolicies(BatchDeletePoliciesRequest) returns (BatchDeletePoliciesResponse);
+
+  // Update policy store tags
+  rpc UpdatePolicyStoreTags(UpdatePolicyStoreTagsRequest) returns (UpdatePolicyStoreTagsResponse);
+
+  // Get policy store audit log
+  rpc GetPolicyStoreAuditLog(GetPolicyStoreAuditLogRequest) returns (GetPolicyStoreAuditLogResponse);
 }
 
 // ============================================================================
@@ -181,8 +187,10 @@ service AuthorizationControl {
 // ============================================================================
 
 message CreatePolicyStoreRequest {
+  // Policy store name (required)
+  string name = 1;
   // Optional description
-  optional string description = 1;
+  optional string description = 2;
 }
 
 message CreatePolicyStoreResponse {
@@ -196,9 +204,22 @@ message GetPolicyStoreRequest {
 
 message GetPolicyStoreResponse {
   string policy_store_id = 1;
-  optional string description = 2;
-  string created_at = 3;
-  string updated_at = 4;
+  string name = 2;
+  optional string description = 3;
+  // Current status of the policy store (active/inactive)
+  string status = 4;
+  // Version number for versioning support
+  string version = 5;
+  // Author/owner of the policy store
+  string author = 6;
+  // List of tags for categorization
+  repeated string tags = 7;
+  // List of identity source IDs associated with this policy store
+  repeated string identity_source_ids = 8;
+  // Default identity source ID to use when not explicitly specified
+  optional string default_identity_source_id = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 message ListPolicyStoresRequest {
@@ -213,8 +234,22 @@ message ListPolicyStoresResponse {
 
 message PolicyStoreItem {
   string policy_store_id = 1;
-  optional string description = 2;
-  string created_at = 3;
+  string name = 2;
+  optional string description = 3;
+  // Current status of the policy store (active/inactive)
+  string status = 4;
+  // Version number for versioning support
+  string version = 5;
+  // Author/owner of the policy store
+  string author = 6;
+  // List of tags for categorization
+  repeated string tags = 7;
+  // List of identity source IDs associated with this policy store
+  repeated string identity_source_ids = 8;
+  // Default identity source ID to use when not explicitly specified
+  optional string default_identity_source_id = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 message DeletePolicyStoreRequest {
@@ -227,13 +262,15 @@ message DeletePolicyStoreResponse {
 
 message UpdatePolicyStoreRequest {
   string policy_store_id = 1;
-  optional string description = 2;
+  optional string name = 2;
+  optional string description = 3;
 }
 
 message UpdatePolicyStoreResponse {
   string policy_store_id = 1;
-  optional string description = 2;
-  string updated_at = 3;
+  string name = 2;
+  optional string description = 3;
+  string updated_at = 4;
 }
 
 // ============================================================================
@@ -711,25 +748,25 @@ message BatchDeletePolicyResult {
 message TestAuthorizationRequest {
   // Optional policy store ID to use existing schema
   optional string policy_store_id = 1;
-  
+
   // Schema to use for validation (if not using policy_store_id)
   optional string schema = 2;
-  
+
   // Policies to test (Cedar policy statements)
   repeated string policies = 3;
-  
+
   // The principal making the request
   EntityIdentifier principal = 4;
-  
+
   // The action being performed
   EntityIdentifier action = 5;
-  
+
   // The resource being accessed
   EntityIdentifier resource = 6;
-  
+
   // Additional context for the request
   optional string context = 7; // JSON string
-  
+
   // Entity data slice for attribute-based evaluation
   repeated Entity entities = 8;
 }
@@ -738,16 +775,16 @@ message TestAuthorizationRequest {
 message TestAuthorizationResponse {
   // The decision result
   Decision decision = 1;
-  
+
   // IDs of policies that determined this decision
   repeated string determining_policies = 2;
-  
+
   // Any errors that occurred during evaluation
   repeated string errors = 3;
-  
+
   // Validation warnings (if schema was provided)
   repeated ValidationIssue validation_warnings = 4;
-  
+
   // Validation errors (if schema was provided)
   repeated ValidationIssue validation_errors = 5;
 }
@@ -756,10 +793,10 @@ message TestAuthorizationResponse {
 message ValidatePolicyRequest {
   // Policy store ID to get schema from
   optional string policy_store_id = 1;
-  
+
   // Schema to validate against (if not using policy_store_id)
   optional string schema = 2;
-  
+
   // Policy statement to validate
   string policy_statement = 3;
 }
@@ -768,13 +805,13 @@ message ValidatePolicyRequest {
 message ValidatePolicyResponse {
   // Whether the policy is valid
   bool is_valid = 1;
-  
+
   // Validation errors
   repeated ValidationIssue errors = 2;
-  
+
   // Validation warnings
   repeated ValidationIssue warnings = 3;
-  
+
   // Parsed policy information (if valid)
   optional PolicyInfo policy_info = 4;
 }
@@ -788,15 +825,15 @@ message ValidationIssue {
     WARNING = 2;
     INFO = 3;
   }
-  
+
   Severity severity = 1;
-  
+
   // Issue message
   string message = 2;
-  
+
   // Location in policy (line, column if available)
   optional string location = 3;
-  
+
   // Type of issue
   string issue_type = 4;
 }
@@ -805,16 +842,57 @@ message ValidationIssue {
 message PolicyInfo {
   // Policy effect (permit or forbid)
   string effect = 1;
-  
+
   // Principal scope
   optional string principal_scope = 2;
-  
+
   // Action scope
   optional string action_scope = 3;
-  
+
   // Resource scope
   optional string resource_scope = 4;
-  
+
   // Whether policy has conditions (when/unless)
   bool has_conditions = 5;
+}
+
+// ============================================================================
+// Policy Store Tags & Audit Log Messages
+// ============================================================================
+
+// Request to update policy store tags
+message UpdatePolicyStoreTagsRequest {
+  string policy_store_id = 1;
+  repeated string tags = 2;
+}
+
+// Response from updating policy store tags
+message UpdatePolicyStoreTagsResponse {
+  string policy_store_id = 1;
+  repeated string tags = 2;
+  string updated_at = 3;
+}
+
+// Request to get policy store audit log
+message GetPolicyStoreAuditLogRequest {
+  string policy_store_id = 1;
+  optional int32 max_results = 2;
+  optional string next_token = 3;
+}
+
+// Audit log entry
+message PolicyStoreAuditLogEntry {
+  int64 id = 1;
+  string policy_store_id = 2;
+  string action = 3; // "CREATE", "UPDATE", "DELETE", etc.
+  string user_id = 4;
+  optional string changes = 5; // JSON string of changes
+  optional string ip_address = 6;
+  string timestamp = 7;
+}
+
+// Response with audit log entries
+message GetPolicyStoreAuditLogResponse {
+  repeated PolicyStoreAuditLogEntry log_entries = 1;
+  optional string next_token = 2;
 }

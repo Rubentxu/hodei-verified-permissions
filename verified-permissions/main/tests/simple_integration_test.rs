@@ -14,7 +14,7 @@ async fn test_simple_policy_store_crud() {
 
     // CREATE
     let store = client
-        .create_policy_store(Some("Integration Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Integration Test Store".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -61,7 +61,7 @@ async fn test_multiple_stores() {
     // Create multiple stores
     for i in 0..num_stores {
         let store = client
-            .create_policy_store(Some(format!("Store {}", i)))
+            .create_policy_store("Test Store".to_string(), format!("Store {}", i))
             .await
             .expect("Failed to create store");
         let store_id = store.policy_store_id.clone();
@@ -100,7 +100,7 @@ async fn test_authorization() {
 
     // Create store
     let store = client
-        .create_policy_store(Some("Auth Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Auth Test Store".to_string())
         .await
         .expect("Failed to create store");
 

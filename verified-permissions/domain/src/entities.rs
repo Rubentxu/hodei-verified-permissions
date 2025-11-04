@@ -10,7 +10,7 @@ use crate::value_objects::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyStore {
     pub id: PolicyStoreId,
-    pub name: Option<String>,
+    pub name: String,
     pub description: Option<String>,
     /// Current status of the policy store (active/inactive)
     pub status: PolicyStoreStatus,
@@ -29,11 +29,11 @@ pub struct PolicyStore {
 }
 
 impl PolicyStore {
-    pub fn new(id: PolicyStoreId, description: Option<String>) -> Self {
+    pub fn new(id: PolicyStoreId, name: String, description: Option<String>) -> Self {
         let now = Utc::now();
         Self {
             id,
-            name: None,
+            name,
             description,
             status: PolicyStoreStatus::Active,
             version: "1.0".to_string(),
@@ -55,8 +55,9 @@ impl PolicyStore {
 
     /// Remove an identity source from this policy store
     pub fn remove_identity_source(&mut self, identity_source_id: &str) {
-        self.identity_source_ids.retain(|id| id != identity_source_id);
-        
+        self.identity_source_ids
+            .retain(|id| id != identity_source_id);
+
         // If the removed source was the default, clear the default
         if self.default_identity_source_id.as_deref() == Some(identity_source_id) {
             self.default_identity_source_id = None;
@@ -79,7 +80,8 @@ impl PolicyStore {
 
     /// Check if an identity source is associated with this policy store
     pub fn has_identity_source(&self, identity_source_id: &str) -> bool {
-        self.identity_source_ids.contains(&identity_source_id.to_string())
+        self.identity_source_ids
+            .contains(&identity_source_id.to_string())
     }
 }
 
@@ -268,6 +270,18 @@ pub struct RollbackResult {
     pub schema_restored: bool,
 }
 
+/// Policy Store Audit Log entity - Represents an audit log entry for a policy store
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyStoreAuditLog {
+    pub id: i64,
+    pub policy_store_id: PolicyStoreId,
+    pub action: String,
+    pub user_id: String,
+    pub changes: Option<String>,
+    pub ip_address: Option<String>,
+    pub timestamp: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -276,9 +290,10 @@ mod tests {
     fn test_policy_store_add_identity_source() {
         let mut store = PolicyStore::new(
             PolicyStoreId::new("store-1".to_string()).unwrap(),
+            "Test Store".to_string(),
             None,
         );
-        
+
         store.add_identity_source("identity-1".to_string());
         assert!(store.has_identity_source("identity-1"));
         assert_eq!(store.identity_source_ids.len(), 1);
@@ -288,9 +303,10 @@ mod tests {
     fn test_policy_store_remove_identity_source() {
         let mut store = PolicyStore::new(
             PolicyStoreId::new("store-1".to_string()).unwrap(),
+            "Test Store".to_string(),
             None,
         );
-        
+
         store.add_identity_source("identity-1".to_string());
         store.remove_identity_source("identity-1");
         assert!(!store.has_identity_source("identity-1"));
@@ -301,12 +317,13 @@ mod tests {
     fn test_policy_store_set_default_identity_source() {
         let mut store = PolicyStore::new(
             PolicyStoreId::new("store-1".to_string()).unwrap(),
+            "Test Store".to_string(),
             None,
         );
-        
+
         store.add_identity_source("identity-1".to_string());
         store.set_default_identity_source("identity-1".to_string());
-        
+
         assert_eq!(store.get_default_identity_source(), Some("identity-1"));
     }
 
@@ -314,12 +331,13 @@ mod tests {
     fn test_policy_store_get_default_first_if_not_set() {
         let mut store = PolicyStore::new(
             PolicyStoreId::new("store-1".to_string()).unwrap(),
+            "Test Store".to_string(),
             None,
         );
-        
+
         store.add_identity_source("identity-1".to_string());
         store.add_identity_source("identity-2".to_string());
-        
+
         // Should return first one if no default is set
         assert_eq!(store.get_default_identity_source(), Some("identity-1"));
     }
@@ -328,13 +346,14 @@ mod tests {
     fn test_policy_store_remove_default_clears_it() {
         let mut store = PolicyStore::new(
             PolicyStoreId::new("store-1".to_string()).unwrap(),
+            "Test Store".to_string(),
             None,
         );
-        
+
         store.add_identity_source("identity-1".to_string());
         store.set_default_identity_source("identity-1".to_string());
         store.remove_identity_source("identity-1");
-        
+
         assert_eq!(store.default_identity_source_id, None);
     }
 }

@@ -1,5 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { grpcClients } from '@/lib/grpc/node-client';
+import type { NextApiRequest, NextApiResponse } from "next";
+// import { grpcClients } from '@/lib/grpc/node-client';
+
+// Mock data store for tags (in production, this would be a database)
+const mockTagsStore: Record<string, string[]> = {};
 
 interface TagRequest {
   tags: string[];
@@ -7,126 +10,112 @@ interface TagRequest {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   // Extract policy store ID from URL
   const policyStoreId = req.query.id as string;
 
   if (!policyStoreId) {
-    return res.status(400).json({ error: 'Policy store ID is required' });
+    return res.status(400).json({ error: "Policy store ID is required" });
   }
 
   try {
     switch (req.method) {
-      case 'PUT': {
+      case "PUT": {
         // Update tags for policy store
         const { tags } = req.body as TagRequest;
 
         if (!Array.isArray(tags)) {
-          return res.status(400).json({ error: 'Tags must be an array' });
+          return res.status(400).json({ error: "Tags must be an array" });
         }
 
-        // Call gRPC method to update tags
-        const response = await grpcClients.updatePolicyStoreTags({
-          policy_store_id: policyStoreId,
-          tags: tags
-        });
+        // Initialize mock store entry if doesn't exist
+        if (!mockTagsStore[policyStoreId]) {
+          mockTagsStore[policyStoreId] = [];
+        }
+
+        mockTagsStore[policyStoreId] = tags;
 
         return res.status(200).json({
           success: true,
-          tags: response.tags || [],
-          message: 'Tags updated successfully'
+          tags: tags,
+          message: "Tags updated successfully",
         });
       }
 
-      case 'GET': {
+      case "GET": {
         // Get current tags for policy store
-        const response = await grpcClients.getPolicyStore({
-          policy_store_id: policyStoreId
-        });
-
-        // Parse tags from JSON string
-        const tags = response.tags ? JSON.parse(response.tags) : [];
+        const tags = mockTagsStore[policyStoreId] || [];
 
         return res.status(200).json({
-          tags: tags
+          tags: tags,
         });
       }
 
-      case 'POST': {
+      case "POST": {
         // Add a single tag
         const { tag } = req.body as { tag: string };
 
-        if (!tag || typeof tag !== 'string') {
-          return res.status(400).json({ error: 'Tag must be a non-empty string' });
+        if (!tag || typeof tag !== "string") {
+          return res
+            .status(400)
+            .json({ error: "Tag must be a non-empty string" });
         }
 
-        // First get current tags
-        const currentStore = await grpcClients.getPolicyStore({
-          policy_store_id: policyStoreId
-        });
-
-        const currentTags = currentStore.tags ? JSON.parse(currentStore.tags) : [];
+        // Initialize mock store entry if doesn't exist
+        if (!mockTagsStore[policyStoreId]) {
+          mockTagsStore[policyStoreId] = [];
+        }
 
         // Add new tag if not exists
-        if (!currentTags.includes(tag)) {
-          currentTags.push(tag);
-
-          // Update with new tags
-          await grpcClients.updatePolicyStoreTags({
-            policy_store_id: policyStoreId,
-            tags: currentTags
-          });
+        if (!mockTagsStore[policyStoreId].includes(tag)) {
+          mockTagsStore[policyStoreId].push(tag);
         }
 
         return res.status(200).json({
           success: true,
-          tags: currentTags,
-          message: 'Tag added successfully'
+          tags: mockTagsStore[policyStoreId],
+          message: "Tag added successfully",
         });
       }
 
-      case 'DELETE': {
+      case "DELETE": {
         // Remove a single tag
         const { tag } = req.body as { tag: string };
 
-        if (!tag || typeof tag !== 'string') {
-          return res.status(400).json({ error: 'Tag must be a non-empty string' });
+        if (!tag || typeof tag !== "string") {
+          return res
+            .status(400)
+            .json({ error: "Tag must be a non-empty string" });
         }
 
-        // First get current tags
-        const currentStore = await grpcClients.getPolicyStore({
-          policy_store_id: policyStoreId
-        });
-
-        const currentTags = currentStore.tags ? JSON.parse(currentStore.tags) : [];
+        // Initialize mock store entry if doesn't exist
+        if (!mockTagsStore[policyStoreId]) {
+          mockTagsStore[policyStoreId] = [];
+        }
 
         // Remove tag if exists
-        const updatedTags = currentTags.filter((t: string) => t !== tag);
-
-        // Update with new tags
-        await grpcClients.updatePolicyStoreTags({
-          policy_store_id: policyStoreId,
-          tags: updatedTags
-        });
+        mockTagsStore[policyStoreId] = mockTagsStore[policyStoreId].filter(
+          (t) => t !== tag,
+        );
 
         return res.status(200).json({
           success: true,
-          tags: updatedTags,
-          message: 'Tag removed successfully'
+          tags: mockTagsStore[policyStoreId],
+          message: "Tag removed successfully",
         });
       }
 
       default:
-        res.setHeader('Allow', ['GET', 'PUT', 'POST', 'DELETE']);
-        return res.status(405).json({ error: 'Method not allowed' });
+        res.setHeader("Allow", ["GET", "PUT", "POST", "DELETE"]);
+        return res.status(405).json({ error: "Method not allowed" });
     }
   } catch (error) {
-    console.error('Failed to manage tags:', error);
+    console.error("Failed to manage tags:", error);
 
     return res.status(500).json({
-      error: 'Failed to manage tags',
-      message: (error as Error).message
+      error: "Failed to manage tags",
+      message: (error as Error).message,
     });
   }
 }

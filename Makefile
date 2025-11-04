@@ -1,562 +1,422 @@
-.PHONY: help build build-debug build-server build-server-debug test test-unit test-integration test-e2e test-e2e-full test-e2e-real test-e2e-real-dev test-all clean server-run server-run-debug kill-server kill-frontend kill-all docker-up docker-up-all docker-down docker-logs docker-clean docker-status fmt lint check doc info validate ci dev-setup watch bff-build bff-dev bff-test bff-health
+# Hodei Verified Permissions - Makefile
+# Centralized commands for development, testing, and operations
+
+# Variables
+PROJECT_ROOT := $(shell pwd)
+DATABASE_URL := sqlite:///home/rubentxu/hodei-data/hodei.db
+API_URL := http://localhost:3000
+GRPC_URL := localhost:50051
+BUILD_DIR := target
 
 # Colors for output
-BLUE := \033[0;34m
+CYAN := \033[0;36m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
-# Default target
-help:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Hodei Verified Permissions - Makefile                     ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
+.PHONY: help
+help: ## Show this help message
+	@echo "$(CYAN)Hodei Verified Permissions - Available Commands$(NC)"
 	@echo ""
-	@echo "$(GREEN)Build Targets:$(NC)"
-	@echo "  $(YELLOW)make build$(NC)              - Build all packages (release mode)"
-	@echo "  $(YELLOW)make build-debug$(NC)        - Build all packages (debug mode)"
-	@echo "  $(YELLOW)make build-server$(NC)       - Build verified-permissions server (release)"
-	@echo "  $(YELLOW)make build-server-debug$(NC) - Build verified-permissions server (debug)"
-	@echo "  $(YELLOW)make clean$(NC)              - Clean build artifacts"
-	@echo ""
-	@echo "$(GREEN)Test Targets:$(NC)"
-	@echo "  $(YELLOW)make test$(NC)               - Run all tests (unit + integration)"
-	@echo "  $(YELLOW)make test-unit$(NC)          - Run only unit tests (38 tests)"
-	@echo "  $(YELLOW)make test-integration$(NC)   - Run only integration tests"
-	@echo "  $(YELLOW)make test-e2e$(NC)           - Run E2E tests (requires Docker)"
-	@echo "  $(YELLOW)make test-e2e-full$(NC)      - Run all E2E tests (requires Docker)"
-	@echo "  $(YELLOW)make test-e2e-real$(NC)      - Run E2E tests against real server (release)"
-	@echo "  $(YELLOW)make test-e2e-real-dev$(NC)  - Run E2E tests against real server (debug)"
-	@echo "  $(YELLOW)make test-all$(NC)           - Run all tests (unit + integration + E2E)"
-	@echo ""
-	@echo "$(GREEN)Server Targets:$(NC)"
-	@echo "  $(YELLOW)make server-run$(NC)         - Run server (release mode)"
-	@echo "  $(YELLOW)make server-run-debug$(NC)   - Run server (debug mode)"
-	@echo ""
-	@echo "$(GREEN)Process Management:$(NC)"
-	@echo "  $(YELLOW)make kill-server$(NC)        - Kill all server processes"
-	@echo "  $(YELLOW)make kill-frontend$(NC)      - Kill all frontend processes"
-	@echo "  $(YELLOW)make kill-all$(NC)           - Kill all server and frontend processes"
-	@echo ""
-	@echo "$(GREEN)Docker Targets:$(NC)"
-	@echo "  $(YELLOW)make docker-up$(NC)          - Start Docker containers (SQLite profile)"
-	@echo "  $(YELLOW)make docker-up-all$(NC)      - Start all Docker containers (all profiles)"
-	@echo "  $(YELLOW)make docker-down$(NC)        - Stop Docker containers"
-	@echo "  $(YELLOW)make docker-logs$(NC)        - Show Docker logs"
-	@echo "  $(YELLOW)make docker-clean$(NC)       - Stop and remove Docker containers"
-	@echo ""
-	@echo "$(GREEN)BFF (Backend for Frontend) Targets:$(NC)"
-	@echo "  $(YELLOW)make bff-build$(NC)          - Build Next.js BFF for production"
-	@echo "  $(YELLOW)make bff-dev$(NC)            - Start Next.js BFF in development mode"
-	@echo "  $(YELLOW)make bff-test$(NC)           - Test BFF gRPC connectivity"
-	@echo "  $(YELLOW)make bff-health$(NC)         - Check BFF and gRPC backend health"
-	@echo ""
-	@echo "$(GREEN)Development Targets:$(NC)"
-	@echo "  $(YELLOW)make fmt$(NC)                - Format code (rustfmt)"
-	@echo "  $(YELLOW)make lint$(NC)               - Run clippy linter"
-	@echo "  $(YELLOW)make check$(NC)              - Check code without building"
-	@echo "  $(YELLOW)make doc$(NC)                - Generate documentation"
-	@echo "  $(YELLOW)make dev-start$(NC)          - Start development environment (improved)"
-	@echo "  $(YELLOW)make dev-stop$(NC)           - Stop all services and cleanup"
-	@echo "  $(YELLOW)make dev-status$(NC)         - Show status of all services"
-	@echo "  $(YELLOW)make dev-clean$(NC)          - Stop services and clean PID files"
-	@echo ""
-	@echo "$(GREEN)Utility Targets:$(NC)"
-	@echo "  $(YELLOW)make info$(NC)               - Show project info"
-	@echo "  $(YELLOW)make help$(NC)               - Show this help message"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 
-# ============================================================================
-# BUILD TARGETS
-# ============================================================================
+# =============================================================================
+# Development
+# =============================================================================
 
-build:
-	@echo "$(GREEN)Building all packages (release mode)...$(NC)"
-	cargo build --all --release
-	@echo "$(GREEN)✅ Build completed successfully$(NC)"
+.PHONY: dev
+dev: ## Start all services in development mode
+	@echo "$(CYAN)🚀 Starting development environment...$(NC)"
+	@$(MAKE) build
+	@$(MAKE) db-init
+	@$(MAKE) server &
+	@$(MAKE) web &
+	@echo "$(GREEN)✅ Services started!$(NC)"
+	@echo "$(YELLOW)📍 Frontend: http://localhost:3000$(NC)"
+	@echo "$(YELLOW)📍 gRPC API: localhost:50051$(NC)"
 
-build-debug:
-	@echo "$(GREEN)Building all packages (debug mode)...$(NC)"
-	cargo build --all
-	@echo "$(GREEN)✅ Build completed successfully$(NC)"
+.PHONY: build
+build: ## Build all Rust components
+	@echo "$(CYAN)🔨 Building Rust components...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo build --all-targets
+	@echo "$(GREEN)✅ Build completed!$(NC)"
 
-build-server:
-	@echo "$(GREEN)Building verified-permissions server (release mode)...$(NC)"
-	cd verified-permissions && cargo build --release
-	@echo "$(GREEN)✅ Server built: ./verified-permissions/target/release/hodei-verified-permissions$(NC)"
+.PHONY: build-release
+build-release: ## Build all Rust components in release mode
+	@echo "$(CYAN)🔨 Building Rust components (release)...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo build --all-targets --release
+	@echo "$(GREEN)✅ Release build completed!$(NC)"
 
-build-server-debug:
-	@echo "$(GREEN)Building verified-permissions server (debug mode)...$(NC)"
-	cd verified-permissions && cargo build
-	@echo "$(GREEN)✅ Server built: ./verified-permissions/target/debug/hodei-verified-permissions$(NC)"
+.PHONY: clean
+clean: ## Clean build artifacts
+	@echo "$(CYAN)🧹 Cleaning build artifacts...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo clean
+	@rm -rf $(BUILD_DIR)
+	@echo "$(GREEN)✅ Clean completed!$(NC)"
 
-clean:
-	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
-	cargo clean
-	@echo "$(GREEN)✅ Clean completed$(NC)"
+# =============================================================================
+# Database
+# =============================================================================
 
-# ============================================================================
-# TEST TARGETS
-# ============================================================================
+.PHONY: db-init
+db-init: ## Initialize database
+	@echo "$(CYAN)🗄️  Initializing database...$(NC)"
+	@mkdir -p /home/rubentxu/hodei-data
+	@touch /home/rubentxu/hodei-data/hodei.db
+	@echo "$(GREEN)✅ Database initialized!$(NC)"
 
-test: test-unit test-integration
-	@echo "$(GREEN)✅ All tests passed!$(NC)"
+.PHONY: db-reset
+db-reset: ## Reset database (WARNING: Deletes all data)
+	@echo "$(RED)⚠️  Resetting database...$(NC)"
+	@rm -f /home/rubentxu/hodei-data/hodei.db
+	@$(MAKE) db-init
+	@echo "$(GREEN)✅ Database reset!$(NC)"
 
-test-unit:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running Unit Tests (38 tests)                             ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	cargo test --lib --all
-	@echo "$(GREEN)✅ Unit tests passed!$(NC)"
+.PHONY: db-migrate
+db-migrate: ## Run database migrations
+	@echo "$(CYAN)📊 Running migrations...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo run --bin hodei-verified-permissions -- --migrate
+	@echo "$(GREEN)✅ Migrations completed!$(NC)"
 
-test-integration:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running Integration Tests                                 ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	cargo test --test '*' --all
+# =============================================================================
+# Server Management
+# =============================================================================
+
+.PHONY: server
+server: ## Start gRPC server
+	@echo "$(CYAN)🚀 Starting gRPC server...$(NC)"
+	@export DATABASE_URL=$(DATABASE_URL) && \
+	cd $(PROJECT_ROOT)/verified-permissions && \
+	cargo run --bin hodei-verified-permissions
+
+.PHONY: server-release
+server-release: build-release ## Start gRPC server in release mode
+	@echo "$(CYAN)🚀 Starting gRPC server (release)...$(NC)"
+	@export DATABASE_URL=$(DATABASE_URL) && \
+	$(BUILD_DIR)/release/hodei-verified-permissions
+
+.PHONY: server-logs
+server-logs: ## Show server logs (if running in background)
+	@echo "$(CYAN)📋 Server logs...$(NC)"
+	@journalctl -u hodei-verified-permissions -f 2>/dev/null || echo "Service not running as systemd service"
+
+# =============================================================================
+# Web Interface
+# =============================================================================
+
+.PHONY: web
+web: ## Start Next.js web interface
+	@echo "$(CYAN)🌐 Starting web interface...$(NC)"
+	@cd $(PROJECT_ROOT)/web-nextjs && \
+	npm run dev
+
+.PHONY: web-build
+web-build: ## Build Next.js for production
+	@echo "$(CYAN)🔨 Building web interface...$(NC)"
+	@cd $(PROJECT_ROOT)/web-nextjs && npm run build
+	@echo "$(GREEN)✅ Web build completed!$(NC)"
+
+.PHONY: web-start
+web-start: web-build ## Start Next.js in production mode
+	@echo "$(CYAN)🌐 Starting web interface (production)...$(NC)"
+	@cd $(PROJECT_ROOT)/web-nextjs && npm start
+
+# =============================================================================
+# Testing
+# =============================================================================
+
+.PHONY: test
+test: ## Run all tests (unit + integration)
+	@echo "$(CYAN)🧪 Running all tests...$(NC)"
+	@$(MAKE) test-unit
+	@$(MAKE) test-integration
+
+.PHONY: test-unit
+test-unit: ## Run unit tests
+	@echo "$(CYAN)🧪 Running unit tests...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo test --lib
+	@echo "$(GREEN)✅ Unit tests completed!$(NC)"
+
+.PHONY: test-integration
+test-integration: ## Run integration tests
+	@echo "$(CYAN)🧪 Running integration tests...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo test --test '*'
 	@echo "$(GREEN)✅ Integration tests completed!$(NC)"
 
-test-e2e: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running E2E Tests (Full Stack)                            ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Waiting for services to be ready...$(NC)"
-	sleep 15
-	cargo test --test e2e_full_stack -- --ignored --nocapture
+.PHONY: test-all
+test-all: ## Run all tests with coverage
+	@echo "$(CYAN)🧪 Running all tests with coverage...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo test --all --coverage
+	@echo "$(GREEN)✅ All tests with coverage completed!$(NC)"
+
+.PHONY: test-watch
+test-watch: ## Run tests in watch mode
+	@echo "$(CYAN)👀 Running tests in watch mode...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo watch -x test
+
+.PHONY: benchmark
+benchmark: ## Run benchmarks
+	@echo "$(CYAN)⚡ Running benchmarks...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo bench
+	@echo "$(GREEN)✅ Benchmarks completed!$(NC)"
+
+# =============================================================================
+# Code Quality
+# =============================================================================
+
+.PHONY: lint
+lint: ## Run linters
+	@echo "$(CYAN)🔍 Running linters...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo clippy --all-targets
+	@echo "$(GREEN)✅ Linting completed!$(NC)"
+
+.PHONY: format
+format: ## Format code
+	@echo "$(CYAN)🎨 Formatting code...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo fmt --all
+	@cd $(PROJECT_ROOT)/web-nextjs && npx prettier --write "src/**/*.{ts,tsx,js,jsx}"
+	@echo "$(GREEN)✅ Code formatted!$(NC)"
+
+.PHONY: check
+check: ## Run cargo check
+	@echo "$(CYAN)✅ Running cargo check...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo check --all-targets
+	@echo "$(GREEN)✅ Check completed!$(NC)"
+
+.PHONY: audit
+audit: ## Run security audit
+	@echo "$(CYAN)🔒 Running security audit...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo audit
+	@echo "$(GREEN)✅ Security audit completed!$(NC)"
+
+# =============================================================================
+# gRPC Testing
+# =============================================================================
+
+.PHONY: grpc-reflect
+grpc-reflect: ## List available gRPC services
+	@echo "$(CYAN)📋 Available gRPC services...$(NC)"
+	@grpcurl -plaintext $(GRPC_URL) describe
+
+.PHONY: grpc-test
+grpc-test: ## Run basic gRPC test
+	@echo "$(CYAN)🧪 Testing gRPC connection...$(NC)"
+	@grpcurl -plaintext $(GRPC_URL) list
+
+.PHONY: grpc-health
+grpc-health: ## Check gRPC service health
+	@echo "$(CYAN)💚 Checking gRPC service health...$(NC)"
+	@grpcurl -plaintext -d '{}' $(GRPC_URL) grpc.health.v1.Health.Check
+
+# =============================================================================
+# API Documentation
+# =============================================================================
+
+.PHONY: docs
+docs: ## Generate API documentation
+	@echo "$(CYAN)📚 Generating documentation...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo doc --no-deps --open
+	@echo "$(GREEN)✅ Documentation generated!$(NC)"
+
+.PHONY: docs-serve
+docs-serve: ## Serve documentation locally
+	@echo "$(CYAN)🌐 Serving documentation...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && cargo doc --no-deps --watch
+
+# =============================================================================
+# Docker
+# =============================================================================
+
+.PHONY: docker-build
+docker-build: ## Build Docker image
+	@echo "$(CYAN)🐳 Building Docker image...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && docker build -t hodei-verified-permissions .
+	@echo "$(GREEN)✅ Docker image built!$(NC)"
+
+.PHONY: docker-run
+docker-run: ## Run Docker container
+	@echo "$(CYAN)🐳 Running Docker container...$(NC)"
+	@docker run -p 50051:50051 -p 3000:3000 hodei-verified-permissions
+	@echo "$(GREEN)✅ Docker container running!$(NC)"
+
+# =============================================================================
+# Development Tools
+# =============================================================================
+
+.PHONY: install-tools
+install-tools: ## Install development tools
+	@echo "$(CYAN)🛠️  Installing development tools...$(NC)"
+	@rustup component add rustfmt clippy
+	@npm install -g @grpc/grpc-js @grpc/proto-loader grpcurl
+	@echo "$(GREEN)✅ Development tools installed!$(NC)"
+
+.PHONY: proto-generate
+proto-generate: ## Generate protobuf files
+	@echo "$(CYAN)📜 Generating protobuf files...$(NC)"
+	@protoc --proto_path=$(PROJECT_ROOT)/proto \
+		--rust_out=$(PROJECT_ROOT)/verified-permissions/api/src \
+		--grpc-rust_out=$(PROJECT_ROOT)/verified-permissions/api/src \
+		$(PROJECT_ROOT)/proto/*.proto
+	@echo "$(GREEN)✅ Protobuf files generated!$(NC)"
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+
+.PHONY: metrics
+metrics: ## Start metrics collection
+	@echo "$(CYAN)📊 Starting metrics collection...$(NC)"
+	@curl -s $(API_URL)/api/metrics | jq '.'
+
+.PHONY: health
+health: ## Check service health
+	@echo "$(CYAN)💚 Checking service health...$(NC)"
+	@curl -s $(API_URL)/api/health | jq '.'
+
+# =============================================================================
+# Utility
+# =============================================================================
+
+.PHONY: status
+status: ## Show service status
+	@echo "$(CYAN)📊 Service Status:$(NC)"
+	@echo "  gRPC Server: $(GRPC_URL)"
+	@echo "  Web Interface: $(API_URL)"
+	@echo "  Database: $(DATABASE_URL)"
+	@ps aux | grep -E "hodei-verified-permissions|nextjs" | grep -v grep || echo "No services running"
+
+.PHONY: stop
+stop: ## Stop all services
+	@echo "$(CYAN)⏹️  Stopping all services...$(NC)"
+	@pkill -f "hodei-verified-permissions" || true
+	@pkill -f "nextjs" || true
+	@echo "$(GREEN)✅ All services stopped!$(NC)"
+
+.PHONY: restart
+restart: stop dev ## Restart all services
+	@echo "$(CYAN)🔄 Restarting all services...$(NC)"
+
+# =============================================================================
+# Postman Collection
+# =============================================================================
+
+.PHONY: postman-export
+postman-export: ## Export Postman collection
+	@echo "$(CYAN)📤 Exporting Postman collection...$(NC)"
+	@cp $(PROJECT_ROOT)/docs/postman/VerifiedPermissions.postman_collection.json $(PROJECT_ROOT)/postman/
+	@echo "$(GREEN)✅ Postman collection exported!$(NC)"
+
+.PHONY: postman-import
+postman-import: ## Import Postman collection to environment
+	@echo "$(CYAN)📥 Importing Postman collection...$(NC)"
+	@echo "Open Postman and import: $(PROJECT_ROOT)/postman/VerifiedPermissions.postman_collection.json"
+	@echo "$(GREEN)✅ Ready to import!$(NC)"
+
+# =============================================================================
+# End-to-End Testing (E2E)
+# =============================================================================
+
+.PHONY: test-e2e
+test-e2e: ## Run full E2E test suite (start services + run tests)
+	@echo "$(CYAN)🚀 Starting services for E2E tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh start-all
+	@echo "$(CYAN)🧪 Running E2E test suite...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test
 	@echo "$(GREEN)✅ E2E tests completed!$(NC)"
 
-test-e2e-full: docker-up-all
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running All E2E Tests                                     ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Waiting for services to be ready...$(NC)"
-	sleep 30
-	cargo test -- --ignored --nocapture
-	@echo "$(GREEN)✅ All E2E tests completed!$(NC)"
+.PHONY: test-e2e-install
+test-e2e-install: ## Install Playwright browsers
+	@echo "$(CYAN)🌐 Installing Playwright browsers...$(NC)"
+	@cd $(PROJECT_ROOT)/web-nextjs && npx playwright install --with-deps
+	@echo "$(GREEN)✅ Playwright browsers installed!$(NC)"
 
-test-all: test docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running All Tests (Unit + Integration + E2E)              ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Waiting for services to be ready...$(NC)"
-	sleep 15
-	cargo test --all -- --ignored --nocapture
-	@echo "$(GREEN)✅ All tests completed!$(NC)"
+.PHONY: test-e2e-start
+test-e2e-start: ## Start services for E2E testing
+	@echo "$(CYAN)🚀 Starting services for E2E tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh start-all
+	@echo "$(GREEN)✅ Services started!$(NC)"
 
-# ============================================================================
-# SERVER TARGETS (Real Server Execution)
-# ============================================================================
+.PHONY: test-e2e-ui
+test-e2e-ui: ## Run E2E tests with Playwright UI (requires running services)
+	@echo "$(CYAN)🧪 Running E2E tests in UI mode...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh ui
+	@echo "$(GREEN)✅ E2E tests completed!$(NC)"
 
-server-run: build-server
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Starting Hodei Verified Permissions Server                ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Killing any existing server processes...$(NC)"
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-	@sleep 1
-	@echo "$(YELLOW)Server listening on: 0.0.0.0:50051$(NC)"
-	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions
+.PHONY: test-e2e-headed
+test-e2e-headed: ## Run E2E tests in headed mode (visible browser, requires running services)
+	@echo "$(CYAN)🧪 Running E2E tests in headed mode...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh headed
+	@echo "$(GREEN)✅ E2E tests completed!$(NC)"
 
-server-run-debug: build-server-debug
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Starting Hodei Verified Permissions Server (Debug)        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Killing any existing server processes...$(NC)"
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-	@sleep 1
-	@echo "$(YELLOW)Server listening on: 0.0.0.0:50051$(NC)"
-	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/debug/hodei-verified-permissions
+.PHONY: test-e2e-debug
+test-e2e-debug: ## Run E2E tests in debug mode (requires running services)
+	@echo "$(CYAN)🧪 Running E2E tests in debug mode...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh debug
+	@echo "$(GREEN)✅ E2E tests completed!$(NC)"
 
-# ============================================================================
-# E2E TESTS WITH REAL SERVER
-# ============================================================================
-
-test-e2e-real: build-server
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running E2E Tests Against Real Server (Release)           ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@./scripts/run-e2e-tests.sh release
-
-test-e2e-real-dev: build-server-debug
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Running E2E Tests Against Real Server (Debug)             ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@./scripts/run-e2e-tests.sh debug
-
-# ============================================================================
-# PROCESS MANAGEMENT TARGETS
-# ============================================================================
-
-kill-server:
-	@echo "$(YELLOW)Killing server processes...$(NC)"
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || echo "No server processes found"
-	@sleep 1
-	@echo "$(GREEN)✅ Server processes killed$(NC)"
-
-kill-frontend:
-	@echo "$(YELLOW)Killing frontend processes...$(NC)"
-	@pkill -9 -f "next dev" 2>/dev/null || echo "No frontend processes found"
-	@pkill -9 -f "next start" 2>/dev/null || echo "No frontend processes found"
-	@sleep 1
-	@echo "$(GREEN)✅ Frontend processes killed$(NC)"
-
-kill-all: kill-server kill-frontend
-	@echo "$(GREEN)✅ All processes killed$(NC)"
-
-# ============================================================================
-# DOCKER TARGETS
-# ============================================================================
-
-docker-up:
-	@echo "$(GREEN)Starting Docker containers (SQLite profile)...$(NC)"
-	docker compose -f docker-compose.test.yml --profile sqlite up -d
-	@echo "$(GREEN)✅ Docker containers started$(NC)"
-	@echo "$(YELLOW)Services:$(NC)"
-	@echo "  - Hodei Server: http://localhost:50051"
-	@echo "  - TODO App: http://localhost:3000"
-
-docker-up-all:
-	@echo "$(GREEN)Starting all Docker containers (all profiles)...$(NC)"
-	docker compose -f docker-compose.test.yml --profile all up -d
-	@echo "$(GREEN)✅ Docker containers started$(NC)"
-	@echo "$(YELLOW)Services:$(NC)"
-	@echo "  - Hodei Server (SQLite): http://localhost:50051"
-	@echo "  - Hodei Server (PostgreSQL): http://localhost:50052"
-	@echo "  - Hodei Server (SurrealDB): http://localhost:50053"
-	@echo "  - TODO App (SQLite): http://localhost:3000"
-	@echo "  - TODO App (PostgreSQL): http://localhost:3001"
-	@echo "  - TODO App (SurrealDB): http://localhost:3002"
-	@echo "  - PostgreSQL: localhost:5432"
-	@echo "  - SurrealDB: localhost:8001"
-
-docker-down:
-	@echo "$(YELLOW)Stopping Docker containers...$(NC)"
-	docker compose -f docker-compose.test.yml down
-	@echo "$(GREEN)✅ Docker containers stopped$(NC)"
-
-docker-logs:
-	@echo "$(YELLOW)Showing Docker logs...$(NC)"
-	docker compose -f docker-compose.test.yml logs -f
-
-docker-clean:
-	@echo "$(YELLOW)Stopping and removing Docker containers...$(NC)"
-	docker compose -f docker-compose.test.yml down -v
-	@echo "$(GREEN)✅ Docker containers removed$(NC)"
-
-docker-status:
-	@echo "$(BLUE)Docker Container Status:$(NC)"
-	docker compose -f docker-compose.test.yml ps
-
-# ============================================================================
-# DEVELOPMENT TARGETS
-# ============================================================================
-
-fmt:
-	@echo "$(GREEN)Formatting code...$(NC)"
-	cargo fmt --all
-	@echo "$(GREEN)✅ Code formatted$(NC)"
-
-lint:
-	@echo "$(GREEN)Running clippy linter...$(NC)"
-	cargo clippy --all --all-targets -- -D warnings
-	@echo "$(GREEN)✅ Linting completed$(NC)"
-
-check:
-	@echo "$(GREEN)Checking code...$(NC)"
-	cargo check --all
-	@echo "$(GREEN)✅ Check completed$(NC)"
-
-doc:
-	@echo "$(GREEN)Generating documentation...$(NC)"
-	cargo doc --all --no-deps --open
-	@echo "$(GREEN)✅ Documentation generated$(NC)"
-
-# ============================================================================
-# UTILITY TARGETS
-# ============================================================================
-
-info:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Project Information                                       ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo ""
-	@echo "$(GREEN)Project:$(NC) Hodei Verified Permissions"
-	@echo "$(GREEN)Language:$(NC) Rust"
-	@echo ""
-	@echo "$(GREEN)Packages:$(NC)"
-	@echo "  - hodei-verified-permissions (main server)"
-	@echo "  - hodei-permissions-sdk (client SDK)"
-	@echo "  - hodei-macros (procedural macros)"
-	@echo "  - hodei-cli (command line interface)"
-	@echo ""
-	@echo "$(GREEN)Test Summary:$(NC)"
-	@echo "  - Unit Tests: 38 tests"
-	@echo "  - Integration Tests: Available"
-	@echo "  - E2E Tests: 47 tests (requires Docker)"
-	@echo ""
-	@echo "$(GREEN)Rust Version:$(NC)"
-	@rustc --version
-	@echo "$(GREEN)Cargo Version:$(NC)"
-	@cargo --version
-	@echo ""
-
-# ============================================================================
-# QUICK COMMANDS
-# ============================================================================
-
-# Run quick validation (check + lint + unit tests)
-validate: check lint test-unit
-	@echo "$(GREEN)✅ Validation passed!$(NC)"
-
-# Run full CI pipeline
-ci: build fmt lint test-unit
-	@echo "$(GREEN)✅ CI pipeline completed!$(NC)"
-
-# Development setup
-dev-setup: build fmt lint
-	@echo "$(GREEN)✅ Development environment ready!$(NC)"
-
-# Watch for changes and run tests
-watch:
-	@echo "$(GREEN)Watching for changes...$(NC)"
-	cargo watch -x "test --lib" -x "clippy"
-
-# ============================================================================
-# BFF (BACKEND FOR FRONTEND) TARGETS
-# ============================================================================
-
-# Build Next.js BFF for production
-bff-build:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Building Next.js BFF for Production                        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	cd web-nextjs && npm install && npm run build
-
-# Start Next.js BFF in development mode
-bff-dev:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Starting Next.js BFF in Development Mode                   ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	cd web-nextjs && npm install && npm run dev
-
-# Test BFF gRPC connectivity (requires server running)
-bff-test:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Testing BFF gRPC Connectivity                               ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Note: Make sure the Rust server is running on localhost:50051$(NC)"
-	cd web-nextjs && npm run build && npm start &
-	@sleep 5
-	@curl -s -X POST http://localhost:3000/api/authorize \
-		-H "Content-Type: application/json" \
-		-d '{"policy_store_id":"test","principal":{"entity_type":"User","entity_id":"alice"},"action":{"entity_type":"Action","entity_id":"view"},"resource":{"entity_type":"Document","entity_id":"doc1"}}' \
-		| jq . || echo "Test completed"
-	@pkill -f "npm start" 2>/dev/null || true
-
-# Check BFF and gRPC backend health
-bff-health:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Checking BFF and gRPC Backend Health                        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Checking gRPC server health...$(NC)"
-	@curl -s http://localhost:50051/health || echo "gRPC server not responding on localhost:50051"
-	@echo ""
-	@echo "$(YELLOW)Checking BFF health...$(NC)"
-	cd web-nextjs && npm run build && npm start > /tmp/bff-health.log 2>&1 &
-	@sleep 5
-	@curl -s http://localhost:3000/api/health | jq . || echo "BFF not responding"
-	@pkill -f "npm start" 2>/dev/null || true
-
-# ============================================================================
-# POLICY STORE TEST TARGETS (Phases 1-3.1)
-# ============================================================================
-
-# Test Policy Store Comprehensive (Backend)
-test-e2e-policy-store: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Policy Store Tests (Backend gRPC)                      ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Testing: CRUD, Metrics, Audit, Tags, Snapshots, Batch${NC}"
-	@echo "$(YELLOW)Waiting for services to be ready...$(NC)"
-	sleep 15
-	cargo test --test e2e_policy_store_comprehensive --features containers -- --ignored --nocapture
+.PHONY: test-e2e-policy-stores
+test-e2e-policy-stores: ## Run Policy Store E2E tests (start services + run tests)
+	@echo "$(CYAN)🚀 Starting services for Policy Store tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh start-all
+	@echo "$(CYAN)🧪 Running Policy Store E2E tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test-file policy-stores.spec.ts
 	@echo "$(GREEN)✅ Policy Store E2E tests completed!$(NC)"
 
-# Test Snapshots Feature Only
-test-e2e-snapshots: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Snapshot & Version History Tests                        ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Testing: Create, List, Rollback, Delete Snapshots${NC}"
-	sleep 15
-	cargo test --test integration_full_workflow::integration_complete_workflow --features containers -- --ignored --nocapture
-	@echo "$(GREEN)✅ Snapshot tests completed!$(NC)"
+.PHONY: test-e2e-playground
+test-e2e-playground: ## Run Playground E2E tests (start services + run tests)
+	@echo "$(CYAN)🚀 Starting services for Playground tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh start-all
+	@echo "$(CYAN)🧪 Running Playground E2E tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test-file playground.spec.ts
+	@echo "$(GREEN)✅ Playground E2E tests completed!$(NC)"
 
-# Test Batch Operations
-test-e2e-batch: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Batch Operations Tests                                  ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Testing: Batch Create, Update, Delete${NC}"
-	sleep 15
-	cargo test --test e2e_policy_store_comprehensive tc_040_batch_create_policies tc_041_batch_update_policies tc_042_batch_delete_policies --features containers -- --ignored --nocapture
-	@echo "$(GREEN)✅ Batch operations tests completed!$(NC)"
+.PHONY: test-e2e-dashboard
+test-e2e-dashboard: ## Run Dashboard E2E tests (start services + run tests)
+	@echo "$(CYAN)🚀 Starting services for Dashboard tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh start-all
+	@echo "$(CYAN)🧪 Running Dashboard E2E tests...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test-file dashboard.spec.ts
+	@echo "$(GREEN)✅ Dashboard E2E tests completed!$(NC)"
 
-# Test Authorization Feature
-test-e2e-authorization: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Authorization Tests                                     ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Testing: ALLOW/DENY decisions with context${NC}"
-	sleep 15
-	cargo test --test e2e_policy_store_comprehensive tc_050_authorization_basic tc_051_authorization_with_context --features containers -- --ignored --nocapture
-	@echo "$(GREEN)✅ Authorization tests completed!$(NC)"
+.PHONY: test-e2e-browser-chrome
+test-e2e-browser-chrome: ## Run E2E tests on Chrome
+	@echo "$(CYAN)🧪 Running E2E tests on Chrome...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test --browser=chrome
+	@echo "$(GREEN)✅ Chrome E2E tests completed!$(NC)"
 
-# Test Integration Full Workflow
-test-integration-full: docker-up
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Integration Test - Complete Workflow                        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Running full lifecycle test (all features)${NC}"
-	sleep 15
-	cargo test --test integration_full_workflow --features containers -- --ignored --nocapture
-	@echo "$(GREEN)✅ Integration test completed!$(NC)"
+.PHONY: test-e2e-browser-firefox
+test-e2e-browser-firefox: ## Run E2E tests on Firefox
+	@echo "$(CYAN)🧪 Running E2E tests on Firefox...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test --browser=firefox
+	@echo "$(GREEN)✅ Firefox E2E tests completed!$(NC)"
 
-# Run all Policy Store Tests (Backend)
-test-policy-store-all: test-e2e-policy-store test-e2e-snapshots test-e2e-batch test-e2e-authorization test-integration-full
-	@echo "$(GREEN)✅ All Policy Store tests completed!$(NC)"
+.PHONY: test-e2e-browser-webkit
+test-e2e-browser-webkit: ## Run E2E tests on WebKit
+	@echo "$(CYAN)🧪 Running E2E tests on WebKit...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh test --browser=webkit
+	@echo "$(GREEN)✅ WebKit E2E tests completed!$(NC)"
 
-# ============================================================================
-# FRONTEND E2E TEST TARGETS (Playwright)
-# ============================================================================
+.PHONY: test-e2e-status
+test-e2e-status: ## Check E2E test services status
+	@echo "$(CYAN)📊 Checking E2E test services status...$(NC)"
+	@$(PROJECT_ROOT)/scripts/e2e-test.sh status
+	@echo "$(GREEN)✅ Status checked!$(NC)"
 
-# Install Playwright browsers
-test-e2e-install:
-	@echo "$(BLUE)Installing Playwright browsers...$(NC)"
-	cd web-nextjs && npx playwright install --with-deps
-	@echo "$(GREEN)✅ Playwright browsers installed${NC}"
+.PHONY: test-e2e-stop
+test-e2e-stop: ## Stop E2E test services
+	@echo "$(CYAN)⏹️  Stopping E2E test services...$(NC)"
+	@$(PROJECT_ROOT)/scripts/dev-start-managed.sh stop-all
+	@echo "$(GREEN)✅ Services stopped!$(NC)"
 
-# Run Policy Store UI Tests
-test-e2e-ui: build-server bff-build
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Policy Store UI Tests (Playwright)                      ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Starting server...$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
-	@echo "$(YELLOW)Server PID: $(shell pidof hodei-verified-permissions)${NC}"
-	@sleep 5
-	@echo "$(YELLOW)Starting frontend...$(NC)"
-	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
-	@echo "$(YELLOW)Frontend PID: $(shell pidof "next dev")${NC}"
-	@sleep 10
-	@echo "$(YELLOW)Running tests...$(NC)"
-	cd web-nextjs && npx playwright test policy-stores.spec.ts
-	@echo "$(GREEN)✅ UI tests completed!${NC}"
-	@echo "$(YELLOW)Killing processes...${NC}"
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-	@pkill -9 -f "next dev" 2>/dev/null || true
-
-# Run Snapshot UI Tests
-test-e2e-snapshots-ui: build-server bff-build
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  E2E Snapshot UI Tests (Playwright)                          ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
-	@sleep 5
-	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
-	@sleep 10
-	cd web-nextjs && npx playwright test snapshots.spec.ts
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-	@pkill -9 -f "next dev" 2>/dev/null || true
-
-# Run all Frontend Tests
-test-e2e-ui-all: build-server bff-build
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  All E2E UI Tests (Playwright)                               ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
-	@sleep 5
-	cd web-nextjs && npm run dev > /tmp/frontend.log 2>&1 &
-	@sleep 10
-	cd web-nextjs && npx playwright test policy-stores.spec.ts snapshots.spec.ts
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-	@pkill -9 -f "next dev" 2>/dev/null || true
-
-# ============================================================================
-# PERFORMANCE TEST TARGETS
-# ============================================================================
-
-# Run Performance Tests
-test-performance:
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Performance Tests                                           ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Note: Requires server running on localhost:50051${NC)"
-	@echo "$(YELLOW)Starting server...$(NC)"
-	@mkdir -p /home/rubentxu/hodei-data test-results/performance
-	@DATABASE_URL="sqlite:////home/rubentxu/hodei-data/hodei.db" ./verified-permissions/target/release/hodei-verified-permissions > /tmp/server.log 2>&1 &
-	@sleep 5
-	@echo "$(YELLOW)Running performance tests...$(NC)"
-	bash ./scripts/test-performance.sh
-	@echo "$(GREEN)✅ Performance tests completed!${NC}"
-	@echo "$(YELLOW)Results saved to test-results/performance/${NC}"
-	@pkill -9 -f "hodei-verified-permissions" 2>/dev/null || true
-
-# ============================================================================
-# COMBINED TEST TARGETS
-# ============================================================================
-
-# Run all Policy Store Tests (Backend + Frontend)
-test-e2e-policy-store-all: test-policy-store-all test-e2e-ui-all
-	@echo "$(GREEN)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(GREEN)║  ALL POLICY STORE TESTS COMPLETED!                           ║$(NC)"
-	@echo "$(GREEN)╚════════════════════════════════════════════════════════════╝$(NC)"
-
-# Quick validation for Policy Store feature
-test-policy-store-quick: build-server
-	@echo "$(BLUE)╔════════════════════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║  Quick Policy Store Validation                               ║${NC}"
-	@echo "$(BLUE)╚════════════════════════════════════════════════════════════╝$(NC)"
-	@echo "$(YELLOW)Running basic unit and integration tests...$(NC)"
-	cargo test --lib policy_store -- --nocapture
-	@echo "$(GREEN)✅ Quick validation passed!${NC}"
-
-# Development targets for integrated server and frontend
-dev-start:
-	@bash ./scripts/dev-start-improved.sh
-
-dev-logs:
-	@tail -f /tmp/rust-server.log
-
-dev-logs-frontend:
-	@tail -f /tmp/nextjs-server.log
-
-dev-test:
-	@echo "$(BLUE)Testing gRPC connection...$(NC)"
-	@sleep 2
-	@curl -s http://localhost:3000/api/health | jq . || echo "Health check failed"
-
-dev-stop: kill-all
-	@echo "$(GREEN)Development environment stopped$(NC)"
-
-# Display status of all services
-dev-status:
-	@bash ./scripts/manage-pids.sh status
-
-# Clean all PID files and kill all processes
-dev-clean: kill-all
-	@echo "$(YELLOW)Cleaning PID files...$(NC)"
-	@rm -rf ~/.hodei-pids
-	@echo "$(GREEN)✅ All PID files cleaned$(NC)"
-
-.PHONY: watch validate ci dev-setup bff-build bff-dev bff-test bff-health dev-start dev-logs dev-logs-frontend dev-test dev-stop dev-status dev-clean
-.PHONY: test-e2e-policy-store test-e2e-snapshots test-e2e-batch test-e2e-authorization test-integration-full test-policy-store-all
-.PHONY: test-e2e-install test-e2e-ui test-e2e-snapshots-ui test-e2e-ui-all test-performance test-e2e-policy-store-all test-policy-store-quick
+.PHONY: test-e2e-report
+test-e2e-report: ## Open E2E test report
+	@echo "$(CYAN)📊 Opening E2E test report...$(NC)"
+	@if [ -f "$(PROJECT_ROOT)/test-results/e2e/results.html" ]; then \
+		open "$(PROJECT_ROOT)/test-results/e2e/results.html" 2>/dev/null || \
+		xdg-open "$(PROJECT_ROOT)/test-results/e2e/results.html" 2>/dev/null || \
+		echo "Report location: $(PROJECT_ROOT)/test-results/e2e/results.html"; \
+	else \
+		echo "$(YELLOW)No test report found. Run 'make test-e2e' first.$(NC)"; \
+	fi

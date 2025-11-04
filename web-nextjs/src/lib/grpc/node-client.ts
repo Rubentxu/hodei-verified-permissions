@@ -1,9 +1,9 @@
 // Real gRPC client for Next.js server-side usage
 // Connects to Rust gRPC backend using @grpc/grpc-js
 
-import * as grpc from '@grpc/grpc-js';
-import * as protoLoader from '@grpc/proto-loader';
-import path from 'path';
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import path from "path";
 
 // TypeScript interfaces for our gRPC types
 interface EntityIdentifier {
@@ -27,12 +27,13 @@ interface Entity {
 }
 
 interface IsAuthorizedResponse {
-  decision: 'DECISION_UNSPECIFIED' | 'ALLOW' | 'DENY';
+  decision: "DECISION_UNSPECIFIED" | "ALLOW" | "DENY";
   determining_policies: string[];
   errors: string[];
 }
 
 interface CreatePolicyStoreRequest {
+  name: string;
   description?: string;
 }
 
@@ -47,12 +48,14 @@ interface GetPolicyStoreRequest {
 
 interface GetPolicyStoreResponse {
   policy_store_id: string;
-  name?: string;
+  name: string;
   description?: string;
-  status?: string;
-  version?: string;
-  author?: string;
-  tags?: string; // JSON string of tags array
+  status: string;
+  version: string;
+  author: string;
+  tags: string[];
+  identity_source_ids: string[];
+  default_identity_source_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -64,14 +67,16 @@ interface ListPolicyStoresRequest {
 
 interface PolicyStoreItem {
   policy_store_id: string;
-  name?: string;
+  name: string;
   description?: string;
-  status?: string;
-  version?: string;
-  author?: string;
-  tags?: string; // JSON string of tags array
+  status: string;
+  version: string;
+  author: string;
+  tags: string[];
+  identity_source_ids: string[];
+  default_identity_source_id?: string;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
 }
 
 interface ListPolicyStoresResponse {
@@ -81,11 +86,13 @@ interface ListPolicyStoresResponse {
 
 interface UpdatePolicyStoreRequest {
   policy_store_id: string;
+  name?: string;
   description?: string;
 }
 
 interface UpdatePolicyStoreResponse {
   policy_store_id: string;
+  name: string;
   description?: string;
   updated_at: string;
 }
@@ -123,7 +130,7 @@ interface TestAuthorizationRequest {
 }
 
 interface TestAuthorizationResponse {
-  decision: 'DECISION_UNSPECIFIED' | 'ALLOW' | 'DENY';
+  decision: "DECISION_UNSPECIFIED" | "ALLOW" | "DENY";
   determining_policies: string[];
   errors: string[];
   validation_warnings: ValidationIssue[];
@@ -131,7 +138,7 @@ interface TestAuthorizationResponse {
 }
 
 interface ValidationIssue {
-  severity: 'SEVERITY_UNSPECIFIED' | 'ERROR' | 'WARNING' | 'INFO';
+  severity: "SEVERITY_UNSPECIFIED" | "ERROR" | "WARNING" | "INFO";
   message: string;
   location?: string;
   issue_type: string;
@@ -298,8 +305,9 @@ interface BatchDeletePolicyResult {
   error?: string;
 }
 
-const VERIFIED_PERMISSIONS_ADDR = process.env.VERIFIED_PERMISSIONS_ADDR || 'localhost:50051';
-const PROTO_PATH = path.join(process.cwd(), '../proto/authorization.proto');
+const VERIFIED_PERMISSIONS_ADDR =
+  process.env.VERIFIED_PERMISSIONS_ADDR || "localhost:50051";
+const PROTO_PATH = path.join(process.cwd(), "../proto/authorization.proto");
 
 // Load proto file
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -307,7 +315,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   longs: String,
   enums: String,
   defaults: true,
-  oneofs: true
+  oneofs: true,
 });
 
 const protoDescriptor = grpc.loadPackageDefinition(packageDefinition) as any;
@@ -316,13 +324,14 @@ const authorizationPackage = protoDescriptor.authorization;
 // Create gRPC clients
 const authorizationDataClient = new authorizationPackage.AuthorizationData(
   VERIFIED_PERMISSIONS_ADDR,
-  grpc.credentials.createInsecure()
+  grpc.credentials.createInsecure(),
 );
 
-const authorizationControlClient = new authorizationPackage.AuthorizationControl(
-  VERIFIED_PERMISSIONS_ADDR,
-  grpc.credentials.createInsecure()
-);
+const authorizationControlClient =
+  new authorizationPackage.AuthorizationControl(
+    VERIFIED_PERMISSIONS_ADDR,
+    grpc.credentials.createInsecure(),
+  );
 
 // Export client objects for API routes
 export { authorizationDataClient, authorizationControlClient };
@@ -330,346 +339,560 @@ export { authorizationDataClient, authorizationControlClient };
 // Helper functions for common operations with proper typing
 export const grpcClients = {
   // Data Plane operations
-  isAuthorized: (request: IsAuthorizedRequest): Promise<IsAuthorizedResponse> => {
+  isAuthorized: (
+    request: IsAuthorizedRequest,
+  ): Promise<IsAuthorizedResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationDataClient.isAuthorized(request, (err: any, response: IsAuthorizedResponse) => {
-        if (err) {
-          console.error('gRPC isAuthorized error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationDataClient.isAuthorized(
+        request,
+        (err: any, response: IsAuthorizedResponse) => {
+          if (err) {
+            console.error("gRPC isAuthorized error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   batchIsAuthorized: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationDataClient.batchIsAuthorized(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC batchIsAuthorized error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationDataClient.batchIsAuthorized(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC batchIsAuthorized error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   isAuthorizedWithToken: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationDataClient.isAuthorizedWithToken(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC isAuthorizedWithToken error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationDataClient.isAuthorizedWithToken(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC isAuthorizedWithToken error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   // Control Plane operations
-  createPolicyStore: (request: CreatePolicyStoreRequest): Promise<CreatePolicyStoreResponse> => {
+  createPolicyStore: (
+    request: CreatePolicyStoreRequest,
+  ): Promise<CreatePolicyStoreResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.createPolicyStore(request, (err: any, response: CreatePolicyStoreResponse) => {
-        if (err) {
-          console.error('gRPC createPolicyStore error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.createPolicyStore(
+        request,
+        (err: any, response: CreatePolicyStoreResponse) => {
+          if (err) {
+            console.error("gRPC createPolicyStore error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  getPolicyStore: (request: GetPolicyStoreRequest): Promise<GetPolicyStoreResponse> => {
+  getPolicyStore: (
+    request: GetPolicyStoreRequest,
+  ): Promise<GetPolicyStoreResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.getPolicyStore(request, (err: any, response: GetPolicyStoreResponse) => {
-        if (err) {
-          console.error('gRPC getPolicyStore error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.getPolicyStore(
+        request,
+        (err: any, response: GetPolicyStoreResponse) => {
+          if (err) {
+            console.error("gRPC getPolicyStore error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  listPolicyStores: (request?: ListPolicyStoresRequest): Promise<ListPolicyStoresResponse> => {
+  listPolicyStores: (
+    request?: ListPolicyStoresRequest,
+  ): Promise<ListPolicyStoresResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.listPolicyStores(request || {}, (err: any, response: ListPolicyStoresResponse) => {
-        if (err) {
-          console.error('gRPC listPolicyStores error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.listPolicyStores(
+        request || {},
+        (err: any, response: ListPolicyStoresResponse) => {
+          if (err) {
+            console.error("gRPC listPolicyStores error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  updatePolicyStore: (request: UpdatePolicyStoreRequest): Promise<UpdatePolicyStoreResponse> => {
+  updatePolicyStore: (
+    request: UpdatePolicyStoreRequest,
+  ): Promise<UpdatePolicyStoreResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.updatePolicyStore(request, (err: any, response: UpdatePolicyStoreResponse) => {
-        if (err) {
-          console.error('gRPC updatePolicyStore error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.updatePolicyStore(
+        request,
+        (err: any, response: UpdatePolicyStoreResponse) => {
+          if (err) {
+            console.error("gRPC updatePolicyStore error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   deletePolicyStore: (request: { policy_store_id: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.deletePolicyStore(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC deletePolicyStore error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.deletePolicyStore(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC deletePolicyStore error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   putSchema: (request: PutSchemaRequest): Promise<PutSchemaResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.putSchema(request, (err: any, response: PutSchemaResponse) => {
-        if (err) {
-          console.error('gRPC putSchema error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.putSchema(
+        request,
+        (err: any, response: PutSchemaResponse) => {
+          if (err) {
+            console.error("gRPC putSchema error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   getSchema: (request: GetSchemaRequest): Promise<GetSchemaResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.getSchema(request, (err: any, response: GetSchemaResponse) => {
-        if (err) {
-          console.error('gRPC getSchema error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.getSchema(
+        request,
+        (err: any, response: GetSchemaResponse) => {
+          if (err) {
+            console.error("gRPC getSchema error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   createPolicy: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.createPolicy(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC createPolicy error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.createPolicy(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC createPolicy error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   getPolicy: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.getPolicy(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC getPolicy error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.getPolicy(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC getPolicy error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   listPolicies: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.listPolicies(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC listPolicies error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.listPolicies(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC listPolicies error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   updatePolicy: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.updatePolicy(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC updatePolicy error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.updatePolicy(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC updatePolicy error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   deletePolicy: (request: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.deletePolicy(request, (err: any, response: any) => {
-        if (err) {
-          console.error('gRPC deletePolicy error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.deletePolicy(
+        request,
+        (err: any, response: any) => {
+          if (err) {
+            console.error("gRPC deletePolicy error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  testAuthorization: (request: TestAuthorizationRequest): Promise<TestAuthorizationResponse> => {
+  testAuthorization: (
+    request: TestAuthorizationRequest,
+  ): Promise<TestAuthorizationResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.testAuthorization(request, (err: any, response: TestAuthorizationResponse) => {
-        if (err) {
-          console.error('gRPC testAuthorization error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.testAuthorization(
+        request,
+        (err: any, response: TestAuthorizationResponse) => {
+          if (err) {
+            console.error("gRPC testAuthorization error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  getPolicyStoreAuditLog: (request: GetPolicyStoreAuditLogRequest): Promise<GetPolicyStoreAuditLogResponse> => {
+  getPolicyStoreAuditLog: (
+    request: GetPolicyStoreAuditLogRequest,
+  ): Promise<GetPolicyStoreAuditLogResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.getPolicyStoreAuditLog(request, (err: any, response: GetPolicyStoreAuditLogResponse) => {
-        if (err) {
-          console.error('gRPC getPolicyStoreAuditLog error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.getPolicyStoreAuditLog(
+        request,
+        (err: any, response: GetPolicyStoreAuditLogResponse) => {
+          if (err) {
+            console.error("gRPC getPolicyStoreAuditLog error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  updatePolicyStoreTags: (request: UpdatePolicyStoreTagsRequest): Promise<UpdatePolicyStoreTagsResponse> => {
+  updatePolicyStoreTags: (
+    request: UpdatePolicyStoreTagsRequest,
+  ): Promise<UpdatePolicyStoreTagsResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.updatePolicyStoreTags(request, (err: any, response: UpdatePolicyStoreTagsResponse) => {
-        if (err) {
-          console.error('gRPC updatePolicyStoreTags error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.updatePolicyStoreTags(
+        request,
+        (err: any, response: UpdatePolicyStoreTagsResponse) => {
+          if (err) {
+            console.error("gRPC updatePolicyStoreTags error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   // Version Control / Snapshot Management
-  createPolicyStoreSnapshot: (request: CreatePolicyStoreSnapshotRequest): Promise<CreatePolicyStoreSnapshotResponse> => {
+  createPolicyStoreSnapshot: (
+    request: CreatePolicyStoreSnapshotRequest,
+  ): Promise<CreatePolicyStoreSnapshotResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.createPolicyStoreSnapshot(request, (err: any, response: CreatePolicyStoreSnapshotResponse) => {
-        if (err) {
-          console.error('gRPC createPolicyStoreSnapshot error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.createPolicyStoreSnapshot(
+        request,
+        (err: any, response: CreatePolicyStoreSnapshotResponse) => {
+          if (err) {
+            console.error("gRPC createPolicyStoreSnapshot error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  getPolicyStoreSnapshot: (request: GetPolicyStoreSnapshotRequest): Promise<GetPolicyStoreSnapshotResponse> => {
+  getPolicyStoreSnapshot: (
+    request: GetPolicyStoreSnapshotRequest,
+  ): Promise<GetPolicyStoreSnapshotResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.getPolicyStoreSnapshot(request, (err: any, response: GetPolicyStoreSnapshotResponse) => {
-        if (err) {
-          console.error('gRPC getPolicyStoreSnapshot error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.getPolicyStoreSnapshot(
+        request,
+        (err: any, response: GetPolicyStoreSnapshotResponse) => {
+          if (err) {
+            console.error("gRPC getPolicyStoreSnapshot error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  listPolicyStoreSnapshots: (request: ListPolicyStoreSnapshotsRequest): Promise<ListPolicyStoreSnapshotsResponse> => {
+  listPolicyStoreSnapshots: (
+    request: ListPolicyStoreSnapshotsRequest,
+  ): Promise<ListPolicyStoreSnapshotsResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.listPolicyStoreSnapshots(request, (err: any, response: ListPolicyStoreSnapshotsResponse) => {
-        if (err) {
-          console.error('gRPC listPolicyStoreSnapshots error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.listPolicyStoreSnapshots(
+        request,
+        (err: any, response: ListPolicyStoreSnapshotsResponse) => {
+          if (err) {
+            console.error("gRPC listPolicyStoreSnapshots error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  rollbackToSnapshot: (request: RollbackToSnapshotRequest): Promise<RollbackToSnapshotResponse> => {
+  rollbackToSnapshot: (
+    request: RollbackToSnapshotRequest,
+  ): Promise<RollbackToSnapshotResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.rollbackToSnapshot(request, (err: any, response: RollbackToSnapshotResponse) => {
-        if (err) {
-          console.error('gRPC rollbackToSnapshot error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.rollbackToSnapshot(
+        request,
+        (err: any, response: RollbackToSnapshotResponse) => {
+          if (err) {
+            console.error("gRPC rollbackToSnapshot error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  deleteSnapshot: (request: DeleteSnapshotRequest): Promise<DeleteSnapshotResponse> => {
+  deleteSnapshot: (
+    request: DeleteSnapshotRequest,
+  ): Promise<DeleteSnapshotResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.deleteSnapshot(request, (err: any, response: DeleteSnapshotResponse) => {
-        if (err) {
-          console.error('gRPC deleteSnapshot error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.deleteSnapshot(
+        request,
+        (err: any, response: DeleteSnapshotResponse) => {
+          if (err) {
+            console.error("gRPC deleteSnapshot error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
   // Batch Policy Management
-  batchCreatePolicies: (request: BatchCreatePoliciesRequest): Promise<BatchCreatePoliciesResponse> => {
+  batchCreatePolicies: (
+    request: BatchCreatePoliciesRequest,
+  ): Promise<BatchCreatePoliciesResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.batchCreatePolicies(request, (err: any, response: BatchCreatePoliciesResponse) => {
-        if (err) {
-          console.error('gRPC batchCreatePolicies error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.batchCreatePolicies(
+        request,
+        (err: any, response: BatchCreatePoliciesResponse) => {
+          if (err) {
+            console.error("gRPC batchCreatePolicies error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  batchUpdatePolicies: (request: BatchUpdatePoliciesRequest): Promise<BatchUpdatePoliciesResponse> => {
+  batchUpdatePolicies: (
+    request: BatchUpdatePoliciesRequest,
+  ): Promise<BatchUpdatePoliciesResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.batchUpdatePolicies(request, (err: any, response: BatchUpdatePoliciesResponse) => {
-        if (err) {
-          console.error('gRPC batchUpdatePolicies error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.batchUpdatePolicies(
+        request,
+        (err: any, response: BatchUpdatePoliciesResponse) => {
+          if (err) {
+            console.error("gRPC batchUpdatePolicies error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
   },
 
-  batchDeletePolicies: (request: BatchDeletePoliciesRequest): Promise<BatchDeletePoliciesResponse> => {
+  batchDeletePolicies: (
+    request: BatchDeletePoliciesRequest,
+  ): Promise<BatchDeletePoliciesResponse> => {
     return new Promise((resolve, reject) => {
-      authorizationControlClient.batchDeletePolicies(request, (err: any, response: BatchDeletePoliciesResponse) => {
-        if (err) {
-          console.error('gRPC batchDeletePolicies error:', err);
-          reject(new Error(`gRPC error: ${err.message || err.details || 'Unknown error'}`));
-        } else {
-          resolve(response);
-        }
-      });
+      authorizationControlClient.batchDeletePolicies(
+        request,
+        (err: any, response: BatchDeletePoliciesResponse) => {
+          if (err) {
+            console.error("gRPC batchDeletePolicies error:", err);
+            reject(
+              new Error(
+                `gRPC error: ${err.message || err.details || "Unknown error"}`,
+              ),
+            );
+          } else {
+            resolve(response);
+          }
+        },
+      );
     });
-  }
+  },
 };
 
 // Export types for use in API routes
@@ -720,5 +943,5 @@ export type {
   BatchPolicyItem,
   BatchPolicyResult,
   BatchUpdatePolicyResult,
-  BatchDeletePolicyResult
+  BatchDeletePolicyResult,
 };

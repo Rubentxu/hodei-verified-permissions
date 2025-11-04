@@ -11,7 +11,7 @@ async fn test_001_create_and_get_store() {
 
     // CREATE
     let store = client
-        .create_policy_store(Some("Test Store 001".to_string()))
+        .create_policy_store("Test Store".to_string(), "Test Store 001".to_string())
         .await
         .expect("Failed to create store");
 
@@ -41,7 +41,7 @@ async fn test_002_list_stores() {
     let num_stores = 3;
     for i in 0..num_stores {
         let _ = client
-            .create_policy_store(Some(format!("List Test Store {}", i)))
+            .create_policy_store("Test Store".to_string(), format!("List Test Store {}", i))
             .await
             .expect("Failed to create store");
         println!("  ✓ Created store {}", i);
@@ -69,7 +69,7 @@ async fn test_003_authorization_check() {
 
     // Create store
     let store = client
-        .create_policy_store(Some("Auth Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Auth Test Store".to_string())
         .await
         .expect("Failed to create store");
 

@@ -4,13 +4,14 @@
 //! It defines entities, value objects, domain services, and repository traits.
 
 pub mod entities;
-pub mod value_objects;
-pub mod services;
 pub mod errors;
+pub mod events;
 pub mod repository;
+pub mod services;
+pub mod value_objects;
 
 pub use entities::*;
-pub use value_objects::*;
-pub use services::{AuthorizationEvaluator, PolicyValidator};
 pub use errors::{DomainError, DomainResult};
 pub use repository::*;
+pub use services::{AuthorizationEvaluator, PolicyValidator};
+pub use value_objects::*;

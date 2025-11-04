@@ -2,18 +2,20 @@
 
 use crate::proto::authorization_control_server::AuthorizationControl;
 use crate::proto::*;
-use hodei_infrastructure::repository::RepositoryAdapter;
-use hodei_domain::{PolicyStoreId, PolicyId, CedarPolicy, IdentitySourceType, PolicyRepository};
-use tonic::{Request, Response, Status};
-use tracing::{info, error};
 use cedar_policy::{
-    Policy as CedarPolicyType, Schema, Validator, PolicySet,
-    Authorizer, Context, Entities, EntityUid,
-    Request as CedarRequest, Decision,
+    Authorizer, Context, Decision, Entities, EntityUid, Policy as CedarPolicyType, PolicySet,
+    Request as CedarRequest, Schema, Validator,
 };
+use hodei_domain::events::{
+    DomainEvent, PolicyStoreCreated, PolicyStoreTagsUpdated, PolicyStoreUpdated,
+};
+use hodei_domain::{CedarPolicy, IdentitySourceType, PolicyId, PolicyRepository, PolicyStoreId};
+use hodei_infrastructure::repository::RepositoryAdapter;
+use serde_json;
 use std::str::FromStr;
 use std::sync::Arc;
-use serde_json;
+use tonic::{Request, Response, Status};
+use tracing::{error, info};
 
 pub struct AuthorizationControlService {
     repository: Arc<RepositoryAdapter>,
@@ -22,6 +24,10 @@ pub struct AuthorizationControlService {
 impl AuthorizationControlService {
     pub fn new(repository: Arc<RepositoryAdapter>) -> Self {
         Self { repository }
+    }
+
+    async fn publish_event(&self, _event: Box<dyn DomainEvent>) {
+        // Event publishing disabled for simplicity
     }
 }
 
@@ -32,19 +38,42 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<CreatePolicyStoreRequest>,
     ) -> Result<Response<CreatePolicyStoreResponse>, Status> {
         let req = request.into_inner();
-        info!("Creating policy store with description: {:?}", req.description);
+        info!(
+            "Creating policy store with name: {:?} description: {:?}",
+            req.name, req.description
+        );
 
         let store = self
             .repository
-            .create_policy_store(req.description)
+            .create_policy_store(req.name, req.description)
             .await
             .map_err(|e| {
                 error!("Failed to create policy store: {}", e);
                 Status::internal(format!("Failed to create policy store: {}", e))
             })?;
 
+        // Publish PolicyStoreCreated event
+        let event_id = format!(
+            "evt_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let policy_store_id = store.id.clone().into_string();
+        let created_event = PolicyStoreCreated {
+            event_id,
+            policy_store_id: policy_store_id.clone(),
+            name: store.name.clone(),
+            description: store.description,
+            author: store.author.clone(),
+            occurred_at: store.created_at,
+            version: 1,
+        };
+        self.publish_event(Box::new(created_event)).await;
+
         Ok(Response::new(CreatePolicyStoreResponse {
-            policy_store_id: store.id.into_string(),
+            policy_store_id,
             created_at: store.created_at.to_rfc3339(),
         }))
     }
@@ -70,7 +99,14 @@ impl AuthorizationControl for AuthorizationControlService {
 
         Ok(Response::new(GetPolicyStoreResponse {
             policy_store_id: store.id.into_string(),
+            name: store.name,
             description: store.description,
+            status: store.status.to_string(),
+            version: store.version,
+            author: store.author,
+            tags: store.tags,
+            identity_source_ids: store.identity_source_ids,
+            default_identity_source_id: store.default_identity_source_id,
             created_at: store.created_at.to_rfc3339(),
             updated_at: store.updated_at.to_rfc3339(),
         }))
@@ -82,21 +118,25 @@ impl AuthorizationControl for AuthorizationControlService {
     ) -> Result<Response<ListPolicyStoresResponse>, Status> {
         info!("Listing policy stores");
 
-        let stores = self
-            .repository
-            .list_policy_stores()
-            .await
-            .map_err(|e| {
-                error!("Failed to list policy stores: {}", e);
-                Status::internal(format!("Failed to list policy stores: {}", e))
-            })?;
+        let stores = self.repository.list_policy_stores().await.map_err(|e| {
+            error!("Failed to list policy stores: {}", e);
+            Status::internal(format!("Failed to list policy stores: {}", e))
+        })?;
 
         let items = stores
             .into_iter()
             .map(|store| PolicyStoreItem {
                 policy_store_id: store.id.into_string(),
+                name: store.name,
                 description: store.description,
+                status: store.status.to_string(),
+                version: store.version,
+                author: store.author,
+                tags: store.tags,
+                identity_source_ids: store.identity_source_ids,
+                default_identity_source_id: store.default_identity_source_id,
                 created_at: store.created_at.to_rfc3339(),
+                updated_at: store.updated_at.to_rfc3339(),
             })
             .collect();
 
@@ -139,7 +179,7 @@ impl AuthorizationControl for AuthorizationControlService {
 
         let store = self
             .repository
-            .update_policy_store(&policy_store_id, req.description)
+            .update_policy_store(&policy_store_id, req.name, req.description)
             .await
             .map_err(|e| {
                 error!("Failed to update policy store: {}", e);
@@ -148,6 +188,7 @@ impl AuthorizationControl for AuthorizationControlService {
 
         Ok(Response::new(UpdatePolicyStoreResponse {
             policy_store_id: store.id.into_string(),
+            name: store.name,
             description: store.description,
             updated_at: store.updated_at.to_rfc3339(),
         }))
@@ -227,9 +268,9 @@ impl AuthorizationControl for AuthorizationControlService {
         let policy_id = PolicyId::new(req.policy_id.clone())
             .map_err(|e| Status::invalid_argument(format!("Invalid policy ID: {}", e)))?;
 
-        let definition = req.definition.ok_or_else(|| {
-            Status::invalid_argument("Policy definition is required")
-        })?;
+        let definition = req
+            .definition
+            .ok_or_else(|| Status::invalid_argument("Policy definition is required"))?;
 
         let statement = match definition.policy_type {
             Some(policy_definition::PolicyType::Static(static_policy)) => {
@@ -238,8 +279,11 @@ impl AuthorizationControl for AuthorizationControlService {
             }
             Some(policy_definition::PolicyType::TemplateLinked(template_linked)) => {
                 // Template-linked policy - instantiate template with values
-                info!("Creating template-linked policy from template: {}", template_linked.policy_template_id);
-                
+                info!(
+                    "Creating template-linked policy from template: {}",
+                    template_linked.policy_template_id
+                );
+
                 // 1. Load the template
                 let template = self
                     .repository
@@ -249,32 +293,34 @@ impl AuthorizationControl for AuthorizationControlService {
                         error!("Failed to load policy template: {}", e);
                         Status::not_found(format!("Policy template not found: {}", e))
                     })?;
-                
+
                 // 2. Instantiate template with principal and resource
                 let mut instantiated = template.statement.clone();
-                
+
                 // Replace ?principal placeholder
                 if let Some(principal) = &template_linked.principal {
-                    let principal_value = format!("{}::\"{}\"", principal.entity_type, principal.entity_id);
+                    let principal_value =
+                        format!("{}::\"{}\"", principal.entity_type, principal.entity_id);
                     instantiated = instantiated.replace("?principal", &principal_value);
                     info!("Replaced ?principal with {}", principal_value);
                 }
-                
+
                 // Replace ?resource placeholder
                 if let Some(resource) = &template_linked.resource {
-                    let resource_value = format!("{}::\"{}\"", resource.entity_type, resource.entity_id);
+                    let resource_value =
+                        format!("{}::\"{}\"", resource.entity_type, resource.entity_id);
                     instantiated = instantiated.replace("?resource", &resource_value);
                     info!("Replaced ?resource with {}", resource_value);
                 }
-                
+
                 // 3. Verify all placeholders were replaced
                 if instantiated.contains("?principal") || instantiated.contains("?resource") {
                     return Err(Status::invalid_argument(
                         "Template contains placeholders that were not provided. \
-                         Please provide principal and/or resource values."
+                         Please provide principal and/or resource values.",
                     ));
                 }
-                
+
                 info!("Template instantiated successfully");
                 instantiated
             }
@@ -313,7 +359,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<GetPolicyRequest>,
     ) -> Result<Response<GetPolicyResponse>, Status> {
         let req = request.into_inner();
-        info!("Getting policy {} from store {}", req.policy_id, req.policy_store_id);
+        info!(
+            "Getting policy {} from store {}",
+            req.policy_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -349,7 +398,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<UpdatePolicyRequest>,
     ) -> Result<Response<UpdatePolicyResponse>, Status> {
         let req = request.into_inner();
-        info!("Updating policy {} in store {}", req.policy_id, req.policy_store_id);
+        info!(
+            "Updating policy {} in store {}",
+            req.policy_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -357,18 +409,19 @@ impl AuthorizationControl for AuthorizationControlService {
         let policy_id = PolicyId::new(req.policy_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy ID: {}", e)))?;
 
-        let definition = req.definition.ok_or_else(|| {
-            Status::invalid_argument("Policy definition is required")
-        })?;
+        let definition = req
+            .definition
+            .ok_or_else(|| Status::invalid_argument("Policy definition is required"))?;
 
         let statement = match definition.policy_type {
-            Some(policy_definition::PolicyType::Static(static_policy)) => {
-                static_policy.statement
-            }
+            Some(policy_definition::PolicyType::Static(static_policy)) => static_policy.statement,
             Some(policy_definition::PolicyType::TemplateLinked(template_linked)) => {
                 // Template-linked policy - instantiate template with values
-                info!("Updating with template-linked policy from template: {}", template_linked.policy_template_id);
-                
+                info!(
+                    "Updating with template-linked policy from template: {}",
+                    template_linked.policy_template_id
+                );
+
                 // Load and instantiate template
                 let template = self
                     .repository
@@ -378,25 +431,27 @@ impl AuthorizationControl for AuthorizationControlService {
                         error!("Failed to load policy template: {}", e);
                         Status::not_found(format!("Policy template not found: {}", e))
                     })?;
-                
+
                 let mut instantiated = template.statement.clone();
-                
+
                 if let Some(principal) = &template_linked.principal {
-                    let principal_value = format!("{}::\"{}\"", principal.entity_type, principal.entity_id);
+                    let principal_value =
+                        format!("{}::\"{}\"", principal.entity_type, principal.entity_id);
                     instantiated = instantiated.replace("?principal", &principal_value);
                 }
-                
+
                 if let Some(resource) = &template_linked.resource {
-                    let resource_value = format!("{}::\"{}\"", resource.entity_type, resource.entity_id);
+                    let resource_value =
+                        format!("{}::\"{}\"", resource.entity_type, resource.entity_id);
                     instantiated = instantiated.replace("?resource", &resource_value);
                 }
-                
+
                 if instantiated.contains("?principal") || instantiated.contains("?resource") {
                     return Err(Status::invalid_argument(
-                        "Template contains placeholders that were not provided"
+                        "Template contains placeholders that were not provided",
                     ));
                 }
-                
+
                 instantiated
             }
             None => {
@@ -434,7 +489,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<DeletePolicyRequest>,
     ) -> Result<Response<DeletePolicyResponse>, Status> {
         let req = request.into_inner();
-        info!("Deleting policy {} from store {}", req.policy_id, req.policy_store_id);
+        info!(
+            "Deleting policy {} from store {}",
+            req.policy_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -496,14 +554,17 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<CreateIdentitySourceRequest>,
     ) -> Result<Response<CreateIdentitySourceResponse>, Status> {
         let req = request.into_inner();
-        info!("Creating identity source for policy store: {}", req.policy_store_id);
+        info!(
+            "Creating identity source for policy store: {}",
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
 
-        let config = req.configuration.ok_or_else(|| {
-            Status::invalid_argument("Configuration is required")
-        })?;
+        let config = req
+            .configuration
+            .ok_or_else(|| Status::invalid_argument("Configuration is required"))?;
 
         let (config_type, config_json) = match config.configuration_type {
             Some(identity_source_configuration::ConfigurationType::Oidc(oidc)) => {
@@ -533,7 +594,8 @@ impl AuthorizationControl for AuthorizationControlService {
                 "principal_id_claim": mapping.principal_id_claim,
                 "group_claim": mapping.group_claim,
                 "attribute_mappings": mapping.attribute_mappings,
-            }).to_string()
+            })
+            .to_string()
         });
 
         let identity_source = self
@@ -562,7 +624,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<GetIdentitySourceRequest>,
     ) -> Result<Response<GetIdentitySourceResponse>, Status> {
         let req = request.into_inner();
-        info!("Getting identity source: {} from policy store: {}", req.identity_source_id, req.policy_store_id);
+        info!(
+            "Getting identity source: {} from policy store: {}",
+            req.identity_source_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -577,49 +642,84 @@ impl AuthorizationControl for AuthorizationControlService {
             })?;
 
         // Deserialize configuration
-        let config_json: serde_json::Value = serde_json::from_str(&identity_source.configuration_json)
-            .map_err(|e| Status::internal(format!("Failed to parse config: {}", e)))?;
+        let config_json: serde_json::Value =
+            serde_json::from_str(&identity_source.configuration_json)
+                .map_err(|e| Status::internal(format!("Failed to parse config: {}", e)))?;
 
         let configuration_type = match identity_source.configuration_type {
             IdentitySourceType::Oidc => {
                 let oidc = OidcConfiguration {
-                    issuer: config_json["issuer"].as_str().unwrap_or_default().to_string(),
-                    client_ids: config_json["client_ids"].as_array()
-                        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    issuer: config_json["issuer"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                    client_ids: config_json["client_ids"]
+                        .as_array()
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
                         .unwrap_or_default(),
-                    jwks_uri: config_json["jwks_uri"].as_str().unwrap_or_default().to_string(),
-                    group_claim: config_json["group_claim"].as_str().unwrap_or_default().to_string(),
+                    jwks_uri: config_json["jwks_uri"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                    group_claim: config_json["group_claim"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
                 };
                 Some(identity_source_configuration::ConfigurationType::Oidc(oidc))
             }
             IdentitySourceType::Cognito => {
                 let cognito = CognitoUserPoolConfiguration {
-                    user_pool_arn: config_json["user_pool_arn"].as_str().unwrap_or_default().to_string(),
-                    client_ids: config_json["client_ids"].as_str().unwrap_or_default().to_string(),
-                    group_configuration_group_claim: config_json["group_configuration_group_claim"].as_str().unwrap_or_default().to_string(),
+                    user_pool_arn: config_json["user_pool_arn"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                    client_ids: config_json["client_ids"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                    group_configuration_group_claim: config_json["group_configuration_group_claim"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
                 };
                 Some(identity_source_configuration::ConfigurationType::CognitoUserPool(cognito))
             }
         };
 
-        let claims_mapping = identity_source.claims_mapping_json.as_ref().and_then(|json| {
-            serde_json::from_str::<serde_json::Value>(json).ok().map(|val| {
-                ClaimsMappingConfiguration {
-                    principal_id_claim: val["principal_id_claim"].as_str().unwrap_or_default().to_string(),
-                    group_claim: val["group_claim"].as_str().unwrap_or_default().to_string(),
-                    attribute_mappings: val["attribute_mappings"].as_object()
-                        .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string())).collect())
-                        .unwrap_or_default(),
-                }
-            })
-        });
+        let claims_mapping = identity_source
+            .claims_mapping_json
+            .as_ref()
+            .and_then(|json| {
+                serde_json::from_str::<serde_json::Value>(json)
+                    .ok()
+                    .map(|val| ClaimsMappingConfiguration {
+                        principal_id_claim: val["principal_id_claim"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_string(),
+                        group_claim: val["group_claim"].as_str().unwrap_or_default().to_string(),
+                        attribute_mappings: val["attribute_mappings"]
+                            .as_object()
+                            .map(|obj| {
+                                obj.iter()
+                                    .map(|(k, v)| {
+                                        (k.clone(), v.as_str().unwrap_or_default().to_string())
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                    })
+            });
 
         Ok(Response::new(GetIdentitySourceResponse {
             identity_source_id: identity_source.id,
             policy_store_id: identity_source.policy_store_id.into_string(),
-            configuration: Some(IdentitySourceConfiguration {
-                configuration_type,
-            }),
+            configuration: Some(IdentitySourceConfiguration { configuration_type }),
             claims_mapping,
             description: identity_source.description,
             created_at: identity_source.created_at.to_rfc3339(),
@@ -632,7 +732,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<ListIdentitySourcesRequest>,
     ) -> Result<Response<ListIdentitySourcesResponse>, Status> {
         let req = request.into_inner();
-        info!("Listing identity sources for policy store: {}", req.policy_store_id);
+        info!(
+            "Listing identity sources for policy store: {}",
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -667,7 +770,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<DeleteIdentitySourceRequest>,
     ) -> Result<Response<DeleteIdentitySourceResponse>, Status> {
         let req = request.into_inner();
-        info!("Deleting identity source: {} from policy store: {}", req.identity_source_id, req.policy_store_id);
+        info!(
+            "Deleting identity source: {} from policy store: {}",
+            req.identity_source_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -694,7 +800,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<CreatePolicyTemplateRequest>,
     ) -> Result<Response<CreatePolicyTemplateResponse>, Status> {
         let req = request.into_inner();
-        info!("Creating policy template: {} for policy store: {}", req.template_id, req.policy_store_id);
+        info!(
+            "Creating policy template: {} for policy store: {}",
+            req.template_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -724,7 +833,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<GetPolicyTemplateRequest>,
     ) -> Result<Response<GetPolicyTemplateResponse>, Status> {
         let req = request.into_inner();
-        info!("Getting policy template: {} from policy store: {}", req.template_id, req.policy_store_id);
+        info!(
+            "Getting policy template: {} from policy store: {}",
+            req.template_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -753,7 +865,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<ListPolicyTemplatesRequest>,
     ) -> Result<Response<ListPolicyTemplatesResponse>, Status> {
         let req = request.into_inner();
-        info!("Listing policy templates for policy store: {}", req.policy_store_id);
+        info!(
+            "Listing policy templates for policy store: {}",
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -788,7 +903,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<DeletePolicyTemplateRequest>,
     ) -> Result<Response<DeletePolicyTemplateResponse>, Status> {
         let req = request.into_inner();
-        info!("Deleting policy template: {} from policy store: {}", req.template_id, req.policy_store_id);
+        info!(
+            "Deleting policy template: {} from policy store: {}",
+            req.template_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -822,8 +940,9 @@ impl AuthorizationControl for AuthorizationControlService {
             // Load schema from policy store
             let store_id = PolicyStoreId::new(policy_store_id.clone())
                 .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
-            
-            let schema_model = self.repository
+
+            let schema_model = self
+                .repository
                 .get_schema(&store_id)
                 .await
                 .map_err(|e| {
@@ -831,15 +950,17 @@ impl AuthorizationControl for AuthorizationControlService {
                     Status::not_found(format!("Schema not found: {}", e))
                 })?
                 .ok_or_else(|| Status::not_found("Schema not found"))?;
-            
-            Some(Schema::from_str(&schema_model.schema_json).map_err(|e| {
-                Status::invalid_argument(format!("Invalid schema: {}", e))
-            })?)
+
+            Some(
+                Schema::from_str(&schema_model.schema_json)
+                    .map_err(|e| Status::invalid_argument(format!("Invalid schema: {}", e)))?,
+            )
         } else if let Some(schema_str) = &req.schema {
             // Parse provided schema
-            Some(Schema::from_str(schema_str).map_err(|e| {
-                Status::invalid_argument(format!("Invalid schema: {}", e))
-            })?)
+            Some(
+                Schema::from_str(schema_str)
+                    .map_err(|e| Status::invalid_argument(format!("Invalid schema: {}", e)))?,
+            )
         } else {
             None
         };
@@ -857,8 +978,9 @@ impl AuthorizationControl for AuthorizationControlService {
                     if let Some(ref schema) = schema {
                         let validator = Validator::new(schema.clone());
                         let policy_set = PolicySet::from_str(policy_str).unwrap_or_default();
-                        let validation_result = validator.validate(&policy_set, cedar_policy::ValidationMode::default());
-                        
+                        let validation_result = validator
+                            .validate(&policy_set, cedar_policy::ValidationMode::default());
+
                         // Collect validation issues
                         for error in validation_result.validation_errors() {
                             validation_errors.push(ValidationIssue {
@@ -868,7 +990,7 @@ impl AuthorizationControl for AuthorizationControlService {
                                 issue_type: "ValidationError".to_string(),
                             });
                         }
-                        
+
                         for warning in validation_result.validation_warnings() {
                             validation_warnings.push(ValidationIssue {
                                 severity: validation_issue::Severity::Warning as i32,
@@ -878,12 +1000,16 @@ impl AuthorizationControl for AuthorizationControlService {
                             });
                         }
                     }
-                    
+
                     // Add to policy set
-                    policy_set_str.push_str(&format!("@id(\"test-policy-{}\")\n{}\n\n", idx, policy_str));
+                    policy_set_str
+                        .push_str(&format!("@id(\"test-policy-{}\")\n{}\n\n", idx, policy_str));
                 }
                 Err(e) => {
-                    return Err(Status::invalid_argument(format!("Invalid policy {}: {}", idx, e)));
+                    return Err(Status::invalid_argument(format!(
+                        "Invalid policy {}: {}",
+                        idx, e
+                    )));
                 }
             }
         }
@@ -891,27 +1017,38 @@ impl AuthorizationControl for AuthorizationControlService {
         // 3. Build Cedar request
         let principal_uid = EntityUid::from_str(&format!(
             "{}::\"{}\"",
-            req.principal.as_ref().ok_or_else(|| Status::invalid_argument("Principal required"))?.entity_type,
+            req.principal
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Principal required"))?
+                .entity_type,
             req.principal.as_ref().unwrap().entity_id
-        )).map_err(|e| Status::invalid_argument(format!("Invalid principal: {}", e)))?;
+        ))
+        .map_err(|e| Status::invalid_argument(format!("Invalid principal: {}", e)))?;
 
         let action_uid = EntityUid::from_str(&format!(
             "{}::\"{}\"",
-            req.action.as_ref().ok_or_else(|| Status::invalid_argument("Action required"))?.entity_type,
+            req.action
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Action required"))?
+                .entity_type,
             req.action.as_ref().unwrap().entity_id
-        )).map_err(|e| Status::invalid_argument(format!("Invalid action: {}", e)))?;
+        ))
+        .map_err(|e| Status::invalid_argument(format!("Invalid action: {}", e)))?;
 
         let resource_uid = EntityUid::from_str(&format!(
             "{}::\"{}\"",
-            req.resource.as_ref().ok_or_else(|| Status::invalid_argument("Resource required"))?.entity_type,
+            req.resource
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Resource required"))?
+                .entity_type,
             req.resource.as_ref().unwrap().entity_id
-        )).map_err(|e| Status::invalid_argument(format!("Invalid resource: {}", e)))?;
+        ))
+        .map_err(|e| Status::invalid_argument(format!("Invalid resource: {}", e)))?;
 
         // 4. Build context
         let context = if let Some(context_str) = &req.context {
-            Context::from_json_str(context_str, None).map_err(|e| {
-                Status::invalid_argument(format!("Invalid context: {}", e))
-            })?
+            Context::from_json_str(context_str, None)
+                .map_err(|e| Status::invalid_argument(format!("Invalid context: {}", e)))?
         } else {
             Context::empty()
         };
@@ -947,7 +1084,8 @@ impl AuthorizationControl for AuthorizationControlService {
             resource_uid,
             context,
             schema.as_ref(),
-        ).map_err(|e| Status::internal(format!("Failed to create request: {}", e)))?;
+        )
+        .map_err(|e| Status::internal(format!("Failed to create request: {}", e)))?;
 
         // 7. Evaluate
         let policy_set = PolicySet::from_str(&policy_set_str)
@@ -995,8 +1133,9 @@ impl AuthorizationControl for AuthorizationControlService {
             // Load schema from policy store
             let store_id = PolicyStoreId::new(policy_store_id.clone())
                 .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
-            
-            let schema_model = self.repository
+
+            let schema_model = self
+                .repository
                 .get_schema(&store_id)
                 .await
                 .map_err(|e| {
@@ -1004,17 +1143,17 @@ impl AuthorizationControl for AuthorizationControlService {
                     Status::not_found(format!("Schema not found: {}", e))
                 })?
                 .ok_or_else(|| Status::not_found("Schema not found"))?;
-            
-            Schema::from_str(&schema_model.schema_json).map_err(|e| {
-                Status::invalid_argument(format!("Invalid schema: {}", e))
-            })?
+
+            Schema::from_str(&schema_model.schema_json)
+                .map_err(|e| Status::invalid_argument(format!("Invalid schema: {}", e)))?
         } else if let Some(schema_str) = &req.schema {
             // Parse provided schema
-            Schema::from_str(schema_str).map_err(|e| {
-                Status::invalid_argument(format!("Invalid schema: {}", e))
-            })?
+            Schema::from_str(schema_str)
+                .map_err(|e| Status::invalid_argument(format!("Invalid schema: {}", e)))?
         } else {
-            return Err(Status::invalid_argument("Either policy_store_id or schema must be provided"));
+            return Err(Status::invalid_argument(
+                "Either policy_store_id or schema must be provided",
+            ));
         };
 
         // 2. Parse policy
@@ -1038,7 +1177,8 @@ impl AuthorizationControl for AuthorizationControlService {
         // 3. Validate against schema
         let validator = Validator::new(schema);
         let policy_set = PolicySet::from_str(&req.policy_statement).unwrap_or_default();
-        let validation_result = validator.validate(&policy_set, cedar_policy::ValidationMode::default());
+        let validation_result =
+            validator.validate(&policy_set, cedar_policy::ValidationMode::default());
 
         // 4. Collect errors and warnings
         let mut errors = Vec::new();
@@ -1068,7 +1208,11 @@ impl AuthorizationControl for AuthorizationControlService {
         let policy_info = if is_valid {
             let policy_str = policy.to_string();
             Some(PolicyInfo {
-                effect: if policy_str.starts_with("permit") { "permit".to_string() } else { "forbid".to_string() },
+                effect: if policy_str.starts_with("permit") {
+                    "permit".to_string()
+                } else {
+                    "forbid".to_string()
+                },
                 principal_scope: Some("principal".to_string()),
                 action_scope: Some("action".to_string()),
                 resource_scope: Some("resource".to_string()),
@@ -1095,7 +1239,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<CreatePolicyStoreSnapshotRequest>,
     ) -> Result<Response<CreatePolicyStoreSnapshotResponse>, Status> {
         let req = request.into_inner();
-        info!("Creating snapshot for policy store: {}", req.policy_store_id);
+        info!(
+            "Creating snapshot for policy store: {}",
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1122,7 +1269,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<GetPolicyStoreSnapshotRequest>,
     ) -> Result<Response<GetPolicyStoreSnapshotResponse>, Status> {
         let req = request.into_inner();
-        info!("Getting snapshot {} from policy store: {}", req.snapshot_id, req.policy_store_id);
+        info!(
+            "Getting snapshot {} from policy store: {}",
+            req.snapshot_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1144,11 +1294,15 @@ impl AuthorizationControl for AuthorizationControlService {
             policy_count: snapshot.policy_count,
             has_schema: snapshot.has_schema,
             schema_json: snapshot.schema_json.unwrap_or_default(),
-            policies: snapshot.policies.into_iter().map(|p| PolicySummary {
-                policy_id: p.policy_id,
-                description: p.description,
-                statement: p.statement,
-            }).collect(),
+            policies: snapshot
+                .policies
+                .into_iter()
+                .map(|p| PolicySummary {
+                    policy_id: p.policy_id,
+                    description: p.description,
+                    statement: p.statement,
+                })
+                .collect(),
         }))
     }
 
@@ -1157,7 +1311,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<ListPolicyStoreSnapshotsRequest>,
     ) -> Result<Response<ListPolicyStoreSnapshotsResponse>, Status> {
         let req = request.into_inner();
-        info!("Listing snapshots for policy store: {}", req.policy_store_id);
+        info!(
+            "Listing snapshots for policy store: {}",
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1195,7 +1352,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<RollbackToSnapshotRequest>,
     ) -> Result<Response<RollbackToSnapshotResponse>, Status> {
         let req = request.into_inner();
-        info!("Rolling back to snapshot {} for policy store: {}", req.snapshot_id, req.policy_store_id);
+        info!(
+            "Rolling back to snapshot {} for policy store: {}",
+            req.snapshot_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1223,7 +1383,10 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<DeleteSnapshotRequest>,
     ) -> Result<Response<DeleteSnapshotResponse>, Status> {
         let req = request.into_inner();
-        info!("Deleting snapshot {} from policy store: {}", req.snapshot_id, req.policy_store_id);
+        info!(
+            "Deleting snapshot {} from policy store: {}",
+            req.snapshot_id, req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1250,7 +1413,11 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<BatchCreatePoliciesRequest>,
     ) -> Result<Response<BatchCreatePoliciesResponse>, Status> {
         let req = request.into_inner();
-        info!("Batch creating {} policies for store {}", req.policies.len(), req.policy_store_id);
+        info!(
+            "Batch creating {} policies for store {}",
+            req.policies.len(),
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1298,7 +1465,10 @@ impl AuthorizationControl for AuthorizationControlService {
 
             // Validate Cedar policy syntax
             if let Err(e) = CedarPolicyType::from_str(&statement) {
-                errors.push(format!("Invalid policy syntax for {}: {}", item.policy_id, e));
+                errors.push(format!(
+                    "Invalid policy syntax for {}: {}",
+                    item.policy_id, e
+                ));
                 results.push(BatchPolicyResult {
                     policy_id: item.policy_id,
                     created_at: String::new(),
@@ -1322,7 +1492,12 @@ impl AuthorizationControl for AuthorizationControlService {
 
             match self
                 .repository
-                .create_policy(&policy_store_id, &policy_id, &cedar_policy, item.description)
+                .create_policy(
+                    &policy_store_id,
+                    &policy_id,
+                    &cedar_policy,
+                    item.description,
+                )
                 .await
             {
                 Ok(policy) => {
@@ -1355,7 +1530,11 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<BatchUpdatePoliciesRequest>,
     ) -> Result<Response<BatchUpdatePoliciesResponse>, Status> {
         let req = request.into_inner();
-        info!("Batch updating {} policies for store {}", req.policies.len(), req.policy_store_id);
+        info!(
+            "Batch updating {} policies for store {}",
+            req.policies.len(),
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1403,7 +1582,10 @@ impl AuthorizationControl for AuthorizationControlService {
 
             // Validate Cedar policy syntax
             if let Err(e) = CedarPolicyType::from_str(&statement) {
-                errors.push(format!("Invalid policy syntax for {}: {}", item.policy_id, e));
+                errors.push(format!(
+                    "Invalid policy syntax for {}: {}",
+                    item.policy_id, e
+                ));
                 results.push(BatchUpdatePolicyResult {
                     policy_id: item.policy_id,
                     updated_at: String::new(),
@@ -1427,7 +1609,12 @@ impl AuthorizationControl for AuthorizationControlService {
 
             match self
                 .repository
-                .update_policy(&policy_store_id, &policy_id, &cedar_policy, item.description)
+                .update_policy(
+                    &policy_store_id,
+                    &policy_id,
+                    &cedar_policy,
+                    item.description,
+                )
                 .await
             {
                 Ok(policy) => {
@@ -1460,7 +1647,11 @@ impl AuthorizationControl for AuthorizationControlService {
         request: Request<BatchDeletePoliciesRequest>,
     ) -> Result<Response<BatchDeletePoliciesResponse>, Status> {
         let req = request.into_inner();
-        info!("Batch deleting {} policies for store {}", req.policy_ids.len(), req.policy_store_id);
+        info!(
+            "Batch deleting {} policies for store {}",
+            req.policy_ids.len(),
+            req.policy_store_id
+        );
 
         let policy_store_id = PolicyStoreId::new(req.policy_store_id)
             .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
@@ -1506,6 +1697,90 @@ impl AuthorizationControl for AuthorizationControlService {
         Ok(Response::new(BatchDeletePoliciesResponse {
             results,
             errors,
+        }))
+    }
+
+    async fn update_policy_store_tags(
+        &self,
+        request: Request<UpdatePolicyStoreTagsRequest>,
+    ) -> Result<Response<UpdatePolicyStoreTagsResponse>, Status> {
+        let req = request.into_inner();
+        info!(
+            "Updating tags for policy store: {} with {} tags",
+            req.policy_store_id,
+            req.tags.len()
+        );
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        // Serialize tags to JSON
+        let tags_json = serde_json::to_string(&req.tags).unwrap_or_default();
+
+        // Update policy store with new tags
+        let store = self
+            .repository
+            .update_policy_store_tags(&policy_store_id, tags_json)
+            .await
+            .map_err(|e| {
+                error!("Failed to update policy store tags: {}", e);
+                Status::internal(format!("Failed to update policy store tags: {}", e))
+            })?;
+
+        Ok(Response::new(UpdatePolicyStoreTagsResponse {
+            policy_store_id: store.id.into_string(),
+            tags: store.tags,
+            updated_at: store.updated_at.to_rfc3339(),
+        }))
+    }
+
+    async fn get_policy_store_audit_log(
+        &self,
+        request: Request<GetPolicyStoreAuditLogRequest>,
+    ) -> Result<Response<GetPolicyStoreAuditLogResponse>, Status> {
+        let req = request.into_inner();
+        info!(
+            "Getting audit log for policy store: {}",
+            req.policy_store_id
+        );
+
+        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
+            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
+
+        // Build audit log filters
+        let filters = hodei_domain::AuditLogFilters {
+            event_types: None,
+            service_name: None,
+            policy_store_id: Some(policy_store_id.into_string()),
+            start_date: None,
+            end_date: None,
+            limit: match req.max_results {
+                Some(max) if max > 0 => Some(max as u32),
+                _ => Some(100),
+            },
+        };
+
+        let audit_logs = self.repository.get_audit_log(filters).await.map_err(|e| {
+            error!("Failed to get audit log: {}", e);
+            Status::internal(format!("Failed to get audit log: {}", e))
+        })?;
+
+        let log_entries = audit_logs
+            .into_iter()
+            .map(|log| PolicyStoreAuditLogEntry {
+                id: 0, // Will be assigned by database
+                policy_store_id: log.aggregate_id,
+                action: log.event_type,
+                user_id: "system".to_string(),
+                changes: Some(log.event_data.to_string()),
+                ip_address: None,
+                timestamp: log.occurred_at.to_rfc3339(),
+            })
+            .collect();
+
+        Ok(Response::new(GetPolicyStoreAuditLogResponse {
+            log_entries,
+            next_token: None,
         }))
     }
 }

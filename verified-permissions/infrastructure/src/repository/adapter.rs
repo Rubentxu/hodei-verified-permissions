@@ -2,14 +2,18 @@
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use hodei_domain::{
-    Action, AuthorizationDecision, AuthorizationEvaluator, AuthorizationLog, CedarPolicy,
-    DomainError, DomainResult, IdentitySource, IdentitySourceType, Policy, PolicyId,
-    PolicyRepository, PolicyStore, PolicyStoreId, PolicyTemplate, Principal, Resource, Schema,
-    Snapshot, SnapshotPolicy, RollbackResult,
+use hodei_domain::events::{
+    ApiCalled, ApiCompleted, AuthorizationPerformed, DomainEvent, PolicyStoreAccessed,
 };
+use hodei_domain::{
+    Action, AuditLogEntry, AuditLogFilters, AuthorizationDecision, AuthorizationEvaluator,
+    AuthorizationLog, CedarPolicy, DomainError, DomainResult, IdentitySource, IdentitySourceType,
+    Policy, PolicyId, PolicyRepository, PolicyStore, PolicyStoreId, PolicyTemplate, Principal,
+    Resource, RollbackResult, Schema, Snapshot, SnapshotPolicy,
+};
+use serde_json;
 
-use super::{models, SqliteRepository};
+use super::{SqliteRepository, models};
 
 /// Adapter that bridges domain repository trait with infrastructure implementation
 pub struct RepositoryAdapter {
@@ -24,8 +28,7 @@ impl RepositoryAdapter {
 
     fn map_policy_store(model: models::PolicyStore) -> DomainResult<PolicyStore> {
         let id = PolicyStoreId::new(model.id)?;
-        let tags: Vec<String> = serde_json::from_str(&model.tags)
-            .unwrap_or_else(|_| Vec::new());
+        let tags: Vec<String> = serde_json::from_str(&model.tags).unwrap_or_else(|_| Vec::new());
         let status = match model.status.as_str() {
             "inactive" => hodei_domain::PolicyStoreStatus::Inactive,
             _ => hodei_domain::PolicyStoreStatus::Active,
@@ -107,7 +110,9 @@ impl RepositoryAdapter {
         }
     }
 
-    fn to_domain_authorization_log(model: models::AuthorizationLog) -> DomainResult<AuthorizationLog> {
+    fn to_domain_authorization_log(
+        model: models::AuthorizationLog,
+    ) -> DomainResult<AuthorizationLog> {
         Ok(AuthorizationLog {
             policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
             principal: Principal::new(model.principal)?,
@@ -116,7 +121,12 @@ impl RepositoryAdapter {
             decision: match model.decision.as_str() {
                 "ALLOW" => AuthorizationDecision::Allow,
                 "DENY" => AuthorizationDecision::Deny,
-                other => return Err(DomainError::Internal(format!("Invalid decision: {}", other))),
+                other => {
+                    return Err(DomainError::Internal(format!(
+                        "Invalid decision: {}",
+                        other
+                    )));
+                }
             },
             timestamp: model.timestamp,
         })
@@ -144,10 +154,14 @@ impl RepositoryAdapter {
 
 #[async_trait]
 impl PolicyRepository for RepositoryAdapter {
-    async fn create_policy_store(&self, description: Option<String>) -> DomainResult<PolicyStore> {
+    async fn create_policy_store(
+        &self,
+        name: String,
+        description: Option<String>,
+    ) -> DomainResult<PolicyStore> {
         let model = self
             .sqlite_repo
-            .create_policy_store(description)
+            .create_policy_store(name, description)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Self::map_policy_store(model)
@@ -171,27 +185,47 @@ impl PolicyRepository for RepositoryAdapter {
         models.into_iter().map(Self::map_policy_store).collect()
     }
 
-    async fn update_policy_store(&self, id: &PolicyStoreId, description: Option<String>) -> DomainResult<PolicyStore> {
+    async fn update_policy_store(
+        &self,
+        id: &PolicyStoreId,
+        name: Option<String>,
+        description: Option<String>,
+    ) -> DomainResult<PolicyStore> {
         let model = self
             .sqlite_repo
-            .update_policy_store(Self::policy_store_id_str(id), description)
+            .update_policy_store(Self::policy_store_id_str(id), name, description)
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+        Self::map_policy_store(model)
+    }
+
+    async fn update_policy_store_tags(
+        &self,
+        id: &PolicyStoreId,
+        tags_json: String,
+    ) -> DomainResult<PolicyStore> {
+        let model = self
+            .sqlite_repo
+            .update_policy_store_tags(Self::policy_store_id_str(id), tags_json)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Self::map_policy_store(model)
     }
 
     async fn delete_policy_store(&self, id: &PolicyStoreId) -> DomainResult<()> {
-        self
-            .sqlite_repo
+        self.sqlite_repo
             .delete_policy_store(Self::policy_store_id_str(id))
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Ok(())
     }
 
-    async fn put_schema(&self, policy_store_id: &PolicyStoreId, schema: String) -> DomainResult<()> {
-        self
-            .sqlite_repo
+    async fn put_schema(
+        &self,
+        policy_store_id: &PolicyStoreId,
+        schema: String,
+    ) -> DomainResult<()> {
+        self.sqlite_repo
             .put_schema(Self::policy_store_id_str(policy_store_id), schema)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
@@ -280,8 +314,7 @@ impl PolicyRepository for RepositoryAdapter {
         policy_store_id: &PolicyStoreId,
         policy_id: &PolicyId,
     ) -> DomainResult<()> {
-        self
-            .sqlite_repo
+        self.sqlite_repo
             .delete_policy(
                 Self::policy_store_id_str(policy_store_id),
                 Self::policy_id_str(policy_id),
@@ -346,8 +379,7 @@ impl PolicyRepository for RepositoryAdapter {
         policy_store_id: &PolicyStoreId,
         identity_source_id: &str,
     ) -> DomainResult<()> {
-        self
-            .sqlite_repo
+        self.sqlite_repo
             .delete_identity_source(
                 Self::policy_store_id_str(policy_store_id),
                 identity_source_id,
@@ -384,10 +416,7 @@ impl PolicyRepository for RepositoryAdapter {
     ) -> DomainResult<PolicyTemplate> {
         let model = self
             .sqlite_repo
-            .get_policy_template(
-                Self::policy_store_id_str(policy_store_id),
-                template_id,
-            )
+            .get_policy_template(Self::policy_store_id_str(policy_store_id), template_id)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Self::map_policy_template(model)
@@ -410,12 +439,8 @@ impl PolicyRepository for RepositoryAdapter {
         policy_store_id: &PolicyStoreId,
         template_id: &str,
     ) -> DomainResult<()> {
-        self
-            .sqlite_repo
-            .delete_policy_template(
-                Self::policy_store_id_str(policy_store_id),
-                template_id,
-            )
+        self.sqlite_repo
+            .delete_policy_template(Self::policy_store_id_str(policy_store_id), template_id)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Ok(())
@@ -429,7 +454,10 @@ impl PolicyRepository for RepositoryAdapter {
     ) -> DomainResult<Snapshot> {
         let model = self
             .sqlite_repo
-            .create_policy_store_snapshot(Self::policy_store_id_str(policy_store_id), description.as_deref())
+            .create_policy_store_snapshot(
+                Self::policy_store_id_str(policy_store_id),
+                description.as_deref(),
+            )
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
 
@@ -441,7 +469,9 @@ impl PolicyRepository for RepositoryAdapter {
             policy_count: model.policy_count,
             has_schema: model.has_schema,
             schema_json: model.schema_json,
-            policies: model.policies.into_iter()
+            policies: model
+                .policies
+                .into_iter()
                 .map(|p| SnapshotPolicy {
                     policy_id: p.policy_id,
                     description: p.description,
@@ -459,10 +489,7 @@ impl PolicyRepository for RepositoryAdapter {
     ) -> DomainResult<Snapshot> {
         let model = self
             .sqlite_repo
-            .get_policy_store_snapshot(
-                Self::policy_store_id_str(policy_store_id),
-                snapshot_id,
-            )
+            .get_policy_store_snapshot(Self::policy_store_id_str(policy_store_id), snapshot_id)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
 
@@ -474,7 +501,9 @@ impl PolicyRepository for RepositoryAdapter {
             policy_count: model.policy_count,
             has_schema: model.has_schema,
             schema_json: model.schema_json,
-            policies: model.policies.into_iter()
+            policies: model
+                .policies
+                .into_iter()
                 .map(|p| SnapshotPolicy {
                     policy_id: p.policy_id,
                     description: p.description,
@@ -495,7 +524,8 @@ impl PolicyRepository for RepositoryAdapter {
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
 
-        models.into_iter()
+        models
+            .into_iter()
             .map(|model| {
                 Ok(Snapshot {
                     snapshot_id: model.snapshot_id,
@@ -542,12 +572,8 @@ impl PolicyRepository for RepositoryAdapter {
         policy_store_id: &PolicyStoreId,
         snapshot_id: &str,
     ) -> DomainResult<()> {
-        self
-            .sqlite_repo
-            .delete_snapshot(
-                Self::policy_store_id_str(policy_store_id),
-                snapshot_id,
-            )
+        self.sqlite_repo
+            .delete_snapshot(Self::policy_store_id_str(policy_store_id), snapshot_id)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Ok(())
@@ -555,11 +581,37 @@ impl PolicyRepository for RepositoryAdapter {
 
     async fn log_authorization(&self, log: AuthorizationLog) -> DomainResult<()> {
         let model = Self::to_model_authorization_log(log);
-        self
-            .sqlite_repo
+        self.sqlite_repo
             .log_authorization(model)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Ok(())
+    }
+
+    /// Get audit log events with optional filtering
+    async fn get_audit_log(&self, filters: AuditLogFilters) -> DomainResult<Vec<AuditLogEntry>> {
+        let events = self
+            .sqlite_repo
+            .get_audit_log(filters)
+            .await
+            .map_err(|e| DomainError::Internal(e.to_string()))?;
+
+        events.into_iter().map(Self::map_audit_log_entry).collect()
+    }
+}
+
+impl RepositoryAdapter {
+    fn map_audit_log_entry(model: models::AuditLogEntry) -> DomainResult<AuditLogEntry> {
+        let event_data: serde_json::Value = serde_json::from_str(&model.event_data)
+            .map_err(|e| DomainError::Internal(format!("Failed to parse event data: {}", e)))?;
+
+        Ok(AuditLogEntry {
+            event_id: model.event_id,
+            event_type: model.event_type,
+            aggregate_id: model.aggregate_id,
+            event_data,
+            occurred_at: model.occurred_at,
+            version: model.version,
+        })
     }
 }

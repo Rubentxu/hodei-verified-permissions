@@ -1,62 +1,91 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { grpcClients } from '@/lib/grpc/node-client';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { NextResponse } from "next/server";
 
-interface AuditLogEntry {
-  id: number;
-  policy_store_id: string;
-  action: string;
-  user_id: string;
-  changes: string | null;
-  ip_address: string | null;
-  timestamp: string;
+export async function GET(
+  req: NextApiRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const { id } = params;
+    const { searchParams } = new URL(req.url!);
+
+    // Extract query parameters
+    const eventTypes =
+      searchParams.get("event_types")?.split(",").filter(Boolean) || [];
+    const maxResults = parseInt(searchParams.get("max_results") || "100");
+    const startTime = searchParams.get("start_time") || undefined;
+    const endTime = searchParams.get("end_time") || undefined;
+
+    // Build gRPC request
+    const grpcRequest = {
+      policy_store_id: id,
+      event_types: eventTypes,
+      max_results: maxResults,
+      start_time: startTime,
+      end_time: endTime,
+    };
+
+    // Call backend API
+    const response = await fetch(
+      `${process.env.API_URL || "http://localhost:50051"}/audit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.API_KEY || ""}`,
+        },
+        body: JSON.stringify(grpcRequest),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error fetching audit log:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch audit log" },
+      { status: 500 },
+    );
+  }
 }
 
-export default async function handler(
+export async function POST(
   req: NextApiRequest,
-  res: NextApiResponse
+  { params }: { params: { id: string } },
 ) {
-  // Extract policy store ID from URL
-  const policyStoreId = req.query.id as string;
-
-  if (!policyStoreId) {
-    return res.status(400).json({ error: 'Policy store ID is required' });
-  }
-
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', ['GET']);
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
-    // Call gRPC method to get audit log
-    const response = await grpcClients.getPolicyStoreAuditLog({
-      policy_store_id: policyStoreId
-    });
+    const { id } = params;
 
-    // Transform the response to include the metrics structure
-    const auditLogs: AuditLogEntry[] = response.audit_logs?.map((log) => ({
-      id: log.id || 0,
-      policy_store_id: log.policy_store_id,
-      action: log.action,
-      user_id: log.user_id,
-      changes: log.changes || null,
-      ip_address: log.ip_address || null,
-      timestamp: log.timestamp || new Date().toISOString()
-    })) || [];
+    // Export audit log
+    const response = await fetch(
+      `${process.env.API_URL || "http://localhost:50051"}/audit/export`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.API_KEY || ""}`,
+        },
+        body: JSON.stringify({
+          policy_store_id: id,
+        }),
+      },
+    );
 
-    return res.status(200).json({
-      audit_logs: auditLogs,
-      count: auditLogs.length
-    });
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Failed to fetch audit log:', error);
-
-    // If gRPC call fails, return empty audit log
-    return res.status(200).json({
-      audit_logs: [],
-      count: 0,
-      error: 'Unable to fetch audit log'
-    });
+    console.error("Error exporting audit log:", error);
+    return NextResponse.json(
+      { error: "Failed to export audit log" },
+      { status: 500 },
+    );
   }
 }

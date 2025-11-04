@@ -1,11 +1,18 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Local type definitions to avoid importing gRPC module in client code
 interface PolicyStoreItem {
   policy_store_id: string;
-  name?: string;
+  name: string;
   description?: string;
+  status: string;
+  version: string;
+  author: string;
+  tags: string[];
+  identity_source_ids: string[];
+  default_identity_source_id?: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface ListPolicyStoresResponse {
@@ -31,15 +38,21 @@ interface ListPoliciesParams {
 
 export const usePolicyStores = (params?: ListPolicyStoresParams) => {
   return useQuery<ListPolicyStoresResponse>({
-    queryKey: ['policy-stores', params],
+    queryKey: ["policy-stores", params],
     queryFn: async () => {
       const queryParams = new URLSearchParams();
-      if (params?.max_results) queryParams.append('max_results', params.max_results.toString());
-      if (params?.next_token) queryParams.append('next_token', params.next_token);
+      if (params?.max_results)
+        queryParams.append("max_results", params.max_results.toString());
+      if (params?.next_token)
+        queryParams.append("next_token", params.next_token);
 
-      const response = await fetch(`/api/policy-stores?${queryParams.toString()}`);
+      const response = await fetch(
+        `/api/policy-stores?${queryParams.toString()}`,
+      );
       if (!response.ok) {
-        throw new Error(`Failed to fetch policy stores: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch policy stores: ${response.statusText}`,
+        );
       }
       return response.json();
     },
@@ -49,7 +62,7 @@ export const usePolicyStores = (params?: ListPolicyStoresParams) => {
 
 export const usePolicyStore = (policyStoreId: string) => {
   return useQuery({
-    queryKey: ['policy-stores', policyStoreId],
+    queryKey: ["policy-stores", policyStoreId],
     queryFn: async () => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}`);
       if (!response.ok) {
@@ -65,26 +78,30 @@ export const usePolicyStore = (policyStoreId: string) => {
 export const useCreatePolicyStore = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<CreatePolicyStoreResponse, Error, { description: string }>({
+  return useMutation<
+    CreatePolicyStoreResponse,
+    Error,
+    { name: string; description: string }
+  >({
     mutationFn: async (data) => {
-      const response = await fetch('/api/policy-stores', {
-        method: 'POST',
+      const response = await fetch("/api/policy-stores", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create policy store');
+        throw new Error(error.error || "Failed to create policy store");
       }
 
       return response.json();
     },
     onSuccess: () => {
       // Invalidate and refetch policy stores list
-      queryClient.invalidateQueries({ queryKey: ['policy-stores'] });
+      queryClient.invalidateQueries({ queryKey: ["policy-stores"] });
     },
   });
 };
@@ -95,25 +112,27 @@ export const useDeletePolicyStore = () => {
   return useMutation<void, Error, string>({
     mutationFn: async (policyStoreId: string) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (!response.ok) {
         try {
           // Try to parse JSON error response
           const error = await response.json();
-          throw new Error(error.error || 'Failed to delete policy store');
+          throw new Error(error.error || "Failed to delete policy store");
         } catch {
           // If JSON parsing fails, use status text
-          throw new Error(`Failed to delete policy store: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to delete policy store: ${response.status} ${response.statusText}`,
+          );
         }
       }
     },
     onSuccess: (_, policyStoreId) => {
       // Invalidate and refetch policy stores list
-      queryClient.invalidateQueries({ queryKey: ['policy-stores'] });
+      queryClient.invalidateQueries({ queryKey: ["policy-stores"] });
       // Remove the specific policy store from cache
-      queryClient.removeQueries({ queryKey: ['policy-stores', policyStoreId] });
+      queryClient.removeQueries({ queryKey: ["policy-stores", policyStoreId] });
     },
   });
 };
@@ -121,28 +140,38 @@ export const useDeletePolicyStore = () => {
 export const useUpdatePolicyStore = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { policyStoreId: string; description: string }>({
+  return useMutation<
+    void,
+    Error,
+    { policyStoreId: string; description: string }
+  >({
     mutationFn: async ({ policyStoreId, description }) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ description }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update policy store');
+        throw new Error(error.error || "Failed to update policy store");
       }
 
       return response.json();
     },
     onSuccess: (_, { policyStoreId }) => {
       // Invalidate and refetch policy stores list
-      queryClient.invalidateQueries({ queryKey: ['policy-stores'] });
+      queryClient.invalidateQueries({ queryKey: ["policy-stores"] });
       // Update the specific policy store in cache
-      queryClient.invalidateQueries({ queryKey: ['policy-stores', policyStoreId] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-stores", policyStoreId],
+      });
+      // Invalidate tags cache to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-tags", policyStoreId],
+      });
     },
   });
 };
@@ -150,7 +179,7 @@ export const useUpdatePolicyStore = () => {
 // Hook to get policy count for a specific policy store
 export const usePolicyCount = (policyStoreId: string) => {
   return useQuery({
-    queryKey: ['policy-count', policyStoreId],
+    queryKey: ["policy-count", policyStoreId],
     queryFn: async () => {
       try {
         const response = await fetch(`/api/policy-stores/${policyStoreId}`);
@@ -171,20 +200,20 @@ export const usePolicyCount = (policyStoreId: string) => {
 // Hook to get complete metrics for a specific policy store
 export const usePolicyStoreMetrics = (policyStoreId: string) => {
   return useQuery({
-    queryKey: ['policy-store-metrics', policyStoreId],
+    queryKey: ["policy-store-metrics", policyStoreId],
     queryFn: async () => {
       if (!policyStoreId) return null;
 
       try {
         const [detailsResponse] = await Promise.all([
-          fetch(`/api/policy-stores/${policyStoreId}`)
+          fetch(`/api/policy-stores/${policyStoreId}`),
         ]);
 
         if (!detailsResponse.ok) {
           return {
             policies: 0,
             schemas: 0,
-            loading: false
+            loading: false,
           };
         }
 
@@ -192,14 +221,14 @@ export const usePolicyStoreMetrics = (policyStoreId: string) => {
         return {
           policies: details.metrics?.policies || 0,
           schemas: details.metrics?.schemas || 0,
-          loading: false
+          loading: false,
         };
       } catch (error) {
-        console.error('Failed to fetch metrics:', error);
+        console.error("Failed to fetch metrics:", error);
         return {
           policies: 0,
           schemas: 0,
-          loading: false
+          loading: false,
         };
       }
     },
@@ -212,19 +241,21 @@ export const usePolicyStoreMetrics = (policyStoreId: string) => {
 // Hook to get audit log for a specific policy store
 export const usePolicyStoreAuditLog = (policyStoreId: string) => {
   return useQuery({
-    queryKey: ['policy-store-audit', policyStoreId],
+    queryKey: ["policy-store-audit", policyStoreId],
     queryFn: async () => {
       if (!policyStoreId) return [];
 
       try {
-        const response = await fetch(`/api/policy-stores/${policyStoreId}/audit`);
+        const response = await fetch(
+          `/api/policy-stores/${policyStoreId}/audit`,
+        );
         if (!response.ok) {
           return [];
         }
         const data = await response.json();
-        return data.audit_logs || [];
+        return data.log_entries || [];
       } catch (error) {
-        console.error('Failed to fetch audit log:', error);
+        console.error("Failed to fetch audit log:", error);
         return [];
       }
     },
@@ -236,17 +267,17 @@ export const usePolicyStoreAuditLog = (policyStoreId: string) => {
 // Hook to get all existing tags for autocomplete
 export const useAllTags = () => {
   return useQuery({
-    queryKey: ['all-tags'],
+    queryKey: ["all-tags"],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/policy-stores/tags');
+        const response = await fetch("/api/policy-stores/tags");
         if (!response.ok) {
           return [];
         }
         const data = await response.json();
         return data.tags || [];
       } catch (error) {
-        console.error('Failed to fetch tags:', error);
+        console.error("Failed to fetch tags:", error);
         return [];
       }
     },
@@ -260,19 +291,21 @@ export const usePolicyStoreTags = (policyStoreId: string) => {
 
   // Get current tags
   const { data: tags = [], isLoading } = useQuery({
-    queryKey: ['policy-store-tags', policyStoreId],
+    queryKey: ["policy-store-tags", policyStoreId],
     queryFn: async () => {
       if (!policyStoreId) return [];
 
       try {
-        const response = await fetch(`/api/policy-stores/${policyStoreId}/tags`);
+        const response = await fetch(
+          `/api/policy-stores/${policyStoreId}/tags`,
+        );
         if (!response.ok) {
           return [];
         }
         const data = await response.json();
         return data.tags || [];
       } catch (error) {
-        console.error('Failed to fetch tags:', error);
+        console.error("Failed to fetch tags:", error);
         return [];
       }
     },
@@ -284,18 +317,20 @@ export const usePolicyStoreTags = (policyStoreId: string) => {
   const addTagMutation = useMutation({
     mutationFn: async (tag: string) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}/tags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag }),
       });
       if (!response.ok) {
-        throw new Error('Failed to add tag');
+        throw new Error("Failed to add tag");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-tags', policyStoreId] });
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-tags", policyStoreId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
     },
   });
 
@@ -303,18 +338,20 @@ export const usePolicyStoreTags = (policyStoreId: string) => {
   const removeTagMutation = useMutation({
     mutationFn: async (tag: string) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}/tags`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag })
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag }),
       });
       if (!response.ok) {
-        throw new Error('Failed to remove tag');
+        throw new Error("Failed to remove tag");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-tags', policyStoreId] });
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-tags", policyStoreId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
     },
   });
 
@@ -322,18 +359,20 @@ export const usePolicyStoreTags = (policyStoreId: string) => {
   const updateTagsMutation = useMutation({
     mutationFn: async (newTags: string[]) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}/tags`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: newTags })
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: newTags }),
       });
       if (!response.ok) {
-        throw new Error('Failed to update tags');
+        throw new Error("Failed to update tags");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-tags', policyStoreId] });
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-tags", policyStoreId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["all-tags"] });
     },
   });
 
@@ -347,23 +386,25 @@ export const usePolicyStoreTags = (policyStoreId: string) => {
     isRemovingTag: removeTagMutation.isPending,
     isUpdatingTags: updateTagsMutation.isPending,
   };
-}
+};
 
 // Hook to get snapshots for a policy store
 export const usePolicyStoreSnapshots = (policyStoreId: string) => {
   return useQuery({
-    queryKey: ['policy-store-snapshots', policyStoreId],
+    queryKey: ["policy-store-snapshots", policyStoreId],
     queryFn: async () => {
       if (!policyStoreId) return { snapshots: [] };
 
       try {
-        const response = await fetch(`/api/policy-stores/${policyStoreId}/snapshots`);
+        const response = await fetch(
+          `/api/policy-stores/${policyStoreId}/snapshots`,
+        );
         if (!response.ok) {
           return { snapshots: [] };
         }
         return response.json();
       } catch (error) {
-        console.error('Failed to fetch snapshots:', error);
+        console.error("Failed to fetch snapshots:", error);
         return { snapshots: [] };
       }
     },
@@ -373,20 +414,25 @@ export const usePolicyStoreSnapshots = (policyStoreId: string) => {
 };
 
 // Hook to get a specific snapshot
-export const usePolicyStoreSnapshot = (policyStoreId: string, snapshotId: string) => {
+export const usePolicyStoreSnapshot = (
+  policyStoreId: string,
+  snapshotId: string,
+) => {
   return useQuery({
-    queryKey: ['policy-store-snapshot', policyStoreId, snapshotId],
+    queryKey: ["policy-store-snapshot", policyStoreId, snapshotId],
     queryFn: async () => {
       if (!policyStoreId || !snapshotId) return null;
 
       try {
-        const response = await fetch(`/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`);
+        const response = await fetch(
+          `/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`,
+        );
         if (!response.ok) {
-          throw new Error('Failed to fetch snapshot');
+          throw new Error("Failed to fetch snapshot");
         }
         return response.json();
       } catch (error) {
-        console.error('Failed to fetch snapshot:', error);
+        console.error("Failed to fetch snapshot:", error);
         return null;
       }
     },
@@ -400,21 +446,32 @@ export const useCreateSnapshot = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ policyStoreId, description }: { policyStoreId: string; description?: string }) => {
-      const response = await fetch(`/api/policy-stores/${policyStoreId}/snapshots`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
-      });
+    mutationFn: async ({
+      policyStoreId,
+      description,
+    }: {
+      policyStoreId: string;
+      description?: string;
+    }) => {
+      const response = await fetch(
+        `/api/policy-stores/${policyStoreId}/snapshots`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ description }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to create snapshot');
+        throw new Error("Failed to create snapshot");
       }
 
       return response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-snapshots', variables.policyStoreId] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-snapshots", variables.policyStoreId],
+      });
     },
   });
 };
@@ -424,19 +481,30 @@ export const useDeleteSnapshot = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ policyStoreId, snapshotId }: { policyStoreId: string; snapshotId: string }) => {
-      const response = await fetch(`/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`, {
-        method: 'DELETE',
-      });
+    mutationFn: async ({
+      policyStoreId,
+      snapshotId,
+    }: {
+      policyStoreId: string;
+      snapshotId: string;
+    }) => {
+      const response = await fetch(
+        `/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to delete snapshot');
+        throw new Error("Failed to delete snapshot");
       }
 
       return response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-snapshots', variables.policyStoreId] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-snapshots", variables.policyStoreId],
+      });
     },
   });
 };
@@ -455,23 +523,32 @@ export const useRollbackToSnapshot = () => {
       snapshotId: string;
       description?: string;
     }) => {
-      const response = await fetch(`/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
-      });
+      const response = await fetch(
+        `/api/policy-stores/${policyStoreId}/snapshots/${snapshotId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ description }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to rollback to snapshot');
+        throw new Error("Failed to rollback to snapshot");
       }
 
       return response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['policy-store-snapshots', variables.policyStoreId] });
-      queryClient.invalidateQueries({ queryKey: ['policy-stores'] });
-      queryClient.invalidateQueries({ queryKey: ['policy-store', variables.policyStoreId] });
-      queryClient.invalidateQueries({ queryKey: ['policy-store-metrics', variables.policyStoreId] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-snapshots", variables.policyStoreId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["policy-stores"] });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store", variables.policyStoreId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["policy-store-metrics", variables.policyStoreId],
+      });
     },
   });
 };

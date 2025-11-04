@@ -20,7 +20,7 @@ async fn test_policy_store_lifecycle() {
     
     // Test: Create policy store
     let store = client
-        .create_policy_store(Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .expect("Failed to create policy store");
     
@@ -67,17 +67,17 @@ async fn test_multiple_policy_stores_isolation() {
     
     // Create 3 stores
     let store_a = client
-        .create_policy_store(Some("Store A".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store A".to_string())
         .await
         .expect("Failed to create store A");
     
     let store_b = client
-        .create_policy_store(Some("Store B".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store B".to_string())
         .await
         .expect("Failed to create store B");
     
     let store_c = client
-        .create_policy_store(Some("Store C".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store C".to_string())
         .await
         .expect("Failed to create store C");
     
@@ -141,7 +141,7 @@ async fn test_policy_store_pagination() {
     let mut store_ids = Vec::new();
     for i in 0..5 {
         let store = client
-            .create_policy_store(Some(format!("Store {}", i)))
+            .create_policy_store("Test Store".to_string(), format!("Store {}", i))
             .await
             .unwrap();
         store_ids.push(store.policy_store_id);

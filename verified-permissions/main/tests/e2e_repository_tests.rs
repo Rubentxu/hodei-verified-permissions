@@ -13,7 +13,7 @@ async fn test_policy_store_lifecycle() {
     
     // Test: Create policy store
     let store = repo
-        .create_policy_store(Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .expect("Failed to create policy store");
     
@@ -54,9 +54,9 @@ async fn test_multiple_policy_stores() {
     let repo = create_test_repo().await;
     
     // Create 3 stores
-    let store_a = repo.create_policy_store(Some("Store A".to_string())).await.unwrap();
-    let store_b = repo.create_policy_store(Some("Store B".to_string())).await.unwrap();
-    let store_c = repo.create_policy_store(Some("Store C".to_string())).await.unwrap();
+    let store_a = repo.create_policy_store("Test Store".to_string(), "Store A".to_string()).await.unwrap();
+    let store_b = repo.create_policy_store("Test Store".to_string(), "Store B".to_string()).await.unwrap();
+    let store_c = repo.create_policy_store("Test Store".to_string(), "Store C".to_string()).await.unwrap();
     
     // Verify all exist
     let stores = repo.list_policy_stores().await.unwrap();
@@ -77,7 +77,7 @@ async fn test_schema_management() {
     let repo = create_test_repo().await;
     
     // Create store
-    let store = repo.create_policy_store(Some("Schema Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Schema Test".to_string()).await.unwrap();
     
     // Add schema
     let schema = r#"{
@@ -107,7 +107,7 @@ async fn test_policy_crud() {
     let repo = create_test_repo().await;
     
     // Create store with schema
-    let store = repo.create_policy_store(Some("Policy Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Policy Test".to_string()).await.unwrap();
     
     let schema = r#"{"": {"entityTypes": {"User": {}, "Document": {}}, "actions": {"view": {}}}}"#;
     repo.put_schema(&store.id, schema.to_string()).await.unwrap();
@@ -140,7 +140,7 @@ async fn test_policy_crud() {
 async fn test_policy_with_conditions() {
     let repo = create_test_repo().await;
     
-    let store = repo.create_policy_store(Some("Conditions Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Conditions Test".to_string()).await.unwrap();
     
     let schema = r#"{
         "": {
@@ -185,7 +185,7 @@ async fn test_policy_with_conditions() {
 async fn test_identity_source_crud() {
     let repo = create_test_repo().await;
     
-    let store = repo.create_policy_store(Some("Identity Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Identity Test".to_string()).await.unwrap();
     
     // Create OIDC identity source
     let oidc_config = r#"{"issuer":"https://accounts.google.com","client_ids":["client-123"],"jwks_uri":"https://www.googleapis.com/oauth2/v3/certs"}"#;
@@ -225,7 +225,7 @@ async fn test_cascade_delete() {
     let repo = create_test_repo().await;
     
     // Create store with schema, policies, and identity source
-    let store = repo.create_policy_store(Some("Cascade Test".to_string())).await.unwrap();
+    let store = repo.create_policy_store("Test Store".to_string(), "Cascade Test".to_string()).await.unwrap();
     
     let schema = r#"{"": {"entityTypes": {"User": {}}, "actions": {"view": {}}}}"#;
     repo.put_schema(&store.id, schema.to_string()).await.unwrap();

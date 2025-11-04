@@ -24,7 +24,7 @@ async fn tc_001_policy_store_crud_lifecycle() {
     // CREATE
     println!("  📦 Creating policy store...");
     let store = client
-        .create_policy_store(Some(test_description.clone()))
+        .create_policy_store("Test Store".to_string(), test_description.clone())
         .await
         .expect("Failed to create policy store");
     println!("  ✓ Created: {}", store.policy_store_id);
@@ -80,7 +80,7 @@ async fn tc_002_policy_store_multiple_operations() {
     println!("  📦 Creating {} policy stores...", num_stores);
     for i in 0..num_stores {
         let store = client
-            .create_policy_store(Some(format!("Store-{}", i)))
+            .create_policy_store("Test Store".to_string(), format!("Store-{}", i))
             .await
             .expect("Failed to create store");
         store_ids.push(store.policy_store_id);
@@ -130,7 +130,7 @@ async fn tc_003_policy_store_with_policies() {
 
     // Create policy store
     let store = client
-        .create_policy_store(Some("Store with Policies".to_string()))
+        .create_policy_store("Test Store".to_string(), "Store with Policies".to_string())
         .await
         .expect("Failed to create policy store");
     println!("  ✓ Created store: {}", store.policy_store_id);
@@ -242,7 +242,7 @@ async fn tc_004_concurrent_policy_stores() {
         let description = format!("Concurrent Store {}", i);
         let handle = tokio::spawn(async move {
             let store = client_clone
-                .create_policy_store(Some(description))
+                .create_policy_store("Test Store".to_string(), description)
                 .await
                 .expect("Failed to create store");
             store.policy_store_id
@@ -312,7 +312,7 @@ async fn tc_005_error_handling() {
 
     // Create store and test authorization with invalid entities
     let store = client
-        .create_policy_store(Some("Error Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Error Test Store".to_string())
         .await
         .expect("Failed to create store");
     println!("  ✓ Created store for error testing");

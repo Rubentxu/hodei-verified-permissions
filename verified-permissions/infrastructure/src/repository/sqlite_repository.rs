@@ -1,8 +1,9 @@
 //! SQLite repository implementation
 
 use super::models;
-use chrono::Utc;
-use sqlx::{SqlitePool, Row};
+use anyhow::anyhow;
+use chrono::{DateTime, Utc};
+use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -13,18 +14,20 @@ pub struct SqliteRepository {
 impl SqliteRepository {
     pub async fn new(database_url: &str) -> anyhow::Result<Self> {
         let pool = SqlitePool::connect(database_url).await?;
-        
+
         // Run migrations
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS policy_stores (
                 id TEXT PRIMARY KEY,
-                name TEXT,
+                name TEXT NOT NULL,
                 description TEXT,
                 status TEXT DEFAULT 'active',
                 version TEXT DEFAULT '1.0',
                 author TEXT DEFAULT 'system',
                 tags TEXT DEFAULT '[]',
+                identity_source_ids TEXT DEFAULT '[]',
+                default_identity_source_id TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -52,6 +55,16 @@ impl SqliteRepository {
             .await;
 
         let _ = sqlx::query("ALTER TABLE policy_stores ADD COLUMN tags TEXT DEFAULT '[]'")
+            .execute(&pool)
+            .await;
+
+        let _ = sqlx::query(
+            "ALTER TABLE policy_stores ADD COLUMN identity_source_ids TEXT DEFAULT '[]'",
+        )
+        .execute(&pool)
+        .await;
+
+        let _ = sqlx::query("ALTER TABLE policy_stores ADD COLUMN default_identity_source_id TEXT")
             .execute(&pool)
             .await;
 
@@ -198,20 +211,26 @@ impl SqliteRepository {
     // Policy Store Operations
     // ========================================================================
 
-    pub async fn create_policy_store(&self, description: Option<String>) -> anyhow::Result<models::PolicyStore> {
+    pub async fn create_policy_store(
+        &self,
+        name: String,
+        description: Option<String>,
+    ) -> anyhow::Result<models::PolicyStore> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
         sqlx::query(
-            "INSERT INTO policy_stores (id, name, description, status, version, author, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO policy_stores (id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&id)
-        .bind::<Option<String>>(None)
+        .bind(&name)
         .bind(&description)
         .bind("active")
         .bind("1.0")
         .bind("system")
         .bind("[]")
+        .bind("[]")
+        .bind::<Option<String>>(None)
         .bind(now.to_rfc3339())
         .bind(now.to_rfc3339())
         .execute(&self.pool)
@@ -219,12 +238,14 @@ impl SqliteRepository {
 
         Ok(models::PolicyStore {
             id,
-            name: None,
+            name,
             description,
             status: "active".to_string(),
             version: "1.0".to_string(),
             author: "system".to_string(),
             tags: "[]".to_string(),
+            identity_source_ids: "[]".to_string(),
+            default_identity_source_id: None,
             created_at: now,
             updated_at: now,
         })
@@ -232,7 +253,7 @@ impl SqliteRepository {
 
     pub async fn get_policy_store(&self, id: &str) -> anyhow::Result<models::PolicyStore> {
         let row = sqlx::query(
-            "SELECT id, name, description, status, version, author, tags, created_at, updated_at FROM policy_stores WHERE id = ?",
+            "SELECT id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores WHERE id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -247,6 +268,8 @@ impl SqliteRepository {
             version: row.get("version"),
             author: row.get("author"),
             tags: row.get("tags"),
+            identity_source_ids: row.get("identity_source_ids"),
+            default_identity_source_id: row.get("default_identity_source_id"),
             created_at: row.get::<String, _>("created_at").parse().unwrap(),
             updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
         })
@@ -254,7 +277,7 @@ impl SqliteRepository {
 
     pub async fn list_policy_stores(&self) -> anyhow::Result<Vec<models::PolicyStore>> {
         let rows = sqlx::query(
-            "SELECT id, name, description, status, version, author, tags, created_at, updated_at FROM policy_stores ORDER BY created_at DESC",
+            "SELECT id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores ORDER BY created_at DESC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -269,13 +292,20 @@ impl SqliteRepository {
                 version: row.get("version"),
                 author: row.get("author"),
                 tags: row.get("tags"),
+                identity_source_ids: row.get("identity_source_ids"),
+                default_identity_source_id: row.get("default_identity_source_id"),
                 created_at: row.get::<String, _>("created_at").parse().unwrap(),
                 updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
             })
             .collect())
     }
 
-    pub async fn update_policy_store(&self, id: &str, description: Option<String>) -> anyhow::Result<models::PolicyStore> {
+    pub async fn update_policy_store(
+        &self,
+        id: &str,
+        name: Option<String>,
+        description: Option<String>,
+    ) -> anyhow::Result<models::PolicyStore> {
         let now = Utc::now();
 
         // First verify policy store exists
@@ -284,10 +314,11 @@ impl SqliteRepository {
         sqlx::query(
             r#"
             UPDATE policy_stores
-            SET description = ?, updated_at = ?
+            SET name = COALESCE(?, name), description = COALESCE(?, description), updated_at = ?
             WHERE id = ?
-            "#
+            "#,
         )
+        .bind(name.as_ref())
         .bind(description.as_ref())
         .bind(now.to_rfc3339())
         .bind(id)
@@ -315,7 +346,11 @@ impl SqliteRepository {
     // Schema Operations
     // ========================================================================
 
-    pub async fn put_schema(&self, policy_store_id: &str, schema_json: String) -> anyhow::Result<models::Schema> {
+    pub async fn put_schema(
+        &self,
+        policy_store_id: &str,
+        schema_json: String,
+    ) -> anyhow::Result<models::Schema> {
         // Verify policy store exists
         self.get_policy_store(policy_store_id).await?;
 
@@ -413,7 +448,11 @@ impl SqliteRepository {
         })
     }
 
-    pub async fn get_policy(&self, policy_store_id: &str, policy_id: &str) -> anyhow::Result<models::Policy> {
+    pub async fn get_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+    ) -> anyhow::Result<models::Policy> {
         let row = sqlx::query(
             "SELECT policy_store_id, policy_id, statement, description, created_at, updated_at FROM policies WHERE policy_store_id = ? AND policy_id = ?",
         )
@@ -467,14 +506,17 @@ impl SqliteRepository {
         })
     }
 
-    pub async fn delete_policy(&self, policy_store_id: &str, policy_id: &str) -> anyhow::Result<()> {
-        let result = sqlx::query(
-            "DELETE FROM policies WHERE policy_store_id = ? AND policy_id = ?",
-        )
-        .bind(policy_store_id)
-        .bind(policy_id)
-        .execute(&self.pool)
-        .await?;
+    pub async fn delete_policy(
+        &self,
+        policy_store_id: &str,
+        policy_id: &str,
+    ) -> anyhow::Result<()> {
+        let result =
+            sqlx::query("DELETE FROM policies WHERE policy_store_id = ? AND policy_id = ?")
+                .bind(policy_store_id)
+                .bind(policy_id)
+                .execute(&self.pool)
+                .await?;
 
         if result.rows_affected() == 0 {
             return Err(anyhow::anyhow!("Policy not found: {}", policy_id));
@@ -483,7 +525,10 @@ impl SqliteRepository {
         Ok(())
     }
 
-    pub async fn list_policies(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::Policy>> {
+    pub async fn list_policies(
+        &self,
+        policy_store_id: &str,
+    ) -> anyhow::Result<Vec<models::Policy>> {
         let rows = sqlx::query(
             "SELECT policy_store_id, policy_id, statement, description, created_at, updated_at FROM policies WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -576,7 +621,10 @@ impl SqliteRepository {
         }
     }
 
-    pub async fn list_identity_sources(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::IdentitySource>> {
+    pub async fn list_identity_sources(
+        &self,
+        policy_store_id: &str,
+    ) -> anyhow::Result<Vec<models::IdentitySource>> {
         let rows = sqlx::query(
             "SELECT id, policy_store_id, configuration_type, configuration_json, claims_mapping_json, description, created_at, updated_at FROM identity_sources WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -604,13 +652,12 @@ impl SqliteRepository {
         policy_store_id: &str,
         identity_source_id: &str,
     ) -> anyhow::Result<()> {
-        let result = sqlx::query(
-            "DELETE FROM identity_sources WHERE policy_store_id = ? AND id = ?",
-        )
-        .bind(policy_store_id)
-        .bind(identity_source_id)
-        .execute(&self.pool)
-        .await?;
+        let result =
+            sqlx::query("DELETE FROM identity_sources WHERE policy_store_id = ? AND id = ?")
+                .bind(policy_store_id)
+                .bind(identity_source_id)
+                .execute(&self.pool)
+                .await?;
 
         if result.rows_affected() == 0 {
             return Err(anyhow::anyhow!(
@@ -638,7 +685,8 @@ impl SqliteRepository {
         // Validate template syntax (check for placeholders)
         if !statement.contains("?principal") && !statement.contains("?resource") {
             return Err(anyhow::anyhow!(
-                "Template must contain at least one placeholder (?principal or ?resource)".to_string()
+                "Template must contain at least one placeholder (?principal or ?resource)"
+                    .to_string()
             ));
         }
 
@@ -686,14 +734,14 @@ impl SqliteRepository {
                 created_at: row.get::<String, _>("created_at").parse().unwrap(),
                 updated_at: row.get::<String, _>("updated_at").parse().unwrap(),
             }),
-            None => Err(anyhow::anyhow!(
-                "Policy template {} not found",
-                template_id
-            )),
+            None => Err(anyhow::anyhow!("Policy template {} not found", template_id)),
         }
     }
 
-    pub async fn list_policy_templates(&self, policy_store_id: &str) -> anyhow::Result<Vec<models::PolicyTemplate>> {
+    pub async fn list_policy_templates(
+        &self,
+        policy_store_id: &str,
+    ) -> anyhow::Result<Vec<models::PolicyTemplate>> {
         let rows = sqlx::query(
             "SELECT template_id, policy_store_id, statement, description, created_at, updated_at FROM policy_templates WHERE policy_store_id = ? ORDER BY created_at DESC",
         )
@@ -728,10 +776,7 @@ impl SqliteRepository {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(anyhow::anyhow!(
-                "Policy template {} not found",
-                template_id
-            ));
+            return Err(anyhow::anyhow!("Policy template {} not found", template_id));
         }
 
         Ok(())
@@ -759,6 +804,79 @@ impl SqliteRepository {
         .await?;
 
         Ok(())
+    }
+
+    /// Get audit log events with optional filtering
+    pub async fn get_audit_log(
+        &self,
+        filters: hodei_domain::AuditLogFilters,
+    ) -> anyhow::Result<Vec<models::AuditLogEntry>> {
+        let mut query = String::from(
+            "SELECT event_id, event_type, aggregate_id, event_data, occurred_at, version
+             FROM domain_events WHERE 1=1",
+        );
+
+        let mut params: Vec<String> = Vec::new();
+
+        // Apply filters
+        if let Some(event_types) = filters.event_types {
+            let types_list = event_types
+                .iter()
+                .map(|t| format!("'{}'", t))
+                .collect::<Vec<_>>()
+                .join(", ");
+            query.push_str(&format!(" AND event_type IN ({})", types_list));
+        }
+
+        if let Some(policy_store_id) = filters.policy_store_id {
+            query.push_str(" AND aggregate_id = ?");
+            params.push(policy_store_id);
+        }
+
+        if let Some(start_date) = filters.start_date {
+            query.push_str(" AND occurred_at >= ?");
+            params.push(start_date.to_rfc3339());
+        }
+
+        if let Some(end_date) = filters.end_date {
+            query.push_str(" AND occurred_at <= ?");
+            params.push(end_date.to_rfc3339());
+        }
+
+        // Add ordering and limit
+        query.push_str(" ORDER BY occurred_at DESC");
+        if let Some(limit) = filters.limit {
+            query.push_str(&format!(" LIMIT {}", limit));
+        } else {
+            query.push_str(" LIMIT 1000"); // Default limit
+        }
+
+        let mut stmt = sqlx::query(&query);
+        for param in &params {
+            stmt = stmt.bind(param);
+        }
+
+        let rows = stmt.fetch_all(&self.pool).await?;
+
+        let mut events = Vec::new();
+        for row in rows {
+            let occurred_at_str: String = row.get("occurred_at");
+            let occurred_at = DateTime::parse_from_rfc3339(&occurred_at_str)
+                .map_err(|e| anyhow!("Invalid timestamp: {}", e))?
+                .with_timezone(&Utc);
+
+            let event = models::AuditLogEntry {
+                event_id: row.get("event_id"),
+                event_type: row.get("event_type"),
+                aggregate_id: row.get("aggregate_id"),
+                event_data: row.get("event_data"),
+                occurred_at,
+                version: row.get("version"),
+            };
+            events.push(event);
+        }
+
+        Ok(events)
     }
 
     // ========================================================================
@@ -844,13 +962,22 @@ impl SqliteRepository {
         };
 
         // Calculate approximate size
-        let policy_data_size = policies.iter()
-            .map(|p| p.policy_id.len() + p.statement.len() + p.description.as_ref().map_or(0, |d| d.len()))
+        let policy_data_size = policies
+            .iter()
+            .map(|p| {
+                p.policy_id.len()
+                    + p.statement.len()
+                    + p.description.as_ref().map_or(0, |d| d.len())
+            })
             .sum::<usize>();
         let schema_size = schema_json.as_ref().map_or(0, |s| s.len());
         let size_bytes = (policy_data_size + schema_size) as i64;
 
-        let snapshot_id = format!("snap-{}-{}", policy_store_id.replace("ps_", ""), chrono::Utc::now().timestamp());
+        let snapshot_id = format!(
+            "snap-{}-{}",
+            policy_store_id.replace("ps_", ""),
+            chrono::Utc::now().timestamp()
+        );
 
         // Create snapshot record
         let now = chrono::Utc::now();
@@ -897,11 +1024,14 @@ impl SqliteRepository {
             policy_count: policies.len() as i32,
             has_schema,
             schema_json,
-            policies: policies.into_iter().map(|p| models::SnapshotPolicy {
-                policy_id: p.policy_id.to_string(),
-                statement: p.statement.to_string(),
-                description: p.description.clone(),
-            }).collect(),
+            policies: policies
+                .into_iter()
+                .map(|p| models::SnapshotPolicy {
+                    policy_id: p.policy_id.to_string(),
+                    statement: p.statement.to_string(),
+                    description: p.description.clone(),
+                })
+                .collect(),
             size_bytes,
         })
     }
@@ -1000,7 +1130,9 @@ impl SqliteRepository {
         description: Option<&str>,
     ) -> anyhow::Result<models::RollbackResult> {
         // Get snapshot policies
-        let snapshot_policies = self.get_policy_store_snapshot(policy_store_id, snapshot_id).await?;
+        let snapshot_policies = self
+            .get_policy_store_snapshot(policy_store_id, snapshot_id)
+            .await?;
 
         // Delete all current policies
         sqlx::query("DELETE FROM policies WHERE policy_store_id = ?")
@@ -1091,5 +1223,36 @@ impl SqliteRepository {
         .await?;
 
         Ok(())
+    }
+
+    // ========================================================================
+    // Policy Store Tags & Audit Log Operations
+    // ========================================================================
+
+    pub async fn update_policy_store_tags(
+        &self,
+        id: &str,
+        tags_json: String,
+    ) -> anyhow::Result<models::PolicyStore> {
+        let now = Utc::now();
+
+        // First verify policy store exists
+        self.get_policy_store(id).await?;
+
+        sqlx::query(
+            r#"
+            UPDATE policy_stores
+            SET tags = ?, updated_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(&tags_json)
+        .bind(now.to_rfc3339())
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        // Fetch and return the updated policy store
+        self.get_policy_store(id).await
     }
 }

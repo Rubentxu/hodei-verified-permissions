@@ -61,3 +61,10 @@ package-lock.json
 web-nextjs/test-results
 web-nextjs/playwright-report/
 .kilocode/mcp.json
+
+# Archivos de prueba/E2E y scripts de desarrollo locales (no productivos)
+/dev.sh
+/e2e/
+/postman/VerifiedPermissions.postman_collection.json
+/scripts/dev-start-managed.sh
+/scripts/e2e-test.sh

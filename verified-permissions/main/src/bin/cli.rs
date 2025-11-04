@@ -4,11 +4,10 @@
 
 use clap::{Parser, Subcommand};
 use hodei_api::proto::{
-    authorization_control_client::AuthorizationControlClient,
-    policy_definition, CreatePolicyRequest, CreatePolicyStoreRequest, DeletePolicyRequest,
-    DeletePolicyStoreRequest, GetPolicyStoreRequest, ListPoliciesRequest,
-    ListPolicyStoresRequest, PolicyDefinition, StaticPolicy,
-    PutSchemaRequest,
+    CreatePolicyRequest, CreatePolicyStoreRequest, DeletePolicyRequest, DeletePolicyStoreRequest,
+    GetPolicyStoreRequest, ListPoliciesRequest, ListPolicyStoresRequest, PolicyDefinition,
+    PutSchemaRequest, StaticPolicy, authorization_control_client::AuthorizationControlClient,
+    policy_definition,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -44,6 +43,9 @@ enum Commands {
 enum StoreCommands {
     /// Create a new policy store
     Create {
+        /// Name of the policy store
+        #[arg(short, long)]
+        name: String,
         /// Description of the policy store
         #[arg(short, long)]
         description: Option<String>,
@@ -131,9 +133,9 @@ async fn handle_store_command(
     cmd: StoreCommands,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match cmd {
-        StoreCommands::Create { description } => {
+        StoreCommands::Create { name, description } => {
             let response = client
-                .create_policy_store(CreatePolicyStoreRequest { description })
+                .create_policy_store(CreatePolicyStoreRequest { name, description })
                 .await?;
             let store = response.into_inner();
             println!("✅ Policy store created:");
@@ -142,7 +144,9 @@ async fn handle_store_command(
         }
         StoreCommands::Get { id } => {
             let response = client
-                .get_policy_store(GetPolicyStoreRequest { policy_store_id: id })
+                .get_policy_store(GetPolicyStoreRequest {
+                    policy_store_id: id,
+                })
                 .await?;
             let store = response.into_inner();
             println!("Policy Store:");
@@ -199,11 +203,9 @@ async fn handle_policy_command(
                     policy_store_id: store_id,
                     policy_id: policy_id.clone(),
                     definition: Some(PolicyDefinition {
-                        policy_type: Some(
-                            policy_definition::PolicyType::Static(
-                                StaticPolicy { statement },
-                            ),
-                        ),
+                        policy_type: Some(policy_definition::PolicyType::Static(StaticPolicy {
+                            statement,
+                        })),
                     }),
                     description,
                 })

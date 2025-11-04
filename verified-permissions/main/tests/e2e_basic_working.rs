@@ -22,7 +22,7 @@ async fn test_001_basic_crud() {
 
     // CREATE - Only method that exists and works
     let store = client
-        .create_policy_store(Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), "Test Store".to_string())
         .await
         .expect("Failed to create store");
     println!("  ✓ Created: {}", store.policy_store_id);
@@ -60,7 +60,7 @@ async fn test_002_multiple_stores() {
 
     for i in 0..num_stores {
         let store = client
-            .create_policy_store(Some(format!("Store {}", i)))
+            .create_policy_store("Test Store".to_string(), format!("Store {}", i))
             .await
             .expect("Failed to create store");
         let store_id = store.policy_store_id.clone();
@@ -91,7 +91,7 @@ async fn test_003_authorization() {
     println!("\n🚀 TEST-003: Authorization\n");
 
     let store = client
-        .create_policy_store(Some("Auth Test".to_string()))
+        .create_policy_store("Test Store".to_string(), "Auth Test".to_string())
         .await
         .expect("Failed to create store");
 
