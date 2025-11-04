@@ -6,6 +6,14 @@
 
 > **Production-grade Authorization Service** based on AWS Verified Permissions with Cedar Policy Engine, complete audit trail, and hexagonal architecture.
 
+## 🎯 SDK Architecture Overview
+
+**Hodei v0.2.0** introduces a clean separation between Data Plane and Control Plane operations:
+
+- **`hodei-permissions-sdk`** - Lightweight SDK for **authorization checking** (Data Plane)
+- **`sdk-admin`** - Programmatic library for **policy management** (Control Plane)
+- **`hodei` CLI** - Command-line interface built on `sdk-admin`
+
 [![asciicast](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
 
 ## ✨ Features
@@ -21,22 +29,79 @@
 ### 📊 Enterprise-Grade
 - **Complete Audit Log** - Every API call tracked with metadata
 - **External Database Integration** - Publish events to external systems
-- **Rich Query Interface** - Filter audit events by type, date, resource
+- **Postman Collection** - Ready-to-use API testing
 - **Real-time Monitoring** - Web interface for live operations
 - **Policy Versioning** - Snapshot and rollback capabilities
-- **Batch Operations** - Efficient bulk authorization checks
-
-### 🛠 Developer Experience
-- **Makefile Commands** - One-command development setup
-- **Full Test Suite** - Unit and integration tests
-- **Postman Collection** - Ready-to-use API testing
-- **Auto-generated Documentation** - OpenAPI & gRPC reflection
-- **Docker Support** - Containerized deployment
 - **TypeScript SDK** - Frontend integration library
 
+### 🛠 Developer Experience
+- **Separate SDKs for Data/Control Plane** - Clean architecture following AWS pattern
+- **Lightweight Authorization SDK** - Only what you need for permission checks
+- **Programmatic Admin Library** - Full policy management for automation
+- **CLI Tool** - Command-line interface for human operators
+- **Backwards Compatibility** - Gradual migration path from v0.1.x
+- **Makefile Commands** - One-command development setup
+- **Full Test Suite** - Unit and integration tests
+- **Auto-generated Documentation** - OpenAPI & gRPC reflection
+- **Docker Support** - Containerized deployment
+
 ## 🏗 Architecture
+        B["Next.js API Routes"]
+### SDK Architecture (v0.2.0)
 
 ```mermaid
+graph TD
+    subgraph "Client Applications"
+        A1["Your Application<br/>Checking Permissions"]
+        A2["Admin Tool<br/>Managing Policies"]
+        A3["CI/CD Pipeline<br/>Automating Setup"]
+    end
+
+    subgraph "SDK Layer"
+        B1["hodei-permissions-sdk<br/>📦 Data Plane<br/>Authorization Checks"]
+        B2["sdk-admin<br/>📦 Control Plane<br/>Policy Management"]
+        B3["hodei CLI<br/>Command Line Tool"]
+    end
+
+    subgraph "Backend"
+        C1["gRPC Server<br/>Tonic"]
+        C2["AuthorizationDataService<br/>Permission Evaluation"]
+        C3["AuthorizationControlService<br/>Policy CRUD"]
+    end
+
+    subgraph "Infrastructure"
+        D1["Cedar Engine<br/>Policy Evaluation"]
+        D2["Database<br/>Policy Store"]
+        D3["Audit Log<br/>Event Store"]
+    end
+
+    A1 --> B1
+    A2 --> B2
+    A3 --> B2
+    B3 --> B2
+    B1 --> C1
+    B2 --> C1
+    C1 --> C2
+    C1 --> C3
+    C2 --> D1
+    C2 --> D2
+    C3 --> D2
+    C3 --> D3
+
+    style A1 fill:#e3f2fd
+    style A2 fill:#f3e5f5
+    style A3 fill:#fff3e0
+    style B1 fill:#e8f5e9
+    style B2 fill:#e8f5e9
+    style B3 fill:#e8f5e9
+    style C1 fill:#fff8e1
+### Prerequisites
+
+- **Rust** 1.70+ with `cargo`
+- **Node.js** 18+ with `npm`
+- **Postman** v10+ (for gRPC testing)
+
+### One-Command Setup
 graph TD
     subgraph "Frontend Layer"
         A["Next.js Web App"]
@@ -46,12 +111,12 @@ graph TD
     end
 
     subgraph "API Layer"
-        B["Next.js API Routes"]
+        B["Next.js API Routes<br/>HTTP to gRPC Proxy"]
     end
 
     subgraph "Backend Layer"
         C["gRPC Server Tonic"]
-        D["AuthorizationControlService<br/>CRUD Operations"]
+### Manual Setup
         E["AuthorizationDataService<br/>Authorization Checks"]
         F["Audit Interceptor<br/>Event Publishing"]
     end
@@ -93,15 +158,115 @@ graph TD
 - **Event Infrastructure**: Audit logging and webhook publishing
 - **Cedar Policy Engine**: Core authorization logic and policy evaluation
 
+## 📦 SDK Components
+
+Hodei v0.2.0 provides three complementary components for different use cases:
+
+### 1. hodei-permissions-sdk (Data Plane)
+
+Lightweight SDK focused exclusively on **authorization checking**. Perfect for applications that need to check permissions.
+
+```rust
+use hodei_permissions_sdk::{Client, IsAuthorizedRequestBuilder, EntityBuilder};
+
+let mut sdk = Client::connect("http://localhost:50051").await?;
+
+// Build and execute authorization request
+let request = IsAuthorizedRequestBuilder::new("read", "document:123")
+    .with_principal(EntityBuilder::new("User", "alice").build())
+    .with_context(serde_json::json!({"department": "engineering"}))
+    .build();
+
+let response = sdk.is_authorized("ps_store_id", request).await?;
+
+if response.decision == "Allow" {
+    // User is authorized!
+}
+```
+
+**Use when:**
+- ✅ Building applications that check permissions
+- ✅ Web servers, microservices, APIs
+- ✅ Need fast, lightweight authorization checks
+- ✅ Following AWS Verified Permissions pattern
+
+**Learn more:** [sdk/README.md](sdk/README.md)
+
+### 2. sdk-admin (Control Plane)
+
+Programmatic library for **full policy management**. Ideal for automation, CI/CD, and admin tools.
+
+```rust
+use sdk_admin::HodeiAdmin;
+
+let mut admin = HodeiAdmin::connect("http://localhost:50051").await?;
+
+// Create and configure policy store
+let store = admin
+    .create_policy_store("production", Some("Production policies".to_string()))
+    .await?;
+
+// Upload schema
+let schema = r#"{"entities": {...}}"#;
+admin.put_schema(&store.policy_store_id, schema).await?;
+
+// Create policies
+admin.create_policy(
+    &store.policy_store_id,
+    "admin-policy",
+    "permit(principal, action, resource) when {...}",
+    Some("Admin access policy".to_string()),
+).await?;
+```
+
+**Use when:**
+- ✅ Setting up new policy stores
+- ✅ Managing schemas and policies
+- ✅ Automation and CI/CD pipelines
+- ✅ Admin tools and dashboards
+
+**Learn more:** [sdk-admin/README.md](sdk-admin/README.md)
+
+### 3. hodei CLI (Command Line)
+
+Human-friendly command-line interface built on top of `sdk-admin`.
+
+```bash
+# Create a policy store
+hodei create policy-store --name production --description "Production"
+
+# Upload schema
+hodei put schema ps_123 policies/schema.json
+
+# Create policies
+hodei create policy ps_123 admin-policy --file policy.cedar
+
+# Check authorization
+hodei check ps_123 User::"alice" read Document::"doc123"
+```
+
+**Use when:**
+- ✅ Interactive administration
+- ✅ Quick tasks and debugging
+- ✅ Human operators
+- ✅ Development and testing
+
+**Learn more:** Run `hodei --help`
+
+### Choosing the Right SDK
+
+| Scenario | Use |
+|----------|-----|
+| Web application checking user permissions | `hodei-permissions-sdk` |
+| Setting up environments via automation | `sdk-admin` |
+| CI/CD pipeline configuration | `sdk-admin` |
+| Interactive policy management | `hodei` CLI |
+| Microservices authorization | `hodei-permissions-sdk` |
+| Administrative dashboards | `sdk-admin` |
+
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- **Rust** 1.70+ with `cargo`
-- **Node.js** 18+ with `npm`
-- **Postman** v10+ (for gRPC testing)
-
-### One-Command Setup
+### Start the Server
 
 ```bash
 # Clone and start everything
@@ -116,7 +281,98 @@ That's it! Services will be available at:
 - **gRPC API**: `localhost:50051`
 - **Web Interface**: `http://localhost:3000`
 
-### Manual Setup
+### Using the SDKs
+
+#### 1. Authorization Checking (Data Plane)
+
+```bash
+cd sdk
+
+# Run basic usage example
+cargo run --example basic_usage
+```
+
+**For your application:**
+
+```toml
+[dependencies]
+hodei-permissions-sdk = { path = "../sdk" }
+tokio = { version = "1.40", features = ["macros"] }
+```
+
+```rust
+use hodei_permissions_sdk::{Client, IsAuthorizedRequestBuilder, EntityBuilder};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::connect("http://localhost:50051").await?;
+    
+    let request = IsAuthorizedRequestBuilder::new("read", "document:123")
+        .with_principal(EntityBuilder::new("User", "alice").build())
+        .build();
+    
+    let response = client.is_authorized("ps_store_id", request).await?;
+    println!("Decision: {}", response.decision);
+    Ok(())
+}
+```
+
+#### 2. Policy Management (Control Plane)
+
+```bash
+cd sdk-admin
+
+# Run basic usage example
+cargo run --example basic_usage
+
+# Run batch operations example
+cargo run --example batch_operations
+```
+
+**For your application:**
+
+```toml
+[dependencies]
+sdk-admin = { path = "../sdk-admin" }
+tokio = { version = "1.40", features = ["macros"] }
+```
+
+```rust
+use sdk_admin::HodeiAdmin;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut admin = HodeiAdmin::connect("http://localhost:50051").await?;
+    
+    let store = admin
+        .create_policy_store("my-app", Some("My application".to_string()))
+        .await?;
+    
+    println!("Created store: {}", store.policy_store_id);
+    Ok(())
+}
+```
+
+#### 3. Command Line Interface
+
+```bash
+# Build the CLI
+make build-cli
+
+# Create a policy store
+hodei create policy-store --name production --description "Production environment"
+
+# Upload schema
+hodei put schema ps_abc123 schemas/my-schema.json
+
+# Create a policy
+hodei create policy ps_abc123 admin-policy --file admin.cedar
+
+# Check authorization
+hodei check ps_abc123 User::"alice" read Document::"doc123"
+```
+
+### Full Server Setup (Manual)
 
 ```bash
 # 1. Install Rust
@@ -134,6 +390,53 @@ make server
 
 # 5. Start web interface (terminal 2)
 make web
+```
+
+## 🔄 Migration from v0.1.x
+
+**v0.2.0 introduces breaking changes** to align with AWS Verified Permissions architecture.
+
+### What Changed
+
+- **Monolithic SDK** → **Separated SDKs** (Data Plane + Control Plane)
+- **Single `Client`** → **Two separate clients** (`Client` for auth checks, `HodeiAdmin` for management)
+- **All operations in one SDK** → **Clean separation** following industry patterns
+
+### Migration Path
+
+**Option 1: Gradual Migration (Recommended)**
+- Keep using v0.1.x API with deprecation warnings
+- Gradually migrate to new SDKs as you update code
+- Enable `compat` feature for backwards compatibility
+
+**Option 2: Complete Migration**
+- Use `hodei-permissions-sdk` for authorization checks
+- Use `sdk-admin` for policy management
+- Use `hodei` CLI for interactive tasks
+
+### Detailed Guide
+
+📖 **[Complete Migration Guide](docs/MIGRATION_GUIDE_SDK.md)** - Step-by-step instructions with examples
+
+**Quick Example:**
+
+```rust
+// v0.1.x (Deprecated)
+let mut client = Client::connect(endpoint).await?;
+// Both auth checks AND policy management in one client
+let _store = client.create_policy_store("test", None).await?;  // ❌ No longer works
+
+// v0.2.0 (New)
+use hodei_permissions_sdk::Client;
+use sdk_admin::HodeiAdmin;
+
+// For authorization checks
+let sdk = Client::connect(endpoint).await?;
+// ✅ Works - lightweight, focused
+
+// For policy management
+let admin = HodeiAdmin::connect(endpoint).await?;
+// ✅ Works - full control plane API
 ```
 
 ## 📖 Usage Examples
@@ -221,30 +524,30 @@ Hodei Verified Permissions provides a comprehensive set of Makefile commands to 
 | `make dev` | Start all services (gRPC server + Next.js frontend) in development mode | First-time setup or full-stack development | Services available at localhost:50051 (gRPC) and localhost:3000 (web) |
 | `make build` | Build all Rust components in debug mode | After code changes, before testing | Compilation output with build times |
 | `make clean` | Remove all build artifacts and caches | Clean workspace, resolve build issues | Removes target/, node_modules/.cache, etc. |
-| `make format` | Format Rust and TypeScript code | Before commits, code style consistency | Files reformatted according to style guides |
-| `make lint` | Run linters for Rust and TypeScript | Code quality checks, CI/CD | Reports warnings and errors |
-| `make check` | Type checking and basic validation | Quick feedback during development | Compilation checks without full build |
+## 📜 Conventional Commits
 
-### Database Management
+We follow the Conventional Commits specification to keep a clear, machine-readable history.
 
-| Command | Description | When to Use | Notes |
-|---------|-------------|-------------|-------|
-| `make db-init` | Initialize database schema and seed data | First setup or after clean install | Creates tables, indexes, and initial data |
-| `make db-reset` | Reset database to clean state | Testing, development reset | **WARNING: Deletes all data** |
-| `make db-migrate` | Run pending database migrations | Schema updates, version upgrades | Safe to run multiple times |
-| `make db-status` | Show database connection and schema status | Troubleshooting connectivity | Displays current DB state |
+Format:
+- type(scope): short description
+- Optional body and footer.
+- Common types: feat, fix, docs, refactor, perf, test, chore, ci
 
-### Server Operations
+Examples:
+- feat(api): add policy evaluation endpoint
+- fix(db): handle nullable timestamps in audit events
+- docs(readme): add Conventional Commits section (EN/ES)
+- chore(deps): bump tokio to 1.28.0
 
-| Command | Description | When to Use | Port |
-|---------|-------------|-------------|------|
-| `make server` | Start gRPC server in development mode | API development, testing | 50051 |
-| `make server-release` | Start gRPC server in release mode | Performance testing, production-like | 50051 |
-| `make server-logs` | View real-time server logs | Debugging, monitoring | Streams log output |
+Recommended usage:
+1. Write a concise subject line (max ~72 chars).
+2. Use the imperative mood: "add", "fix", "remove".
+3. Use scope to indicate the area (e.g. server, web, docs).
+4. Include a body for context and a footer for breaking changes or issue references.
 
-### Web Interface
+Conventional Commit to apply for these README changes:
+- docs(readme): add Conventional Commits section (EN/ES)
 
-| Command | Description | When to Use | Port |
 |---------|-------------|-------------|------|
 | `make web` | Start Next.js development server | Frontend development | 3000 |
 | `make web-build` | Build Next.js for production | Deployment preparation | Generates optimized build |

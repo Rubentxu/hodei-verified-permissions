@@ -1,14 +1,52 @@
 //! Authorization client trait for testability and mocking
+//!
+//! This trait abstracts the authorization client interface (Data Plane only), allowing for
+//! easy mocking and testing of authorization logic without requiring
+//! a real connection to the authorization service.
+//!
+//! For policy and schema management (Control Plane), use the CLI tool or HodeiAdmin library.
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use hodei_permissions_sdk::client_trait::AuthorizationClientTrait;
+//! use async_trait::async_trait;
+//! use hodei_permissions_sdk::proto::{IsAuthorizedResponse, Decision};
+//!
+//! struct MockClient;
+//!
+//! #[async_trait]
+//! impl AuthorizationClientTrait for MockClient {
+//!     async fn is_authorized(
+//!         &self,
+//!         policy_store_id: &str,
+//!         principal: &str,
+//!         action: &str,
+//!         resource: &str,
+//!     ) -> Result<IsAuthorizedResponse> {
+//!         Ok(IsAuthorizedResponse {
+//!             decision: Decision::Allow as i32,
+//!             determining_policies: vec!["mock-policy".to_string()],
+//!             errors: vec![],
+//!         })
+//!     }
+//!
+//!     // ... implement other Data Plane methods
+//! }
+//! ```
 
-use async_trait::async_trait;
 use crate::error::Result;
 use crate::proto::*;
+use async_trait::async_trait;
 
-/// Trait for authorization client operations
+/// Trait for authorization client operations (Data Plane only)
 ///
-/// This trait abstracts the authorization client interface, allowing for
-/// easy mocking and testing of authorization logic without requiring
-/// a real connection to the authorization service.
+/// This trait provides an abstraction for authorization checking operations.
+/// It's designed for testability and mocking, allowing you to replace the
+/// real client with a mock implementation in tests.
+///
+/// For operations like creating policy stores, managing policies, or schemas,
+/// use the CLI tool or HodeiAdmin library instead.
 ///
 /// # Example
 ///
@@ -16,29 +54,38 @@ use crate::proto::*;
 /// use hodei_permissions_sdk::client_trait::AuthorizationClientTrait;
 /// use async_trait::async_trait;
 ///
-/// struct MockClient;
+/// #[cfg(test)]
+/// mod tests {
+///     use super::*;
 ///
-/// #[async_trait]
-/// impl AuthorizationClientTrait for MockClient {
-///     async fn is_authorized(
-///         &self,
-///         policy_store_id: &str,
-///         principal: &str,
-///         action: &str,
-///         resource: &str,
-///     ) -> Result<IsAuthorizedResponse> {
-///         Ok(IsAuthorizedResponse {
-///             decision: 0, // Allow
-///             reason: vec![],
-///         })
+///     struct TestAuthClient;
+///
+///     #[async_trait]
+///     impl AuthorizationClientTrait for TestAuthClient {
+///         async fn is_authorized(&self, ...) -> Result<IsAuthorizedResponse> {
+///             // Mock implementation
+///             Ok(IsAuthorizedResponse { ... })
+///         }
+///         // ... implement other methods
 ///     }
-///
-///     // ... implement other methods
 /// }
 /// ```
 #[async_trait]
 pub trait AuthorizationClientTrait: Send + Sync {
     /// Check if an action is authorized
+    ///
+    /// Given a principal, action, and resource, determines whether the action is allowed.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `principal` - The principal making the request (format: "Type::id")
+    /// * `action` - The action being performed (format: "Type::id")
+    /// * `resource` - The resource being accessed (format: "Type::id")
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<IsAuthorizedResponse>` with the authorization decision.
     async fn is_authorized(
         &self,
         policy_store_id: &str,
@@ -48,152 +95,57 @@ pub trait AuthorizationClientTrait: Send + Sync {
     ) -> Result<IsAuthorizedResponse>;
 
     /// Check authorization with entities and context
+    ///
+    /// Performs authorization check with additional context and entity data.
+    /// This allows for more complex authorization scenarios using Cedar policies.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - A pre-built `IsAuthorizedRequest` with entities and context
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<IsAuthorizedResponse>` with the authorization decision.
     async fn is_authorized_with_context(
         &self,
         request: IsAuthorizedRequest,
     ) -> Result<IsAuthorizedResponse>;
 
     /// Batch authorization check
+    ///
+    /// Performs multiple authorization checks in a single call.
+    /// More efficient than individual calls when checking multiple permissions.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `requests` - A vector of `IsAuthorizedRequest` to evaluate
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<BatchIsAuthorizedResponse>` with all authorization decisions.
     async fn batch_is_authorized(
         &self,
         policy_store_id: &str,
         requests: Vec<IsAuthorizedRequest>,
     ) -> Result<BatchIsAuthorizedResponse>;
 
-    /// Create a new policy store
-    async fn create_policy_store(
-        &self,
-        description: Option<String>,
-    ) -> Result<CreatePolicyStoreResponse>;
-
-    /// Get a policy store
-    async fn get_policy_store(&self, policy_store_id: &str) -> Result<GetPolicyStoreResponse>;
-
-    /// List policy stores
-    async fn list_policy_stores(
-        &self,
-        max_results: Option<i32>,
-        next_token: Option<String>,
-    ) -> Result<ListPolicyStoresResponse>;
-
-    /// Delete a policy store
-    async fn delete_policy_store(&self, policy_store_id: &str) -> Result<DeletePolicyStoreResponse>;
-
-    /// Put a schema
-    async fn put_schema(
-        &self,
-        policy_store_id: &str,
-        schema: &str,
-    ) -> Result<PutSchemaResponse>;
-
-    /// Get a schema
-    async fn get_schema(&self, policy_store_id: &str) -> Result<GetSchemaResponse>;
-
-    /// Create a policy
-    async fn create_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse>;
-
-    /// Get a policy
-    async fn get_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-    ) -> Result<GetPolicyResponse>;
-
-    /// List policies
-    async fn list_policies(&self, policy_store_id: &str) -> Result<ListPoliciesResponse>;
-
-    /// Update a policy
-    async fn update_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<UpdatePolicyResponse>;
-
-    /// Delete a policy
-    async fn delete_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-    ) -> Result<DeletePolicyResponse>;
-
-    /// Create an identity source
-    async fn create_identity_source(
-        &self,
-        policy_store_id: &str,
-        configuration: IdentitySourceConfiguration,
-        claims_mapping: Option<ClaimsMappingConfiguration>,
-        description: Option<String>,
-    ) -> Result<CreateIdentitySourceResponse>;
-
-    /// Get an identity source
-    async fn get_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<GetIdentitySourceResponse>;
-
-    /// List identity sources
-    async fn list_identity_sources(
-        &self,
-        policy_store_id: &str,
-    ) -> Result<ListIdentitySourcesResponse>;
-
-    /// Delete an identity source
-    async fn delete_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<DeleteIdentitySourceResponse>;
-
-    /// Create a policy template
-    async fn create_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyTemplateResponse>;
-
-    /// Get a policy template
-    async fn get_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-    ) -> Result<GetPolicyTemplateResponse>;
-
-    /// List policy templates
-    async fn list_policy_templates(
-        &self,
-        policy_store_id: &str,
-    ) -> Result<ListPolicyTemplatesResponse>;
-
-    /// Delete a policy template
-    async fn delete_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-    ) -> Result<DeletePolicyTemplateResponse>;
-
-    /// Create a template-linked policy
-    async fn create_policy_from_template(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        template_id: &str,
-        principal: &str,
-        resource: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse>;
-
     /// Check authorization with JWT token
+    ///
+    /// Validates a JWT token against an identity source and performs authorization
+    /// using the token's claims.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `identity_source_id` - The ID of the identity source for token validation
+    /// * `access_token` - The JWT access token
+    /// * `action` - The action being performed (format: "Type::id")
+    /// * `resource` - The resource being accessed (format: "Type::id")
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<IsAuthorizedResponse>` with the authorization decision.
     async fn is_authorized_with_token(
         &self,
         policy_store_id: &str,
@@ -204,6 +156,17 @@ pub trait AuthorizationClientTrait: Send + Sync {
     ) -> Result<IsAuthorizedResponse>;
 
     /// Check authorization with JWT token and context
+    ///
+    /// Validates a JWT token and performs authorization with additional
+    /// context and entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - A pre-built `IsAuthorizedWithTokenRequest` with entities and context
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<IsAuthorizedResponse>` with the authorization decision.
     async fn is_authorized_with_token_and_context(
         &self,
         request: IsAuthorizedWithTokenRequest,

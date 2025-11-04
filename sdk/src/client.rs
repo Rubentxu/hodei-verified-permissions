@@ -1,20 +1,62 @@
-//! Authorization client
+//! Authorization client - Data Plane only
+//!
+//! This module provides a lightweight client focused exclusively on authorization
+//! checks (Data Plane). For policy and schema management (Control Plane), use
+//! the CLI tool or HodeiAdmin library.
 
 use crate::error::{Result, SdkError};
-use crate::proto::authorization_control_client::AuthorizationControlClient;
 use crate::proto::authorization_data_client::AuthorizationDataClient;
 use crate::proto::*;
 use tonic::transport::Channel;
 
-/// Main client for Hodei Verified Permissions
+/// Main client for Hodei Verified Permissions (Data Plane only)
+///
+/// This client provides authorization checking capabilities only.
+/// For policy store, schema, and policy management, use the CLI tool or HodeiAdmin library.
+///
+/// # Example
+///
+/// ```no_run
+/// use hodei_permissions_sdk::AuthorizationClient;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let client = AuthorizationClient::connect("http://localhost:50051").await?;
+///
+///     let response = client
+///         .is_authorized(
+///             "policy-store-id",
+///             "User::alice",
+///             "Action::view",
+///             "Document::doc123"
+///         )
+///         .await?;
+///
+///     println!("Decision: {:?}", response.decision());
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone)]
 pub struct AuthorizationClient {
     data_client: AuthorizationDataClient<Channel>,
-    control_client: AuthorizationControlClient<Channel>,
 }
 
 impl AuthorizationClient {
     /// Connect to the authorization service
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The address to connect to (e.g., "http://localhost:50051")
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn connect(addr: impl Into<String>) -> Result<Self> {
         let addr = addr.into();
         let channel = Channel::from_shared(addr.clone())
@@ -23,8 +65,7 @@ impl AuthorizationClient {
             .await?;
 
         Ok(Self {
-            data_client: AuthorizationDataClient::new(channel.clone()),
-            control_client: AuthorizationControlClient::new(channel),
+            data_client: AuthorizationDataClient::new(channel),
         })
     }
 
@@ -33,6 +74,40 @@ impl AuthorizationClient {
     // ========================================================================
 
     /// Check if an action is authorized
+    ///
+    /// This is the core authorization check operation. Given a principal, action,
+    /// and resource, it returns whether the action is allowed or denied.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `principal` - The principal (user, service, etc.) making the request (format: "Type::id")
+    /// * `action` - The action being performed (format: "Type::id")
+    /// * `resource` - The resource being accessed (format: "Type::id")
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    ///
+    /// let response = client
+    ///     .is_authorized(
+    ///         "policy-store-id",
+    ///         "User::alice",
+    ///         "Action::view",
+    ///         "Document::doc123"
+    ///     )
+    ///     .await?;
+    ///
+    /// match response.decision() {
+    ///     Decision::Allow => println!("Access granted"),
+    ///     Decision::Deny => println!("Access denied"),
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn is_authorized(
         &self,
         policy_store_id: impl Into<String>,
@@ -60,6 +135,32 @@ impl AuthorizationClient {
     }
 
     /// Check authorization with entities and context
+    ///
+    /// This method allows for more complex authorization checks by providing
+    /// additional context and entity data that can be used in Cedar policies.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - A pre-built `IsAuthorizedRequest` with entities and context
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    ///
+    /// let request = IsAuthorizedRequestBuilder::new("policy-store-id")
+    ///     .principal("User", "alice")
+    ///     .action("Action", "view")
+    ///     .resource("Document", "doc123")
+    ///     .context(r#"{"ip": "192.168.1.1"}"#)
+    ///     .build();
+    ///
+    /// let response = client.is_authorized_with_context(request).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn is_authorized_with_context(
         &self,
         request: IsAuthorizedRequest,
@@ -75,6 +176,40 @@ impl AuthorizationClient {
     }
 
     /// Batch authorization check
+    ///
+    /// Perform multiple authorization checks in a single request.
+    /// This is more efficient than making individual calls when you need to
+    /// check multiple permissions.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `requests` - A vector of `IsAuthorizedRequest` to evaluate
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    ///
+    /// let requests = vec![
+    ///     IsAuthorizedRequestBuilder::new("policy-store-id")
+    ///         .principal("User", "alice")
+    ///         .action("Action", "view")
+    ///         .resource("Document", "doc1")
+    ///         .build(),
+    ///     IsAuthorizedRequestBuilder::new("policy-store-id")
+    ///         .principal("User", "alice")
+    ///         .action("Action", "edit")
+    ///         .resource("Document", "doc1")
+    ///         .build(),
+    /// ];
+    ///
+    /// let responses = client.batch_is_authorized("policy-store-id", requests).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn batch_is_authorized(
         &self,
         policy_store_id: impl Into<String>,
@@ -95,480 +230,40 @@ impl AuthorizationClient {
         Ok(response)
     }
 
-    // ========================================================================
-    // Control Plane - Policy Store
-    // ========================================================================
-
-    /// Create a new policy store
-    pub async fn create_policy_store(
-        &self,
-        name: String,
-        description: Option<String>,
-    ) -> Result<CreatePolicyStoreResponse> {
-        let request = CreatePolicyStoreRequest { name, description };
-
-        let response = self
-            .control_client
-            .clone()
-            .create_policy_store(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Get a policy store
-    pub async fn get_policy_store(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<GetPolicyStoreResponse> {
-        let request = GetPolicyStoreRequest {
-            policy_store_id: policy_store_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .get_policy_store(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// List policy stores
-    pub async fn list_policy_stores(
-        &self,
-        max_results: Option<i32>,
-        next_token: Option<String>,
-    ) -> Result<ListPolicyStoresResponse> {
-        let request = ListPolicyStoresRequest {
-            max_results,
-            next_token,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .list_policy_stores(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Delete a policy store
-    pub async fn delete_policy_store(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<DeletePolicyStoreResponse> {
-        let request = DeletePolicyStoreRequest {
-            policy_store_id: policy_store_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .delete_policy_store(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    // ========================================================================
-    // Control Plane - Schema
-    // ========================================================================
-
-    /// Put a schema
-    pub async fn put_schema(
-        &self,
-        policy_store_id: impl Into<String>,
-        schema: impl Into<String>,
-    ) -> Result<PutSchemaResponse> {
-        let request = PutSchemaRequest {
-            policy_store_id: policy_store_id.into(),
-            schema: schema.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .put_schema(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Get a schema
-    pub async fn get_schema(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<GetSchemaResponse> {
-        let request = GetSchemaRequest {
-            policy_store_id: policy_store_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .get_schema(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    // ========================================================================
-    // Control Plane - Policy
-    // ========================================================================
-
-    /// Create a policy
-    pub async fn create_policy(
-        &self,
-        policy_store_id: impl Into<String>,
-        policy_id: impl Into<String>,
-        statement: impl Into<String>,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse> {
-        let request = CreatePolicyRequest {
-            policy_store_id: policy_store_id.into(),
-            policy_id: policy_id.into(),
-            definition: Some(PolicyDefinition {
-                policy_type: Some(policy_definition::PolicyType::Static(StaticPolicy {
-                    statement: statement.into(),
-                })),
-            }),
-            description,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .create_policy(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Get a policy
-    pub async fn get_policy(
-        &self,
-        policy_store_id: impl Into<String>,
-        policy_id: impl Into<String>,
-    ) -> Result<GetPolicyResponse> {
-        let request = GetPolicyRequest {
-            policy_store_id: policy_store_id.into(),
-            policy_id: policy_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .get_policy(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// List policies
-    pub async fn list_policies(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<ListPoliciesResponse> {
-        let request = ListPoliciesRequest {
-            policy_store_id: policy_store_id.into(),
-            max_results: None,
-            next_token: None,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .list_policies(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Update a policy
-    pub async fn update_policy(
-        &self,
-        policy_store_id: impl Into<String>,
-        policy_id: impl Into<String>,
-        statement: impl Into<String>,
-        description: Option<String>,
-    ) -> Result<UpdatePolicyResponse> {
-        let request = UpdatePolicyRequest {
-            policy_store_id: policy_store_id.into(),
-            policy_id: policy_id.into(),
-            definition: Some(PolicyDefinition {
-                policy_type: Some(policy_definition::PolicyType::Static(StaticPolicy {
-                    statement: statement.into(),
-                })),
-            }),
-            description,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .update_policy(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Delete a policy
-    pub async fn delete_policy(
-        &self,
-        policy_store_id: impl Into<String>,
-        policy_id: impl Into<String>,
-    ) -> Result<DeletePolicyResponse> {
-        let request = DeletePolicyRequest {
-            policy_store_id: policy_store_id.into(),
-            policy_id: policy_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .delete_policy(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    // ========================================================================
-    // Control Plane - Identity Source
-    // ========================================================================
-
-    /// Create an identity source
-    pub async fn create_identity_source(
-        &self,
-        policy_store_id: impl Into<String>,
-        configuration: IdentitySourceConfiguration,
-        claims_mapping: Option<ClaimsMappingConfiguration>,
-        description: Option<String>,
-    ) -> Result<CreateIdentitySourceResponse> {
-        let request = CreateIdentitySourceRequest {
-            policy_store_id: policy_store_id.into(),
-            configuration: Some(configuration),
-            claims_mapping,
-            description,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .create_identity_source(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Get an identity source
-    pub async fn get_identity_source(
-        &self,
-        policy_store_id: impl Into<String>,
-        identity_source_id: impl Into<String>,
-    ) -> Result<GetIdentitySourceResponse> {
-        let request = GetIdentitySourceRequest {
-            policy_store_id: policy_store_id.into(),
-            identity_source_id: identity_source_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .get_identity_source(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// List identity sources
-    pub async fn list_identity_sources(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<ListIdentitySourcesResponse> {
-        let request = ListIdentitySourcesRequest {
-            policy_store_id: policy_store_id.into(),
-            max_results: None,
-            next_token: None,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .list_identity_sources(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Delete an identity source
-    pub async fn delete_identity_source(
-        &self,
-        policy_store_id: impl Into<String>,
-        identity_source_id: impl Into<String>,
-    ) -> Result<DeleteIdentitySourceResponse> {
-        let request = DeleteIdentitySourceRequest {
-            policy_store_id: policy_store_id.into(),
-            identity_source_id: identity_source_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .delete_identity_source(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    // ========================================================================
-    // Control Plane - Policy Template
-    // ========================================================================
-
-    /// Create a policy template
-    pub async fn create_policy_template(
-        &self,
-        policy_store_id: impl Into<String>,
-        template_id: impl Into<String>,
-        statement: impl Into<String>,
-        description: Option<String>,
-    ) -> Result<CreatePolicyTemplateResponse> {
-        let request = CreatePolicyTemplateRequest {
-            policy_store_id: policy_store_id.into(),
-            template_id: template_id.into(),
-            statement: statement.into(),
-            description,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .create_policy_template(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Get a policy template
-    pub async fn get_policy_template(
-        &self,
-        policy_store_id: impl Into<String>,
-        template_id: impl Into<String>,
-    ) -> Result<GetPolicyTemplateResponse> {
-        let request = GetPolicyTemplateRequest {
-            policy_store_id: policy_store_id.into(),
-            template_id: template_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .get_policy_template(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// List policy templates
-    pub async fn list_policy_templates(
-        &self,
-        policy_store_id: impl Into<String>,
-    ) -> Result<ListPolicyTemplatesResponse> {
-        let request = ListPolicyTemplatesRequest {
-            policy_store_id: policy_store_id.into(),
-            max_results: None,
-            next_token: None,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .list_policy_templates(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Delete a policy template
-    pub async fn delete_policy_template(
-        &self,
-        policy_store_id: impl Into<String>,
-        template_id: impl Into<String>,
-    ) -> Result<DeletePolicyTemplateResponse> {
-        let request = DeletePolicyTemplateRequest {
-            policy_store_id: policy_store_id.into(),
-            template_id: template_id.into(),
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .delete_policy_template(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    /// Create a template-linked policy
-    pub async fn create_policy_from_template(
-        &self,
-        policy_store_id: impl Into<String>,
-        policy_id: impl Into<String>,
-        template_id: impl Into<String>,
-        principal: impl Into<String>,
-        resource: impl Into<String>,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse> {
-        let request = CreatePolicyRequest {
-            policy_store_id: policy_store_id.into(),
-            policy_id: policy_id.into(),
-            definition: Some(PolicyDefinition {
-                policy_type: Some(policy_definition::PolicyType::TemplateLinked(
-                    TemplateLinkedPolicy {
-                        policy_template_id: template_id.into(),
-                        principal: Some(parse_entity_id(principal.into())?),
-                        resource: Some(parse_entity_id(resource.into())?),
-                    },
-                )),
-            }),
-            description,
-        };
-
-        let response = self
-            .control_client
-            .clone()
-            .create_policy(request)
-            .await?
-            .into_inner();
-
-        Ok(response)
-    }
-
-    // ========================================================================
-    // Data Plane - Authorization with Token
-    // ========================================================================
-
     /// Check authorization with JWT token
+    ///
+    /// This method validates a JWT token against an identity source and performs
+    /// authorization using the token's claims.
+    ///
+    /// # Arguments
+    ///
+    /// * `policy_store_id` - The ID of the policy store to evaluate against
+    /// * `identity_source_id` - The ID of the identity source for token validation
+    /// * `access_token` - The JWT access token
+    /// * `action` - The action being performed (format: "Type::id")
+    /// * `resource` - The resource being accessed (format: "Type::id")
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    ///
+    /// let jwt_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...";
+    ///
+    /// let response = client
+    ///     .is_authorized_with_token(
+    ///         "policy-store-id",
+    ///         "identity-source-id",
+    ///         jwt_token,
+    ///         "Action::view",
+    ///         "Document::doc123"
+    ///     )
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn is_authorized_with_token(
         &self,
         policy_store_id: impl Into<String>,
@@ -598,6 +293,37 @@ impl AuthorizationClient {
     }
 
     /// Check authorization with JWT token and context
+    ///
+    /// This method validates a JWT token and performs authorization with additional
+    /// context and entity data.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - A pre-built `IsAuthorizedWithTokenRequest` with entities and context
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedWithTokenRequestBuilder};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
+    ///
+    /// let jwt_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...";
+    ///
+    /// let request = IsAuthorizedWithTokenRequestBuilder::new(
+    ///     "policy-store-id",
+    ///     "identity-source-id",
+    ///     jwt_token
+    /// )
+    ///     .action("Action", "view")
+    ///     .resource("Document", "doc123")
+    ///     .context(r#"{"ip": "192.168.1.1"}"#)
+    ///     .build();
+    ///
+    /// let response = client.is_authorized_with_token_and_context(request).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn is_authorized_with_token_and_context(
         &self,
         request: IsAuthorizedWithTokenRequest,
@@ -614,6 +340,23 @@ impl AuthorizationClient {
 }
 
 /// Parse entity ID from string format "Type::id"
+///
+/// # Arguments
+///
+/// * `s` - String in format "Type::id" (e.g., "User::alice")
+///
+/// # Errors
+///
+/// Returns `SdkError::InvalidRequest` if the format is invalid
+///
+/// # Example
+///
+/// ```
+/// # use hodei_permissions_sdk::client::parse_entity_id;
+/// let entity = parse_entity_id("User::alice".to_string()).unwrap();
+/// assert_eq!(entity.entity_type, "User");
+/// assert_eq!(entity.entity_id, "alice");
+/// ```
 fn parse_entity_id(s: String) -> Result<EntityIdentifier> {
     let parts: Vec<&str> = s.split("::").collect();
     if parts.len() != 2 {
@@ -632,6 +375,7 @@ fn parse_entity_id(s: String) -> Result<EntityIdentifier> {
 // Implement AuthorizationClientTrait for AuthorizationClient
 #[async_trait::async_trait]
 impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
+    /// Check if an action is authorized
     async fn is_authorized(
         &self,
         policy_store_id: &str,
@@ -642,6 +386,7 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         AuthorizationClient::is_authorized(self, policy_store_id, principal, action, resource).await
     }
 
+    /// Check authorization with entities and context
     async fn is_authorized_with_context(
         &self,
         request: IsAuthorizedRequest,
@@ -649,6 +394,7 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         AuthorizationClient::is_authorized_with_context(self, request).await
     }
 
+    /// Batch authorization check
     async fn batch_is_authorized(
         &self,
         policy_store_id: &str,
@@ -657,184 +403,7 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         AuthorizationClient::batch_is_authorized(self, policy_store_id, requests).await
     }
 
-    async fn create_policy_store(
-        &self,
-        name: String,
-        description: Option<String>,
-    ) -> Result<CreatePolicyStoreResponse> {
-        AuthorizationClient::create_policy_store(self, name, description).await
-    }
-
-    async fn get_policy_store(&self, policy_store_id: &str) -> Result<GetPolicyStoreResponse> {
-        AuthorizationClient::get_policy_store(self, policy_store_id).await
-    }
-
-    async fn list_policy_stores(
-        &self,
-        max_results: Option<i32>,
-        next_token: Option<String>,
-    ) -> Result<ListPolicyStoresResponse> {
-        AuthorizationClient::list_policy_stores(self, max_results, next_token).await
-    }
-
-    async fn delete_policy_store(
-        &self,
-        policy_store_id: &str,
-    ) -> Result<DeletePolicyStoreResponse> {
-        AuthorizationClient::delete_policy_store(self, policy_store_id).await
-    }
-
-    async fn put_schema(&self, policy_store_id: &str, schema: &str) -> Result<PutSchemaResponse> {
-        AuthorizationClient::put_schema(self, policy_store_id, schema).await
-    }
-
-    async fn get_schema(&self, policy_store_id: &str) -> Result<GetSchemaResponse> {
-        AuthorizationClient::get_schema(self, policy_store_id).await
-    }
-
-    async fn create_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse> {
-        AuthorizationClient::create_policy(self, policy_store_id, policy_id, statement, description)
-            .await
-    }
-
-    async fn get_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-    ) -> Result<GetPolicyResponse> {
-        AuthorizationClient::get_policy(self, policy_store_id, policy_id).await
-    }
-
-    async fn list_policies(&self, policy_store_id: &str) -> Result<ListPoliciesResponse> {
-        AuthorizationClient::list_policies(self, policy_store_id).await
-    }
-
-    async fn update_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<UpdatePolicyResponse> {
-        AuthorizationClient::update_policy(self, policy_store_id, policy_id, statement, description)
-            .await
-    }
-
-    async fn delete_policy(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-    ) -> Result<DeletePolicyResponse> {
-        AuthorizationClient::delete_policy(self, policy_store_id, policy_id).await
-    }
-
-    async fn create_identity_source(
-        &self,
-        policy_store_id: &str,
-        configuration: IdentitySourceConfiguration,
-        claims_mapping: Option<ClaimsMappingConfiguration>,
-        description: Option<String>,
-    ) -> Result<CreateIdentitySourceResponse> {
-        AuthorizationClient::create_identity_source(
-            self,
-            policy_store_id,
-            configuration,
-            claims_mapping,
-            description,
-        )
-        .await
-    }
-
-    async fn get_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<GetIdentitySourceResponse> {
-        AuthorizationClient::get_identity_source(self, policy_store_id, identity_source_id).await
-    }
-
-    async fn list_identity_sources(
-        &self,
-        policy_store_id: &str,
-    ) -> Result<ListIdentitySourcesResponse> {
-        AuthorizationClient::list_identity_sources(self, policy_store_id).await
-    }
-
-    async fn delete_identity_source(
-        &self,
-        policy_store_id: &str,
-        identity_source_id: &str,
-    ) -> Result<DeleteIdentitySourceResponse> {
-        AuthorizationClient::delete_identity_source(self, policy_store_id, identity_source_id).await
-    }
-
-    async fn create_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-        statement: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyTemplateResponse> {
-        AuthorizationClient::create_policy_template(
-            self,
-            policy_store_id,
-            template_id,
-            statement,
-            description,
-        )
-        .await
-    }
-
-    async fn get_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-    ) -> Result<GetPolicyTemplateResponse> {
-        AuthorizationClient::get_policy_template(self, policy_store_id, template_id).await
-    }
-
-    async fn list_policy_templates(
-        &self,
-        policy_store_id: &str,
-    ) -> Result<ListPolicyTemplatesResponse> {
-        AuthorizationClient::list_policy_templates(self, policy_store_id).await
-    }
-
-    async fn delete_policy_template(
-        &self,
-        policy_store_id: &str,
-        template_id: &str,
-    ) -> Result<DeletePolicyTemplateResponse> {
-        AuthorizationClient::delete_policy_template(self, policy_store_id, template_id).await
-    }
-
-    async fn create_policy_from_template(
-        &self,
-        policy_store_id: &str,
-        policy_id: &str,
-        template_id: &str,
-        principal: &str,
-        resource: &str,
-        description: Option<String>,
-    ) -> Result<CreatePolicyResponse> {
-        AuthorizationClient::create_policy_from_template(
-            self,
-            policy_store_id,
-            policy_id,
-            template_id,
-            principal,
-            resource,
-            description,
-        )
-        .await
-    }
-
+    /// Check authorization with JWT token
     async fn is_authorized_with_token(
         &self,
         policy_store_id: &str,
@@ -854,6 +423,7 @@ impl crate::client_trait::AuthorizationClientTrait for AuthorizationClient {
         .await
     }
 
+    /// Check authorization with JWT token and context
     async fn is_authorized_with_token_and_context(
         &self,
         request: IsAuthorizedWithTokenRequest,

@@ -1,67 +1,115 @@
 # Hodei Permissions SDK
 
-SDK cliente ergonómico en Rust para el servicio de autorización Hodei Verified Permissions.
+Lightweight Rust client SDK for Hodei Verified Permissions authorization service.
 
-## 📚 Tabla de Contenidos
+**This SDK focuses exclusively on authorization checking (Data Plane).** For policy store, schema, and policy management (Control Plane), use the CLI tool or HodeiAdmin library.
 
-- [Características](#características)
-- [Instalación](#instalación)
-- [Inicio Rápido](#inicio-rápido)
-- [Guía de Uso](#guía-de-uso)
-  - [Autorización Básica](#autorización-básica)
-  - [Autorización con Tokens JWT](#autorización-con-tokens-jwt)
+## 📚 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage Guide](#usage-guide)
+  - [Basic Authorization](#basic-authorization)
+  - [Authorization with Context](#authorization-with-context)
+  - [Batch Authorization](#batch-authorization)
+  - [JWT Token Authorization](#jwt-token-authorization)
   - [Middleware (Axum/Tower)](#middleware-axumtower)
-  - [Identity Sources](#identity-sources)
-- [Referencia de API](#referencia-de-api)
-- [Ejemplos](#ejemplos)
-- [Para Desarrolladores](#para-desarrolladores)
-- [Pruebas](#pruebas)
+- [API Reference](#api-reference)
+- [Migration from v0.1.x](#migration-from-v01x)
+- [For Developers](#for-developers)
+- [Testing](#testing)
 
-## ✨ Características
+## 🎯 Overview
 
-- 🚀 **API Sencilla**: Métodos fáciles para todas las operaciones
-- 🔧 **Patrones Builder**: API fluida para peticiones complejas
-- ⚡ **Async/Await**: Construido sobre Tokio para alto rendimiento
-- 🛡️ **Type Safe**: Aprovecha el sistema de tipos de Rust
-- 📝 **Bien Documentado**: Ejemplos y documentación completos
-- 🔐 **Soporte JWT**: Validación incorporada de tokens con Identity Sources
-- 🌐 **Integración IdP**: Soporte para Keycloak, Zitadel y AWS Cognito
-- 🔌 **Middleware**: Middleware Axum/Tower opcional (feature flag)
-- 🎯 **Políticas Cedar**: Soporte completo para el lenguaje Cedar
+### Architecture
 
-## 📦 Instalación
+**Data Plane vs Control Plane Separation:**
 
-Añade a tu `Cargo.toml`:
+- **Data Plane (This SDK)**: Authorization checking, JWT validation, batch operations
+  - Lightweight and focused on authorization decisions
+  - Optimized for high-frequency authorization checks
+  - Perfect for middleware integration
+
+- **Control Plane (CLI/HodeiAdmin)**: Policy management, schema configuration, identity sources
+  - Used for one-time setup and configuration
+  - Full management of policy stores, schemas, policies
+  - Available via CLI tool or HodeiAdmin library
+
+### When to Use This SDK
+
+✅ **Use this SDK when:**
+- You need to check permissions/authorization
+- You're integrating authorization into your application
+- You need JWT token validation
+- You want to protect HTTP routes with middleware
+
+❌ **Use CLI/HodeiAdmin when:**
+- Creating or managing policy stores
+- Uploading or updating schemas
+- Creating or managing policies
+- Configuring identity sources (OIDC, Cognito, etc.)
+
+## ✨ Features
+
+- 🚀 **Lightweight**: Data Plane only, no bloat
+- 🔐 **Authorization Checks**: Simple and context-aware authorization
+- ⚡ **Batch Operations**: Check multiple authorizations efficiently
+- 🔑 **JWT Support**: Built-in JWT token validation with Identity Sources
+- 🏗️ **Builder Patterns**: Fluent API for complex requests
+- ⚡ **Async/Await**: Built on Tokio for high performance
+- 🛡️ **Type Safe**: Leverages Rust's type system
+- 📝 **Well Documented**: Comprehensive examples and docs
+- 🌐 **IdP Integration**: Works with Keycloak, Zitadel, AWS Cognito
+- 🔌 **Middleware**: Optional Axum/Tower middleware (feature flag)
+- 🎯 **Cedar Policies**: Full support for Cedar policy language
+- 🔄 **Migration Support**: Compatibility layer for v0.1.x users
+
+## 📦 Installation
+
+### Basic Installation
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = "0.1"
+hodei-permissions-sdk = "0.2"
 tokio = { version = "1.40", features = ["full"] }
 ```
 
-### Con soporte de Middleware
+### With Middleware Support
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = { version = "0.1", features = ["middleware"] }
+hodei-permissions-sdk = { version = "0.2", features = ["middleware"] }
 axum = "0.7"
 tower = "0.5"
 ```
 
-## 🚀 Inicio Rápido
+### For Migration from v0.1.x
+
+If you're migrating from v0.1.x and need temporary compatibility:
+
+```toml
+[dependencies]
+hodei-permissions-sdk = { version = "0.2", features = ["compat"] }
+```
+
+**Note**: The compatibility layer is deprecated. See [Migration Guide](#migration-from-v01x) for details.
+
+## 🚀 Quick Start
 
 ```rust
 use hodei_permissions_sdk::AuthorizationClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Conectar al servicio
+    // Connect to the service
     let client = AuthorizationClient::connect("http://localhost:50051").await?;
 
-    // Verificar autorización
+    // Check authorization (you need a pre-configured policy store)
     let response = client
         .is_authorized(
-            "policy-store-id",
+            "your-policy-store-id",
             "User::alice",
             "Action::view",
             "Document::doc123"
@@ -69,130 +117,126 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     if response.decision() == hodei_permissions_sdk::Decision::Allow {
-        println!("✅ ¡Acceso concedido!");
+        println!("✅ Access granted!");
     } else {
-        println!("❌ ¡Acceso denegado!");
+        println!("❌ Access denied!");
     }
 
     Ok(())
 }
 ```
 
-## 📖 Guía de Uso
+**Note**: Before using the SDK, you need to:
+1. Set up a policy store using CLI: `hodei init my-app`
+2. Create schemas using CLI: `hodei schema apply --file=schema.json`
+3. Create policies using CLI: `hodei policy create --store-id=... --statement=...`
 
-### Autorización Básica
+## 📖 Usage Guide
 
-#### 1. Crear un Policy Store
+### Basic Authorization
 
-```rust
-let store = client
-    .create_policy_store(Some("Mi Aplicación".to_string()))
-    .await?;
-
-println!("Policy Store ID: {}", store.policy_store_id);
-```
-
-#### 2. Crear Políticas Cedar
-
-```rust
-let policy = r#"
-permit(
-    principal == User::"alice",
-    action == Action::"view",
-    resource == Document::"doc123"
-);
-"#;
-
-client.create_policy(
-    &store.policy_store_id,
-    "permitir-alice",
-    policy,
-    Some("Permite a Alice ver el documento 123".to_string())
-).await?;
-```
-
-#### 3. Verificar Autorización
+The simplest form of authorization check:
 
 ```rust
 let response = client
     .is_authorized(
-        &store.policy_store_id,
+        "policy-store-id",
         "User::alice",
         "Action::view",
         "Document::doc123"
     )
     .await?;
 
-println!("Decisión: {:?}", response.decision());
+match response.decision() {
+    Decision::Allow => println!("Access granted!"),
+    Decision::Deny => println!("Access denied!"),
+    Decision::NotApplicable => println!("No policy applies"),
+    Decision::Indeterminate => println!("Unable to determine"),
+}
 ```
 
-### Autorización con Tokens JWT
+### Authorization with Context
 
-#### 1. Crear un Identity Source
+For complex authorization with entity attributes:
 
 ```rust
-use hodei_permissions_sdk::proto::{
-    IdentitySourceConfiguration, OidcConfiguration,
-    identity_source_configuration, ClaimsMappingConfiguration
-};
-use std::collections::HashMap;
+use hodei_permissions_sdk::{EntityBuilder, IsAuthorizedRequestBuilder};
 
-let oidc_config = OidcConfiguration {
-    issuer: "https://tu-idp.com".to_string(),
-    client_ids: vec!["tu-client-id".to_string()],
-    jwks_uri: "https://tu-idp.com/.well-known/jwks.json".to_string(),
-    group_claim: "groups".to_string(),
-};
+let alice = EntityBuilder::new("User", "alice")
+    .attribute("department", r#""engineering""#)
+    .attribute("level", "5")
+    .build();
 
-let config = IdentitySourceConfiguration {
-    configuration_type: Some(
-        identity_source_configuration::ConfigurationType::Oidc(oidc_config)
-    ),
-};
+let doc = EntityBuilder::new("Document", "doc123")
+    .attribute("owner", r#"{"__entity": {"type": "User", "id": "alice"}}"#)
+    .attribute("visibility", r#""public""#)
+    .build();
 
-let mut attribute_mappings = HashMap::new();
-attribute_mappings.insert("email".to_string(), "email".to_string());
-attribute_mappings.insert("name".to_string(), "name".to_string());
+let request = IsAuthorizedRequestBuilder::new("policy-store-id")
+    .principal("User", "alice")
+    .action("Action", "view")
+    .resource("Document", "doc123")
+    .add_entity(alice)
+    .add_entity(doc)
+    .context(r#"{"ip": "192.168.1.1", "time": "2024-01-01T00:00:00Z"}"#)
+    .build();
 
-let claims_mapping = ClaimsMappingConfiguration {
-    principal_id_claim: "sub".to_string(),
-    group_claim: String::new(),
-    attribute_mappings,
-};
+let response = client.is_authorized_with_context(request).await?;
+```
 
-let identity_source = client
-    .create_identity_source(
-        &store.policy_store_id,
-        config,
-        Some(claims_mapping),
-        Some("Mi IdP".to_string())
-    )
+### Batch Authorization
+
+Check multiple authorizations efficiently:
+
+```rust
+let checks = vec![
+    ("User::alice", "Action::view", "Document::doc1"),
+    ("User::bob", "Action::edit", "Document::doc1"),
+    ("User::alice", "Action::delete", "Document::doc2"),
+];
+
+let batch_response = client
+    .batch_is_authorized("policy-store-id", &checks)
     .await?;
+
+for (i, result) in batch_response.results.iter().enumerate() {
+    println!("Check {}: {:?}", i + 1, result.decision());
+}
 ```
 
-#### 2. Autorizar con un Token JWT
+### JWT Token Authorization
+
+**Prerequisites**: Configure identity sources using CLI or HodeiAdmin:
+
+```bash
+hodei identity-source create \
+  --store-id=your-store-id \
+  --type=oidc \
+  --issuer=https://your-idp.com \
+  --client-id=your-client-id \
+  --jwks-uri=https://your-idp.com/.well-known/jwks.json
+```
+
+Then authorize with JWT tokens:
 
 ```rust
+// Extract JWT from request (e.g., Authorization: Bearer header)
 let jwt_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...";
 
 let response = client
     .is_authorized_with_token(
-        &store.policy_store_id,
-        &identity_source.identity_source_id,
+        "policy-store-id",
+        "identity-source-id",  // From CLI: hodei identity-source list
         jwt_token,
-        "Action::\"read\"",
-        "Document::\"doc123\""
+        "Action::view",
+        "Document::doc123"
     )
     .await?;
-
-if response.decision() == Decision::Allow {
-    println!("✅ Token válido y acceso concedido");
-}
 ```
 
 ### Middleware (Axum/Tower)
 
-Protege tus rutas HTTP con autorizaciones automáticas.
+Protect your HTTP routes with automatic authorization:
 
 ```rust
 use hodei_permissions_sdk::{AuthorizationClient, middleware::VerifiedPermissionsLayer};
@@ -200,184 +244,409 @@ use axum::{Router, routing::get, Json};
 
 #[tokio::main]
 async fn main() {
+    // Create authorization client
     let client = AuthorizationClient::connect("http://localhost:50051")
         .await
         .unwrap();
 
+    // Create middleware layer
     let auth_layer = VerifiedPermissionsLayer::new(
         client,
-        "policy-store-123",
-        "identity-source-456"
+        "policy-store-id",
+        "identity-source-id"
     );
 
+    // Build your app with middleware
     let app = Router::new()
-        .route("/api/documentos", get(listar_documentos))
+        .route("/api/documents", get(list_documents))
+        .route("/api/documents/:id", get(get_document))
         .layer(auth_layer);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
-        .await
-        .unwrap();
-    
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap(),
+        app
+    ).await.unwrap();
+}
+
+async fn list_documents() -> Json<Vec<String>> {
+    // Middleware handles authorization automatically
+    // Only authorized requests reach here
+    Json(vec!["doc1".to_string(), "doc2".to_string()])
 }
 ```
 
-### Identity Sources
+The middleware:
+1. Extracts JWT from `Authorization: Bearer` header
+2. Maps HTTP method to action (GET → read, POST → create, etc.)
+3. Uses URI path as resource
+4. Calls authorization service
+5. Returns **403 Forbidden** on Deny
+6. Forwards request to handler on Allow
 
-Consulta la [Guía de Identity Sources](docs/IDENTITY_SOURCES.es.md) para ver configuraciones detalladas de Keycloak, Zitadel y AWS Cognito.
+## 📚 API Reference
 
-## 📚 Referencia de API
+### Core Operations
 
-### Plano de Datos (Autorización)
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| `is_authorized()` | Simple authorization check | Basic permission checks |
+| `is_authorized_with_context()` | Authorization with entities and context | Complex authorization with attributes |
+| `is_authorized_with_token()` | Authorization with JWT token | JWT token validation |
+| `batch_is_authorized()` | Multiple authorization checks | Efficient bulk checking |
 
-| Método | Descripción |
-|--------|-------------|
-| `is_authorized()` | Verificación simple de autorización |
-| `is_authorized_with_context()` | Autorización con entidades y contexto |
-| `is_authorized_with_token()` | Autorización con JWT |
-| `batch_is_authorized()` | Verificación de múltiples peticiones |
+### Builder Patterns
 
-### Plano de Control
-
-**Policy Stores:**
-- `create_policy_store()`
-- `get_policy_store()`
-- `list_policy_stores()`
-- `delete_policy_store()`
-
-**Schemas:**
-- `put_schema()`
-- `get_schema()`
-
-**Policies:**
-- `create_policy()`
-- `get_policy()`
-- `list_policies()`
-- `delete_policy()`
-
-**Identity Sources:**
-- `create_identity_source()`
-- `get_identity_source()`
-- `list_identity_sources()`
-- `delete_identity_source()`
-
-## 💡 Ejemplos
-
-### Ejemplo Completo: Documentos
+#### IsAuthorizedRequestBuilder
 
 ```rust
-use hodei_permissions_sdk::{AuthorizationClient, EntityBuilder};
+IsAuthorizedRequestBuilder::new(policy_store_id)
+    .principal("User", "alice")
+    .action("Action", "view")
+    .resource("Document", "doc123")
+    .context(json_string)
+    .add_entity(entity)
+    .build()
+```
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = AuthorizationClient::connect("http://localhost:50051").await?;
+#### EntityBuilder
 
-    let store = client.create_policy_store(Some("DocApp".to_string())).await?;
+```rust
+EntityBuilder::new("User", "alice")
+    .attribute("key", "value")
+    .parent("Group", "admins")
+    .build()
+```
 
-    let policy = r#"
-        permit(
-            principal,
-            action == Action::"view",
-            resource
-        ) when {
-            resource.owner == principal ||
-            principal in resource.viewers
-        };
-    "#;
+### Decision Types
 
-    client.create_policy(
-        &store.policy_store_id,
-        "permitir-visor",
-        policy,
-        Some("Permite a dueños y visores ver documentos".to_string())
-    ).await?;
-
-    let alice = EntityBuilder::new("User", "alice").build();
-    
-    let doc = EntityBuilder::new("Document", "doc123")
-        .attribute("owner", r#"{"__entity": {"type": "User", "id": "alice"}}"#)
-        .build();
-
-    let request = IsAuthorizedRequestBuilder::new(&store.policy_store_id)
-        .principal("User", "alice")
-        .action("Action", "view")
-        .resource("Document", "doc123")
-        .add_entity(alice)
-        .add_entity(doc)
-        .build();
-
-    let response = client.is_authorized_with_context(request).await?;
-
-    println!("Decisión: {:?}", response.decision());
-
-    Ok(())
+```rust
+pub enum Decision {
+    Allow,           // Permission granted
+    Deny,            // Permission denied
+    NotApplicable,   // No policy applies
+    Indeterminate,   // Unable to determine (missing context)
 }
 ```
 
-## 🔧 Para Desarrolladores
+## 🔄 Migration from v0.1.x
 
-### Extender el SDK
+### What's Changed
+
+v0.2.0 introduces a **Data Plane only** architecture:
+- ✅ **Kept**: Authorization checking methods (`is_authorized`, `batch_is_authorized`, etc.)
+- ❌ **Removed**: Control Plane operations (`create_policy_store`, `put_schema`, `create_policy`, etc.)
+- 🔄 **Replaced**: Control Plane moved to CLI tool and HodeiAdmin library
+
+### Step 1: Use Compatibility Layer (Temporary)
+
+Enable the `compat` feature flag:
+
+```toml
+hodei-permissions-sdk = { version = "0.2", features = ["compat"] }
+```
+
+This provides deprecated methods that return helpful error messages:
+
+```rust
+// This will compile but return an error with migration guidance
+let store = client
+    .create_policy_store(Some("MyApp".to_string()))
+    .await;
+```
+
+### Step 2: Move Control Plane to CLI
+
+For all Control Plane operations, use the CLI tool:
+
+```bash
+# Create policy store
+hodei init my-app
+
+# Upload schema
+hodei schema apply --file=schema.json --store-id=...
+
+# Create policy
+hodei policy create \
+  --store-id=... \
+  --id=allow-alice \
+  --statement='permit(principal == User::"alice", ...)'
+
+# Configure identity source
+hodei identity-source create \
+  --store-id=... \
+  --type=oidc \
+  --issuer=https://auth.example.com \
+  --client-id=myapp
+```
+
+### Step 3: Update SDK Usage
+
+Remove Control Plane operations from your application code:
+
+**Before (v0.1.x):**
+```rust
+// ❌ Don't do this in v0.2+
+let store = client.create_policy_store(...).await?;
+client.put_schema(&store.policy_store_id, schema).await?;
+client.create_policy(&store.policy_store_id, "policy1", statement).await?;
+
+// Only keep authorization checks
+let response = client.is_authorized(...).await?;
+```
+
+**After (v0.2.x):**
+```rust
+// ✅ Authorization checks only
+let response = client.is_authorized(
+    "pre-configured-store-id",
+    "User::alice",
+    "Action::view",
+    "Document::doc123"
+).await?;
+```
+
+### Step 4: Programmatic Control Plane (Optional)
+
+If you need programmatic Control Plane access, use the HodeiAdmin library:
+
+```toml
+hodei-cli = { version = "0.2", features = ["library"] }
+```
+
+```rust
+use hodei_cli::HodeiAdmin;
+
+let admin = HodeiAdmin::connect("http://localhost:50051").await?;
+
+// Create policy store programmatically
+let store = admin.create_policy_store("MyApp", None).await?;
+
+// Upload schema programmatically
+admin.put_schema(&store.policy_store_id, schema).await?;
+
+// Create policy programmatically
+admin.create_policy(
+    &store.policy_store_id,
+    "allow-alice",
+    statement,
+    None
+).await?;
+```
+
+### Complete Migration Example
+
+**Old approach (v0.1.x):**
+```rust
+let client = AuthorizationClient::connect(...).await?;
+
+// Everything in one place
+let store = client.create_policy_store(...).await?;
+client.put_schema(&store.policy_store_id, schema).await?;
+client.create_policy(&store.policy_store_id, "policy1", stmt).await?;
+
+let response = client.is_authorized(&store.policy_store_id, ...).await?;
+```
+
+**New approach (v0.2.x):**
+```rust
+// 1. Setup (once, using CLI or HodeiAdmin):
+// hodei init my-app
+// hodei schema apply --file=schema.json
+// hodei policy create --id=policy1 --statement='...'
+
+// 2. In your application (SDK):
+let client = AuthorizationClient::connect(...).await?;
+let response = client.is_authorized("store-id-from-cli-setup", ...).await?;
+```
+
+### Migration Checklist
+
+- [ ] Update `Cargo.toml` dependencies to v0.2
+- [ ] Enable `compat` feature for temporary compatibility
+- [ ] Run application and identify Control Plane calls
+- [ ] Move Control Plane operations to CLI scripts or HodeiAdmin
+- [ ] Document policy store IDs in configuration
+- [ ] Remove `compat` feature flag
+- [ ] Clean up application code
+
+## 🔧 For Developers
+
+### Project Structure
+
+```
+sdk/
+├── src/
+│   ├── lib.rs              # Main entry point
+│   ├── client.rs           # Authorization client
+│   ├── client_trait.rs     # Client trait for testing
+│   ├── builders.rs         # Builder patterns
+│   ├── entities/           # Entity builders
+│   ├── error.rs            # Error types
+│   ├── middleware/         # Optional middleware (feature gated)
+│   │   ├── mod.rs
+│   │   ├── extractor.rs    # Request extraction
+│   │   ├── layer.rs        # Tower Layer
+│   │   └── service.rs      # Tower Service
+│   ├── schema/             # Schema generation (optional)
+│   └── validation.rs       # OIDC validation utilities
+├── examples/               # Usage examples
+│   ├── basic_usage.rs
+│   └── middleware.rs
+├── tests/                  # Tests
+└── Cargo.toml
+```
+
+### Adding Custom Logic
 
 ```rust
 use hodei_permissions_sdk::AuthorizationClient;
 
 impl AuthorizationClient {
-    pub async fn my_custom_method(&self) -> Result<(), SdkError> {
-        // Tu lógica personalizada
-        Ok(())
+    pub async fn my_custom_check(
+        &self,
+        policy_store_id: &str,
+        user: &str,
+        action: &str,
+        resource: &str,
+    ) -> Result<bool, SdkError> {
+        let response = self
+            .is_authorized(policy_store_id, user, action, resource)
+            .await?;
+
+        Ok(response.decision() == Decision::Allow)
     }
 }
 ```
 
-### Estructura del Proyecto
+### Custom Error Handling
 
-```
-sdk/
-├── src/
-│   ├── lib.rs
-│   ├── client.rs
-│   ├── builders.rs
-│   ├── error.rs
-│   └── middleware/
-├── docs/
-│   ├── README.md
-│   ├── MIDDLEWARE_GUIDE.md
-│   └── IDENTITY_SOURCES.md
-├── examples/
-├── tests/
-└── Cargo.toml
+```rust
+use hodei_permissions_sdk::SdkError;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum MyAppError {
+    #[error("Authorization error: {0}")]
+    Auth(#[from] SdkError),
+
+    #[error("Business logic error: {0}")]
+    Business(String),
+}
+
+impl From<SdkError> for MyAppError {
+    fn from(error: SdkError) -> Self {
+        MyAppError::Auth(error)
+    }
+}
 ```
 
-## 🧪 Pruebas
+### Testing
+
+```rust
+use hodei_permissions_sdk::{AuthorizationClientTrait, Decision};
+use async_trait::async_trait;
+
+struct MockClient;
+
+#[async_trait]
+impl AuthorizationClientTrait for MockClient {
+    async fn is_authorized(
+        &self,
+        _policy_store_id: &str,
+        _principal: &str,
+        _action: &str,
+        _resource: &str,
+    ) -> Result<hodei_permissions_sdk::IsAuthorizedResponse, SdkError> {
+        Ok(IsAuthorizedResponse {
+            decision: Decision::Allow as i32,
+            ..Default::default()
+        })
+    }
+}
+
+#[tokio::test]
+async fn test_my_logic() {
+    let client = MockClient;
+    // Test with mock client
+}
+```
+
+### Running Tests
 
 ```bash
-# Tests unitarios
+# Unit tests
 cargo test
 
-# Tests de integración
-cargo test --features integration-tests
+# Compatibility layer tests
+cargo test --features compat
 
-# Tests de middleware
+# Middleware tests
 cargo test --features middleware
+
+# All features
+cargo test --all-features
 ```
 
-## 🐛 Manejo de Errores
+### Building Documentation
+
+```bash
+# Generate docs
+cargo doc --open
+
+# With all features
+cargo doc --all-features --open
+```
+
+## 🐛 Error Handling
 
 ```rust
 use hodei_permissions_sdk::SdkError;
 
 match client.is_authorized(...).await {
-    Ok(response) => println!("Decisión: {:?}", response.decision()),
-    Err(SdkError::ConnectionError(e)) => eprintln!("Error de conexión: {}", e),
-    Err(SdkError::StatusError(status)) => eprintln!("Error gRPC: {}", status),
-    Err(e) => eprintln!("Error: {}", e),
+    Ok(response) => {
+        match response.decision() {
+            Decision::Allow => println!("✅ Access granted!"),
+            Decision::Deny => println!("❌ Access denied!"),
+            Decision::NotApplicable => println!("⚠️ No policy applies"),
+            Decision::Indeterminate => println!("❓ Unable to determine"),
+        }
+    },
+    Err(SdkError::ConnectionError(e)) => {
+        eprintln!("🔌 Connection error: {}", e);
+    },
+    Err(SdkError::StatusError(status)) => {
+        eprintln!("📡 gRPC error: {} - {}", status.code(), status.message());
+    },
+    Err(SdkError::InvalidRequest(msg)) => {
+        eprintln!("❌ Invalid request: {}", msg);
+    },
+    Err(e) => {
+        eprintln!("💥 Unexpected error: {}", e);
+    },
 }
 ```
 
-## 📄 Licencia
+## 📦 Related Packages
+
+- **CLI Tool**: `hodei` command-line tool for Control Plane operations
+  - Installation: `cargo install hodei-cli`
+  - Documentation: Run `hodei --help`
+
+- **HodeiAdmin Library**: Programmatic Control Plane access
+  - Crate: `hodei-cli` with `library` feature
+  - Documentation: Run `cargo doc -p hodei-cli --lib`
+
+## 📄 License
 
 MIT
 
-## 🤝 Contribuciones
+## 🤝 Contributing
 
-¡Las contribuciones son bienvenidas! Ver [README.es.md](../README.es.md) para más detalles.
+Contributions are welcome! Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
+
+## 📞 Support
+
+- Documentation: [docs.rs/hodei-permissions-sdk](https://docs.rs/hodei-permissions-sdk)
+- Migration Guide: [MIGRATION_GUIDE_SDK.md](../docs/MIGRATION_GUIDE_SDK.md)
+- Issues: [GitHub Issues](https://github.com/rubentxu/hodei-verified-permissions/issues)
+- Discussions: [GitHub Discussions](https://github.com/rubentxu/hodei-verified-permissions/discussions)
