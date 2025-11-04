@@ -28,33 +28,33 @@ span
 
 ### 🎯 Capacidades Centrales
 
-- **Cedar Policy Engine** - Industry-standard attribute-based access control
-- **gRPC API** - High-performance, type-safe service interface
-- **Comprehensive Audit Trail** - AWS CloudTrail-compatible event logging
-- **Event Sourcing** - Complete transparency of all operations
-- **Webhooks** - Real-time integration with external systems
-- **Hexagonal Architecture** - Clean, maintainable, testable code
+- **Motor de Políticas Cedar** - Control de acceso basado en atributos estándar industrial
+- **API gRPC** - Interfaz de alto rendimiento y tipada
+- **Registro de Auditoría Completo** - Registro de eventos compatible con AWS CloudTrail
+- **Event Sourcing** - Transparencia completa de todas las operaciones
+- **Webhooks** - Integración en tiempo real con sistemas externos
+- **Arquitectura Hexagonal** - Código limpio, mantenible y testeable
 
 ### 📊 Grado Empresarial
 
-- **Complete Audit Log** - Every API call tracked with metadata
-- **External Database Integration** - Publish events to external systems
-- **Postman Collection** - Ready-to-use API testing
-- **Real-time Monitoring** - Web interface for live operations
-- **Policy Versioning** - Snapshot and rollback capabilities
-- **TypeScript SDK** - Frontend integration library
+- **Registro de Auditoría Completo** - Cada llamada API rastreada con metadatos
+- **Integración de Base de Datos Externa** - Publicar eventos a sistemas externos
+- **Colección Postman** - Pruebas API listas para usar
+- **Monitoreo en Tiempo Real** - Interfaz web para operaciones en vivo
+- **Versionado de Políticas** - Capacidades de snapshot y rollback
+- **SDK TypeScript** - Biblioteca de integración frontend
 
 ### 🛠 Experiencia del Desarrollador
 
-- **Separate SDKs for Data/Control Plane** - Clean architecture following AWS pattern
-- **Lightweight Authorization SDK** - Only what you need for permission checks
-- **Programmatic Admin Library** - Full policy management for automation
-- **CLI Tool** - Command-line interface for human operators
-- **Backwards Compatibility** - Gradual migration path from v0.1.x
-- **Makefile Commands** - One-command development setup
-- **Full Test Suite** - Unit and integration tests
-- **Auto-generated Documentation** - OpenAPI & gRPC reflection
-- **Docker Support** - Containerized deployment
+- **SDKs Separados para Data/Control Plane** - Arquitectura limpia siguiendo el patrón AWS
+- **SDK de Autorización Ligero** - Solo lo que necesitas para verificación de permisos
+- **Biblioteca Admin Programática** - Gestión completa de políticas para automatización
+- **Herramienta CLI** - Interfaz de línea de comandos para operadores humanos
+- **Compatibilidad Hacia Atrás** - Ruta de migración gradual desde v0.1.x
+- **Comandos Makefile** - Configuración de desarrollo con un comando
+- **Suite Completa de Pruebas** - Pruebas unitarias e integración
+- **Documentación Auto-generada** - Reflexión OpenAPI y gRPC
+- **Soporte Docker** - Despliegue contenedorizado
 
 ## 🏗 Arquitectura
 
@@ -178,7 +178,7 @@ Hodei v0.2.0 provides three complementary components for different use cases:
 
 ### 1. verified-permissions-sdk (Data Plane)
 
-Lightweight SDK focused exclusively on **authorization checking**. Perfect for applications that need to check permissions.
+SDK ligero enfocado exclusivamente en **verificación de autorización**. Perfecto para aplicaciones que necesitan verificar permisos.
 
 ```rust
 use hodei_permissions_sdk::{Client, IsAuthorizedRequestBuilder, EntityBuilder};
