@@ -1,21 +1,29 @@
 [package]
 name = "hodei-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Hodei Team"]
 description = "CLI tools for Hodei Verified Permissions"
 license = "MIT"
 
 [[bin]]
-name = "hodei-cli"
+name = "hodei"
 path = "src/main.rs"
 
+[features]
+default = []
+schema = ["hodei-permissions-sdk/schema"]
+runtime-mapping = ["hodei-permissions-sdk/runtime-mapping"]
+
 [dependencies]
+# Admin SDK for Control Plane operations
+sdk-admin = { path = "../sdk-admin" }
+
 # SDK with schema generation feature
-hodei-permissions-sdk = { path = "../sdk", features = ["schema"] }
+hodei-permissions-sdk = { path = "../sdk", features = ["schema", "runtime-mapping"] }
 
 # CLI framework
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5", features = ["derive", "cargo"] }
 
 # Error handling
 anyhow = "1.0"
@@ -27,6 +35,7 @@ tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "fs"] }
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+toml = "0.8"
 
 # Logging
 tracing = "0.1"

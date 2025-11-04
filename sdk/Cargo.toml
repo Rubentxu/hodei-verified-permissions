@@ -1,6 +1,6 @@
 [package]
 name = "hodei-permissions-sdk"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Hodei Team"]
 description = "Client SDK for Hodei Verified Permissions authorization service"
@@ -8,6 +8,7 @@ license = "MIT"
 
 [features]
 default = []
+compat = []  # Enable compatibility layer for v0.1.x users
 middleware = ["axum", "tower", "tower-layer", "http", "http-body", "http-body-util", "matchit"]
 schema = ["openapiv3", "url"]
 runtime-mapping = ["schema", "matchit", "http", "form_urlencoded"]
