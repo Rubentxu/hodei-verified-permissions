@@ -634,7 +634,7 @@ make test-watch
 # Check code quality before commit
 make format && make lint && make test-unit
 ```
-#### Production Deployment
+#### Producción Deployment
 
 ```bash
 # Build and test release
@@ -687,7 +687,7 @@ Access the web interface at http://localhost:3000 and navigate to any policy sto
 
 ## 🔒 Seguridad
 
-### Authentication & Authorization
+### Autenticación y Autorización
 
 - JWT token support for authorization requests
 - Policy-based access control with Cedar
@@ -743,7 +743,7 @@ make docker-run
 # Or with docker-compose
 docker-compose up -d
 ```
-### Production
+### Producción
 
 ```bash
 # Build release
