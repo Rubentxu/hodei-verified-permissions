@@ -1,5 +1,5 @@
 [package]
-name = "hodei-cli"
+name = "hvp-cli"
 version = "0.2.0"
 edition = "2024"
 authors = ["Hodei Team"]
@@ -7,20 +7,20 @@ description = "CLI tools for Hodei Verified Permissions"
 license = "MIT"
 
 [[bin]]
-name = "hodei"
+name = "hvp"
 path = "src/main.rs"
 
 [features]
 default = []
-schema = ["hodei-permissions-sdk/schema"]
-runtime-mapping = ["hodei-permissions-sdk/runtime-mapping"]
+schema = ["verified-permissions-sdk/schema"]
+runtime-mapping = ["verified-permissions-sdk/runtime-mapping"]
 
 [dependencies]
 # Admin SDK for Control Plane operations
-sdk-admin = { path = "../sdk-admin" }
+verified-permissions-sdk-admin = { path = "../verified-permissions-sdk-admin" }
 
 # SDK with schema generation feature
-hodei-permissions-sdk = { path = "../sdk", features = ["schema", "runtime-mapping"] }
+verified-permissions-sdk = { path = "../verified-permissions-sdk", features = ["schema", "runtime-mapping"] }
 
 # CLI framework
 clap = { version = "4.5", features = ["derive", "cargo"] }

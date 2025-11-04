@@ -9,9 +9,9 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use hodei_permissions_sdk::client_trait::AuthorizationClientTrait;
+//! use verified_permissions_sdk::client_trait::AuthorizationClientTrait;
 //! use async_trait::async_trait;
-//! use hodei_permissions_sdk::proto::{IsAuthorizedResponse, Decision};
+//! use verified_permissions_sdk::proto::{IsAuthorizedResponse, Decision};
 //!
 //! struct MockClient;
 //!
@@ -51,7 +51,7 @@ use async_trait::async_trait;
 /// # Example
 ///
 /// ```rust,ignore
-/// use hodei_permissions_sdk::client_trait::AuthorizationClientTrait;
+/// use verified_permissions_sdk::client_trait::AuthorizationClientTrait;
 /// use async_trait::async_trait;
 ///
 /// #[cfg(test)]

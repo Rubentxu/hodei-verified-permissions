@@ -16,7 +16,7 @@ use crate::schema::SimpleRestMapping;
 /// # Example
 ///
 /// ```rust,ignore
-/// use hodei_permissions_sdk::{AuthorizationClient, middleware::VerifiedPermissionsLayer};
+/// use verified_permissions_sdk::{AuthorizationClient, middleware::VerifiedPermissionsLayer};
 /// use axum::{Router, routing::get};
 ///
 /// #[tokio::main]

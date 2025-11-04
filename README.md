@@ -10,9 +10,9 @@
 
 **Hodei v0.2.0** introduces a clean separation between Data Plane and Control Plane operations:
 
-- **`hodei-permissions-sdk`** - Lightweight SDK for **authorization checking** (Data Plane)
-- **`sdk-admin`** - Programmatic library for **policy management** (Control Plane)
-- **`hodei` CLI** - Command-line interface built on `sdk-admin`
+- **`verified-permissions-sdk`** - Lightweight SDK for **authorization checking** (Data Plane)
+- **`verified-permissions-sdk-admin`** - Programmatic library for **policy management** (Control Plane)
+- **`hvp` CLI** - Command-line interface built on `verified-permissions-sdk-admin`
 
 [![asciicast](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
 
@@ -58,8 +58,8 @@ graph TD
     end
 
     subgraph "SDK Layer"
-        B1["hodei-permissions-sdk<br/>📦 Data Plane<br/>Authorization Checks"]
-        B2["sdk-admin<br/>📦 Control Plane<br/>Policy Management"]
+        B1["verified-permissions-sdk<br/>📦 Data Plane<br/>Authorization Checks"]
+        B2["verified-permissions-sdk-admin<br/>📦 Control Plane<br/>Policy Management"]
         B3["hodei CLI<br/>Command Line Tool"]
     end
 
@@ -162,7 +162,7 @@ graph TD
 
 Hodei v0.2.0 provides three complementary components for different use cases:
 
-### 1. hodei-permissions-sdk (Data Plane)
+### 1. verified-permissions-sdk (Data Plane)
 
 Lightweight SDK focused exclusively on **authorization checking**. Perfect for applications that need to check permissions.
 
@@ -192,7 +192,7 @@ if response.decision == "Allow" {
 
 **Learn more:** [sdk/README.md](sdk/README.md)
 
-### 2. sdk-admin (Control Plane)
+### 2. verified-permissions-sdk-admin (Control Plane)
 
 Programmatic library for **full policy management**. Ideal for automation, CI/CD, and admin tools.
 
@@ -225,11 +225,11 @@ admin.create_policy(
 - ✅ Automation and CI/CD pipelines
 - ✅ Admin tools and dashboards
 
-**Learn more:** [sdk-admin/README.md](sdk-admin/README.md)
+**Learn more:** [verified-permissions-sdk-admin/README.md](verified-permissions-sdk-admin/README.md)
 
 ### 3. hodei CLI (Command Line)
 
-Human-friendly command-line interface built on top of `sdk-admin`.
+Human-friendly command-line interface built on top of `verified-permissions-sdk-admin`.
 
 ```bash
 # Create a policy store
@@ -257,12 +257,12 @@ hodei check ps_123 User::"alice" read Document::"doc123"
 
 | Scenario | Use |
 |----------|-----|
-| Web application checking user permissions | `hodei-permissions-sdk` |
-| Setting up environments via automation | `sdk-admin` |
-| CI/CD pipeline configuration | `sdk-admin` |
-| Interactive policy management | `hodei` CLI |
-| Microservices authorization | `hodei-permissions-sdk` |
-| Administrative dashboards | `sdk-admin` |
+| Web application checking user permissions | `verified-permissions-sdk` |
+| Setting up environments via automation | `verified-permissions-sdk-admin` |
+| CI/CD pipeline configuration | `verified-permissions-sdk-admin` |
+| Interactive policy management | `hvp` CLI |
+| Microservices authorization | `verified-permissions-sdk` |
+| Administrative dashboards | `verified-permissions-sdk-admin` |
 
 ## 🚀 Quick Start
 
@@ -296,7 +296,7 @@ cargo run --example basic_usage
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = { path = "../sdk" }
+verified-permissions-sdk = { path = "../sdk" }
 tokio = { version = "1.40", features = ["macros"] }
 ```
 
@@ -320,7 +320,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #### 2. Policy Management (Control Plane)
 
 ```bash
-cd sdk-admin
+cd verified-permissions-sdk-admin
 
 # Run basic usage example
 cargo run --example basic_usage
@@ -333,7 +333,7 @@ cargo run --example batch_operations
 
 ```toml
 [dependencies]
-sdk-admin = { path = "../sdk-admin" }
+verified-permissions-sdk-admin = { path = "../verified-permissions-sdk-admin" }
 tokio = { version = "1.40", features = ["macros"] }
 ```
 
@@ -410,9 +410,9 @@ make web
 - Enable `compat` feature for backwards compatibility
 
 **Option 2: Complete Migration**
-- Use `hodei-permissions-sdk` for authorization checks
-- Use `sdk-admin` for policy management
-- Use `hodei` CLI for interactive tasks
+- Use `verified-permissions-sdk` for authorization checks
+- Use `verified-permissions-sdk-admin` for policy management
+- Use `hvp` CLI for interactive tasks
 
 ### Detailed Guide
 

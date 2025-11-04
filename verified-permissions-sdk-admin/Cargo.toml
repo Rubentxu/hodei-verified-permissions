@@ -1,5 +1,5 @@
 [package]
-name = "sdk-admin"
+name = "verified-permissions-sdk-admin"
 version = "0.2.0"
 edition = "2024"
 authors = ["Hodei Team"]
@@ -7,12 +7,12 @@ description = "Admin SDK for Hodei Verified Permissions - Programmatic Control P
 license = "MIT"
 
 [lib]
-name = "sdk_admin"
+name = "verified_permissions_sdk_admin"
 path = "src/lib.rs"
 
 [dependencies]
 # SDK dependency (for proto types and client)
-hodei-permissions-sdk = { path = "../sdk" }
+verified-permissions-sdk = { path = "../verified-permissions-sdk" }
 
 # gRPC support
 tonic = { version = "0.14", features = ["transport"] }

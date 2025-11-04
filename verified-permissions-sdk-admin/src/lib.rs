@@ -2,7 +2,9 @@
 
 pub mod error;
 
-use hodei_permissions_sdk::proto::{
+use tonic::transport::{Channel, Endpoint};
+use tracing::info;
+use verified_permissions_sdk::proto::{
     BatchCreatePoliciesRequest, BatchCreatePoliciesResponse, BatchDeletePoliciesRequest,
     BatchDeletePoliciesResponse, BatchIsAuthorizedRequest, BatchIsAuthorizedResponse,
     BatchPolicyItem, BatchUpdatePoliciesRequest, BatchUpdatePoliciesResponse, CreatePolicyRequest,
@@ -16,8 +18,6 @@ use hodei_permissions_sdk::proto::{
     authorization_control_client::AuthorizationControlClient,
     authorization_data_client::AuthorizationDataClient,
 };
-use tonic::transport::{Channel, Endpoint};
-use tracing::info;
 
 pub use error::{Result, SdkAdminError};
 

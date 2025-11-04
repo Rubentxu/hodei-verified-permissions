@@ -17,7 +17,7 @@ use tonic::transport::Channel;
 /// # Example
 ///
 /// ```no_run
-/// use hodei_permissions_sdk::AuthorizationClient;
+/// use verified_permissions_sdk::AuthorizationClient;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,7 +51,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # use verified_permissions_sdk::AuthorizationClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     /// # Ok(())
@@ -88,7 +88,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # use verified_permissions_sdk::AuthorizationClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -146,7 +146,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
+    /// # use verified_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -189,7 +189,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
+    /// # use verified_permissions_sdk::{AuthorizationClient, IsAuthorizedRequestBuilder};
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -246,7 +246,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::AuthorizationClient;
+    /// # use verified_permissions_sdk::AuthorizationClient;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -304,7 +304,7 @@ impl AuthorizationClient {
     /// # Example
     ///
     /// ```no_run
-    /// # use hodei_permissions_sdk::{AuthorizationClient, IsAuthorizedWithTokenRequestBuilder};
+    /// # use verified_permissions_sdk::{AuthorizationClient, IsAuthorizedWithTokenRequestBuilder};
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -352,7 +352,7 @@ impl AuthorizationClient {
 /// # Example
 ///
 /// ```
-/// # use hodei_permissions_sdk::client::parse_entity_id;
+/// # use verified_permissions_sdk::client::parse_entity_id;
 /// let entity = parse_entity_id("User::alice".to_string()).unwrap();
 /// assert_eq!(entity.entity_type, "User");
 /// assert_eq!(entity.entity_id, "alice");

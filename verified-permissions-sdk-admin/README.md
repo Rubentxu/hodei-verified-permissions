@@ -4,7 +4,7 @@ Programmatic Control Plane client for Hodei Verified Permissions.
 
 ## Overview
 
-The **Hodei Admin SDK** (`sdk-admin`) provides a high-level Rust library for programmatically managing Hodei Verified Permissions resources. It enables full Control Plane operations including policy stores, schemas, and policies management.
+The **Hodei Admin SDK** (`verified-permissions-sdk-admin`) provides a high-level Rust library for programmatically managing Hodei Verified Permissions resources. It enables full Control Plane operations including policy stores, schemas, and policies management.
 
 This library is part of the **Hodei SDK v0.2.0** refactoring that separates Data Plane (authorization checking) from Control Plane (policy management) following industry best practices.
 
@@ -42,7 +42,7 @@ This library is part of the **Hodei SDK v0.2.0** refactoring that separates Data
 ### Data Plane vs Control Plane
 
 - **Data Plane** (`hodei-permissions-sdk`): Authorization checking, permission validation, token verification
-- **Control Plane** (`sdk-admin`): Policy store creation, schema management, policy lifecycle
+- **Control Plane** (`verified-permissions-sdk-admin`): Policy store creation, schema management, policy lifecycle
 
 ## Quick Start
 
@@ -52,7 +52,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sdk-admin = { path = "path/to/hodei-verified-permissions/sdk-admin" }
+verified-permissions-sdk-admin = { path = "path/to/hodei-verified-permissions/verified-permissions-sdk-admin" }
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -867,7 +867,7 @@ For detailed migration instructions, see [MIGRATION_GUIDE_SDK.md].
 The Hodei CLI binary (`hodei`) is built on top of this library. If you need programmatic control with CLI-like functionality:
 
 ```rust
-// The CLI uses sdk-admin internally
+// The CLI uses verified-permissions-sdk-admin internally
 // All CLI commands can be replicated using HodeiAdmin API
 ```
 
@@ -994,5 +994,5 @@ MIT
 ## Related
 
 - **Hodei Permissions SDK** (`hodei-permissions-sdk`): Data Plane operations for authorization
-- **Hodei CLI** (`hodei`): Command-line interface built on top of sdk-admin
+- **Hodei CLI** (`hodei`): Command-line interface built on top of verified-permissions-sdk-admin
 - **Migration Guide**: [MIGRATION_GUIDE_SDK.md]

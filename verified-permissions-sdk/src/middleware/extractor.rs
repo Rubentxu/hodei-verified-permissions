@@ -30,7 +30,7 @@ pub struct AuthorizationRequestParts {
 /// # Example
 ///
 /// ```rust,ignore
-/// use hodei_permissions_sdk::middleware::{AuthorizationRequestExtractor, AuthorizationRequestParts};
+/// use verified_permissions_sdk::middleware::{AuthorizationRequestExtractor, AuthorizationRequestParts};
 /// use async_trait::async_trait;
 /// use http::Request;
 ///
@@ -259,7 +259,7 @@ mod tests {
 /// # Example
 ///
 /// ```rust,ignore
-/// use hodei_permissions_sdk::middleware::ParameterizedExtractor;
+/// use verified_permissions_sdk::middleware::ParameterizedExtractor;
 /// use std::collections::HashMap;
 ///
 /// let mut params = HashMap::new();

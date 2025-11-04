@@ -72,7 +72,7 @@ Lightweight Rust client SDK for Hodei Verified Permissions authorization service
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = "0.2"
+verified-permissions-sdk = "0.2"
 tokio = { version = "1.40", features = ["full"] }
 ```
 
@@ -80,7 +80,7 @@ tokio = { version = "1.40", features = ["full"] }
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = { version = "0.2", features = ["middleware"] }
+verified-permissions-sdk = { version = "0.2", features = ["middleware"] }
 axum = "0.7"
 tower = "0.5"
 ```
@@ -91,7 +91,7 @@ If you're migrating from v0.1.x and need temporary compatibility:
 
 ```toml
 [dependencies]
-hodei-permissions-sdk = { version = "0.2", features = ["compat"] }
+verified-permissions-sdk = { version = "0.2", features = ["compat"] }
 ```
 
 **Note**: The compatibility layer is deprecated. See [Migration Guide](#migration-from-v01x) for details.
@@ -342,7 +342,7 @@ v0.2.0 introduces a **Data Plane only** architecture:
 Enable the `compat` feature flag:
 
 ```toml
-hodei-permissions-sdk = { version = "0.2", features = ["compat"] }
+verified-permissions-sdk = { version = "0.2", features = ["compat"] }
 ```
 
 This provides deprecated methods that return helpful error messages:
@@ -646,7 +646,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for 
 
 ## 📞 Support
 
-- Documentation: [docs.rs/hodei-permissions-sdk](https://docs.rs/hodei-permissions-sdk)
+- Documentation: [docs.rs/verified-permissions-sdk](https://docs.rs/verified-permissions-sdk)
 - Migration Guide: [MIGRATION_GUIDE_SDK.md](../docs/MIGRATION_GUIDE_SDK.md)
 - Issues: [GitHub Issues](https://github.com/rubentxu/hodei-verified-permissions/issues)
 - Discussions: [GitHub Discussions](https://github.com/rubentxu/hodei-verified-permissions/discussions)

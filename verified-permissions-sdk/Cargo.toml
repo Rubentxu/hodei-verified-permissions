@@ -1,5 +1,5 @@
 [package]
-name = "hodei-permissions-sdk"
+name = "verified-permissions-sdk"
 version = "0.2.0"
 edition = "2024"
 authors = ["Hodei Team"]

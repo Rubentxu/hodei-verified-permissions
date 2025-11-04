@@ -10,7 +10,7 @@
 //! # Quick Start
 //!
 //! ```no_run
-//! use hodei_permissions_sdk::AuthorizationClient;
+//! use verified_permissions_sdk::AuthorizationClient;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,14 +1,14 @@
-//! Hodei CLI - Command-line tools for Hodei Verified Permissions
+//! HVP CLI - Command-line tools for Hodei Verified Permissions
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use hodei_permissions_sdk::schema::{SchemaGenerationUseCase, SimpleRestSchemaGenerator};
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::info;
+use verified_permissions_sdk::schema::{SchemaGenerationUseCase, SimpleRestSchemaGenerator};
 
 #[derive(Parser)]
-#[command(name = "hodei-cli")]
+#[command(name = "hvp-cli")]
 #[command(about = "CLI tools for Hodei Verified Permissions", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -97,8 +97,8 @@ async fn generate_schema(
         .context("Failed to read API spec file")?;
 
     // Validate JSON
-    let _: serde_json::Value = serde_json::from_str(&spec_content)
-        .context("Invalid JSON in API spec file")?;
+    let _: serde_json::Value =
+        serde_json::from_str(&spec_content).context("Invalid JSON in API spec file")?;
 
     info!("Generating Cedar schema with namespace: {}", namespace);
 
@@ -125,7 +125,7 @@ async fn generate_schema(
     info!("  Mapping type: {}", bundle.metadata.mapping_type);
     info!("  Actions: {}", bundle.metadata.action_count);
     info!("  Entity types: {}", bundle.metadata.entity_type_count);
-    
+
     if let Some(bp) = bundle.metadata.base_path {
         info!("  Base path: {}", bp);
     }
@@ -159,8 +159,8 @@ async fn generate_policies(schema_path: PathBuf, output_dir: PathBuf) -> Result<
         .context("Failed to read schema file")?;
 
     // Parse schema to extract namespace and actions
-    let schema: serde_json::Value = serde_json::from_str(&schema_content)
-        .context("Invalid JSON in schema file")?;
+    let schema: serde_json::Value =
+        serde_json::from_str(&schema_content).context("Invalid JSON in schema file")?;
 
     // Extract namespace (first key in the schema object)
     let namespace = schema
@@ -229,7 +229,10 @@ permit(
         .context("Failed to write role policy")?;
     info!("✓ Cedar policy generated: {}", role_path.display());
 
-    info!("\nSample policies successfully generated in: {}", output_dir.display());
+    info!(
+        "\nSample policies successfully generated in: {}",
+        output_dir.display()
+    );
 
     Ok(())
 }
