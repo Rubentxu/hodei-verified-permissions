@@ -12,21 +12,21 @@ span
 
 <br>
 
-> **Production-grade Authorization Service** based on AWS Verified Permissions with Cedar Policy Engine, complete audit trail, and hexagonal architecture.
+> **Servicio de Autorización de Grado Productivo** basado en AWS Verified Permissions con motor de políticas Cedar, registro de auditoría completo y arquitectura hexagonal.
 
-## 🎯 SDK Architecture Overview
+## 🎯 Visión General de la Arquitectura SDK
 
-**Hodei v0.2.0** introduces a clean separation between Data Plane and Control Plane operations:
+**Hodei v0.2.0** introduce una separación limpia entre operaciones de Data Plane y Control Plane:
 
-- **`verified-permissions-sdk`** - Lightweight SDK for **authorization checking** (Data Plane)
-- **`verified-permissions-sdk-admin`** - Programmatic library for **policy management** (Control Plane)
-- **`hvp` CLI** - Command-line interface built on `verified-permissions-sdk-admin`
+- **`verified-permissions-sdk`** - SDK ligero para **verificación de autorización** (Data Plane)
+- **`verified-permissions-sdk-admin`** - Biblioteca programática para **gestión de políticas** (Control Plane)
+- **`hvp` CLI** - Interfaz de línea de comandos construida sobre `verified-permissions-sdk-admin`
 
 [![asciicast](https://asciinema.org/a/123456.svg)](https://asciinema.org/a/123456)
 
-## ✨ Features
+## ✨ Características
 
-### 🎯 Core Capabilities
+### 🎯 Capacidades Centrales
 
 - **Cedar Policy Engine** - Industry-standard attribute-based access control
 - **gRPC API** - High-performance, type-safe service interface
@@ -35,7 +35,7 @@ span
 - **Webhooks** - Real-time integration with external systems
 - **Hexagonal Architecture** - Clean, maintainable, testable code
 
-### 📊 Enterprise-Grade
+### 📊 Grado Empresarial
 
 - **Complete Audit Log** - Every API call tracked with metadata
 - **External Database Integration** - Publish events to external systems
@@ -44,7 +44,7 @@ span
 - **Policy Versioning** - Snapshot and rollback capabilities
 - **TypeScript SDK** - Frontend integration library
 
-### 🛠 Developer Experience
+### 🛠 Experiencia del Desarrollador
 
 - **Separate SDKs for Data/Control Plane** - Clean architecture following AWS pattern
 - **Lightweight Authorization SDK** - Only what you need for permission checks
@@ -56,9 +56,9 @@ span
 - **Auto-generated Documentation** - OpenAPI & gRPC reflection
 - **Docker Support** - Containerized deployment
 
-## 🏗 Architecture
+## 🏗 Arquitectura
 
-### SDK Architecture (v0.2.0)
+### Arquitectura SDK (v0.2.0)
 
 ```mermaid
 graph TD
@@ -108,13 +108,13 @@ graph TD
     style C1 fill:#fff8e1
 ```
 
-## 📋 Prerequisites
+## 📋 Prerrequisitos
 
 - **Rust** 1.70+ with `cargo`
 - **Node.js** 18+ with `npm`
 - **Postman** v10+ (for gRPC testing)
 
-## 🚀 One-Command Setup
+## 🚀 Configuración con Un Comando
 
 ```mermaid
 graph TD
@@ -163,7 +163,7 @@ graph TD
     style H fill:#fce4ec
     style I fill:#fce4ec
 ```
-### Key Components
+### Componentes Clave
 
 - **Frontend (Next.js)**: Web interface with dashboard, playground, and audit viewer
 - **API Routes**: Serverless functions handling HTTP requests and proxying to gRPC
@@ -172,7 +172,7 @@ graph TD
 - **Event Infrastructure**: Audit logging and webhook publishing
 - **Cedar Policy Engine**: Core authorization logic and policy evaluation
 
-## 📦 SDK Components
+## 📦 Componentes SDK
 
 Hodei v0.2.0 provides three complementary components for different use cases:
 
