@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Hodei Verified Permissions Logo](docs/assets/hodei-verified-permissions.jpg)
+<img src="docs/assets/hodei-verified-permissions.jpg" alt="Hodei Verified Permissions Logo" width="400">
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/rubentxu/hodei-verified-permissions/blob/main/LICENSE)
