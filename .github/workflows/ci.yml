@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Code formatting check
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  # Linting
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # Documentation check
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check documentation
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # Unit and integration tests
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+        with:
+          components: llvm-tools-preview
+      - uses: dtolnay/cargo-llvm-cov@0.6
+        with:
+          version: '0.1.17'
+      - name: Run unit tests
+        run: cargo test --workspace --all-features --all-targets --lib
+      - name: Run integration tests (no containers)
+        run: cargo test --workspace --all-features --all-targets
+      - name: Generate coverage
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+  # Build and test on multiple OS
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        rust:
+          - stable
+        include:
+          - os: ubuntu-latest
+            additional_args: "--all-features"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+      - name: Install Linux dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libprotobuf-dev protobuf-compiler
+      - name: Build workspace
+        run: cargo build --workspace ${{ matrix.additional_args || '' }}
+
+  # CLI binary build
+  build-cli:
+    name: Build CLI Binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build CLI
+        run: cargo build --package hodei-cli --release
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: hodei-cli-${{ github.run_id }}
+          path: target/release/hodei
+
+  # SDK build
+  build-sdk:
+    name: Build SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build SDK
+        run: cargo build --package hodei-permissions-sdk --release
+      - name: Upload SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hodei-permissions-sdk-${{ github.run_id }}
+          path: |
+            target/release/libhodei_permissions_sdk.rlib
+            target/release/deps/libhodei_permissions_sdk*.so
+            target/release/deps/libhodei_permissions_sdk*.dylib
+            target/release/deps/libhodei_permissions_sdk*.dll
+
+  # SDK Admin build
+  build-sdk-admin:
+    name: Build SDK Admin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build SDK Admin
+        run: cargo build --package hodei-admin --release
+      - name: Upload SDK Admin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hodei-admin-${{ github.run_id }}
+          path: |
+            target/release/libhodei_admin.rlib
+            target/release/deps/libhodei_admin*.so
+            target/release/deps/libhodei_admin*.dylib
+            target/release/deps/libhodei_admin*.dll
+
+  # Docker build and push (only on main branch)
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [test, build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        run: |
+          cd verified-permissions/main
+          docker build -t hodei-verified-permissions:latest .
+      - name: Save Docker image
+        run: |
+          docker save hodei-verified-permissions:latest | gzip > hodei-verified-permissions.tar.gz
+      - name: Upload Docker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hodei-docker-${{ github.run_id }}
+          path: verified-permissions/main/hodei-verified-permissions.tar.gz
+
+  # Security audit
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Run audit
+        run: cargo audit
+
+  # Check features
+  features:
+    name: Feature Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - features: default
+          - features: postgres
+          - features: surreal
+          - features: containers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build with features
+        run: cargo build --workspace --features "${{ matrix.features }}"
+
+  # Upload coverage to codecov
+  coverage:
+    name: Upload Coverage
+    runs-on: ubuntu-latest
+    needs: test
+    if: matrix.rust == 'stable'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/cargo-llvm-cov@0.6
+        with:
+          version: '0.1.17'
+      - name: Run tests with coverage
+        run: cargo test --workspace --all-features
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
+          fail_ci_if_error: false
