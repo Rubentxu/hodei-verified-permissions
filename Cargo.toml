@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "verified-permissions-sdk", "hvp-cli", "verified-permissions-sdk-admin", "hodei-macros"]
+members = [".", "verified-permissions-sdk", "hvp-cli", "verified-permissions-sdk-admin"]
 exclude = ["examples/axum-simple-rest"]
 
 [package]
@@ -81,7 +81,7 @@ testcontainers = { version = "0.25.0", features = ["blocking"] }
 testcontainers-modules = { version = "0.13.0", features = ["postgres", "surrealdb"] }
 tokio-test = "0.4"
 # SDK client for E2E tests
-hodei-permissions-sdk = { path = "sdk" }
+verified-permissions-sdk = { path = "verified-permissions-sdk" }
 
 [build-dependencies]
 tonic-prost-build = "0.14.2"

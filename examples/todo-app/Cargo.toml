@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 # Hodei SDK with all features
-hodei-permissions-sdk = { path = "../../sdk", features = ["middleware", "runtime-mapping"] }
+verified-permissions-sdk = { path = "../../verified-permissions-sdk", features = ["middleware", "runtime-mapping"] }
 # Hodei macros for Cedar annotations
 hodei-macros = { path = "../../hodei-macros" }
 

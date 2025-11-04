@@ -52,7 +52,7 @@ impl HodeiAdmin {
         };
         PolicyDefinition {
             policy_type: Some(
-                hodei_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
+                verified_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
             ),
         }
     }
@@ -173,13 +173,13 @@ impl HodeiAdmin {
         let statement_str = statement.into();
 
         // Create PolicyDefinition with StaticPolicy
-        let static_policy = hodei_permissions_sdk::proto::StaticPolicy {
+        let static_policy = verified_permissions_sdk::proto::StaticPolicy {
             statement: statement_str,
         };
 
-        let definition = hodei_permissions_sdk::proto::PolicyDefinition {
+        let definition = verified_permissions_sdk::proto::PolicyDefinition {
             policy_type: Some(
-                hodei_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
+                verified_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
             ),
         };
 
@@ -255,13 +255,13 @@ impl HodeiAdmin {
         let statement_str = statement.into();
 
         // Create PolicyDefinition with StaticPolicy
-        let static_policy = hodei_permissions_sdk::proto::StaticPolicy {
+        let static_policy = verified_permissions_sdk::proto::StaticPolicy {
             statement: statement_str,
         };
 
-        let definition = hodei_permissions_sdk::proto::PolicyDefinition {
+        let definition = verified_permissions_sdk::proto::PolicyDefinition {
             policy_type: Some(
-                hodei_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
+                verified_permissions_sdk::proto::policy_definition::PolicyType::Static(static_policy),
             ),
         };
 

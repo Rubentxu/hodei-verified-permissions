@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 # Hodei SDK with all features
-hodei-permissions-sdk = { path = "../../sdk", features = ["middleware", "runtime-mapping"] }
+verified-permissions-sdk = { path = "../../verified-permissions-sdk", features = ["middleware", "runtime-mapping"] }
 
 # Web framework
 axum = "0.8"
