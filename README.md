@@ -212,102 +212,130 @@ make test-watch
 
 ## 🛠 Development
 
-### Available Commands
+Hodei Verified Permissions provides a comprehensive set of Makefile commands to streamline development, testing, and deployment workflows. All commands are designed to be idempotent and safe to run multiple times.
 
+### Development Workflow
+
+| Command | Description | When to Use | Example Output |
+|---------|-------------|-------------|----------------|
+| `make dev` | Start all services (gRPC server + Next.js frontend) in development mode | First-time setup or full-stack development | Services available at localhost:50051 (gRPC) and localhost:3000 (web) |
+| `make build` | Build all Rust components in debug mode | After code changes, before testing | Compilation output with build times |
+| `make clean` | Remove all build artifacts and caches | Clean workspace, resolve build issues | Removes target/, node_modules/.cache, etc. |
+| `make format` | Format Rust and TypeScript code | Before commits, code style consistency | Files reformatted according to style guides |
+| `make lint` | Run linters for Rust and TypeScript | Code quality checks, CI/CD | Reports warnings and errors |
+| `make check` | Type checking and basic validation | Quick feedback during development | Compilation checks without full build |
+
+### Database Management
+
+| Command | Description | When to Use | Notes |
+|---------|-------------|-------------|-------|
+| `make db-init` | Initialize database schema and seed data | First setup or after clean install | Creates tables, indexes, and initial data |
+| `make db-reset` | Reset database to clean state | Testing, development reset | **WARNING: Deletes all data** |
+| `make db-migrate` | Run pending database migrations | Schema updates, version upgrades | Safe to run multiple times |
+| `make db-status` | Show database connection and schema status | Troubleshooting connectivity | Displays current DB state |
+
+### Server Operations
+
+| Command | Description | When to Use | Port |
+|---------|-------------|-------------|------|
+| `make server` | Start gRPC server in development mode | API development, testing | 50051 |
+| `make server-release` | Start gRPC server in release mode | Performance testing, production-like | 50051 |
+| `make server-logs` | View real-time server logs | Debugging, monitoring | Streams log output |
+
+### Web Interface
+
+| Command | Description | When to Use | Port |
+|---------|-------------|-------------|------|
+| `make web` | Start Next.js development server | Frontend development | 3000 |
+| `make web-build` | Build Next.js for production | Deployment preparation | Generates optimized build |
+| `make web-start` | Start production Next.js server | Production deployment | 3000 |
+
+### Testing Suite
+
+| Command | Description | When to Use | Duration |
+|---------|-------------|-------------|----------|
+| `make test` | Run unit and integration tests | Development feedback | ~30-60 seconds |
+| `make test-unit` | Run only unit tests | Fast feedback, no DB required | ~5-10 seconds |
+| `make test-integration` | Run only integration tests | Database-dependent features | ~20-40 seconds |
+| `make test-all` | Run all tests with coverage | CI/CD, release validation | ~2-5 minutes |
+| `make test-watch` | Watch mode - re-run tests on changes | Continuous development | Ongoing |
+| `make benchmark` | Run performance benchmarks | Performance validation | ~1-2 minutes |
+
+#### Specialized Testing
+
+| Command | Description | Prerequisites | Purpose |
+|---------|-------------|---------------|---------|
+| `make test-e2e-sqlite` | End-to-end tests with SQLite | None | Default DB testing |
+| `make test-e2e-postgres` | End-to-end tests with PostgreSQL | PostgreSQL container running | Multi-DB validation |
+| `make test-e2e-surrealdb` | End-to-end tests with SurrealDB | SurrealDB container running | Multi-DB validation |
+| `make test-e2e-all` | All E2E tests across databases | All DB containers running | Comprehensive validation |
+| `make test-identity-providers` | Identity provider integration tests | Keycloak/Zitadel containers | IdP integration |
+
+### gRPC Tools
+
+| Command | Description | When to Use | Output |
+|---------|-------------|-------------|--------|
+| `make grpc-reflect` | List all available gRPC services and methods | API exploration, documentation | Service definitions |
+| `make grpc-test` | Test gRPC connectivity and basic operations | Health checks, troubleshooting | Connection status |
+| `make grpc-health` | Check server health via gRPC | Monitoring, load balancer checks | Health status |
+
+### Documentation
+
+| Command | Description | When to Use | Output |
+|---------|-------------|-------------|--------|
+| `make docs` | Generate Rust documentation | API reference, offline docs | HTML docs in target/doc/ |
+| `make docs-serve` | Serve documentation locally | Documentation review | Local web server |
+
+### Docker Operations
+
+| Command | Description | When to Use | Prerequisites |
+|---------|-------------|-------------|---------------|
+| `make docker-build` | Build Docker image | Container deployment | Dockerfile present |
+| `make docker-run` | Run container from built image | Local container testing | Built image |
+
+### Utility Commands
+
+| Command | Description | When to Use | Output |
+|---------|-------------|-------------|--------|
+| `make status` | Show status of all services | System overview, troubleshooting | Service states and ports |
+| `make stop` | Stop all running services | Clean shutdown, resource cleanup | Confirmation messages |
+| `make restart` | Restart all services | Configuration changes | Service restart sequence |
+| `make install-tools` | Install development dependencies | Initial setup, CI/CD | Tool installation logs |
+
+### Command Usage Examples
+
+#### Development Session
 ```bash
-# Development
-make dev              # Start all services
-make build            # Build all Rust components
-make clean            # Clean build artifacts
-make format           # Format code (Rust + TypeScript)
-make lint             # Run linters
-make check            # Type checking
+# Start fresh development environment
+make clean && make db-reset && make dev
 
-# Database
-make db-init          # Initialize database
-make db-reset         # Reset database (WARNING: deletes all data)
-make db-migrate       # Run migrations
+# Run tests continuously while developing
+make test-watch
 
-# Server
-make server           # Start gRPC server
-make server-release   # Start in release mode
-make server-logs      # View server logs
-
-# Web Interface
-make web              # Start Next.js dev server
-make web-build        # Build for production
-make web-start        # Start in production mode
-
-# Testing
-make test             # Run all tests
-make test-unit        # Unit tests only
-make test-integration # Integration tests only
-make test-watch       # Watch mode
-make benchmark        # Run benchmarks
-
-# gRPC Tools
-make grpc-reflect     # List available services
-make grpc-test        # Test connection
-make grpc-health      # Health check
-
-# Documentation
-make docs             # Generate Rust docs
-make docs-serve       # Serve docs locally
-
-# Docker
-make docker-build     # Build Docker image
-make docker-run       # Run container
-
-# Utility
-make status           # Show service status
-make stop             # Stop all services
-make restart          # Restart all services
-make install-tools    # Install dev tools
+# Check code quality before commit
+make format && make lint && make test-unit
 ```
 
-### Project Structure
+#### Production Deployment
+```bash
+# Build and test release
+make build-release && make test-all
 
-```
-hodei-verified-permissions/
-├── Makefile                    # Centralized commands
-├── README.md                   # This file
-├── docs/                       # Documentation
-│   ├── API_DOCUMENTATION.md   # Complete API reference
-│   └── AUDIT_TRAIL_*.md       # Audit system docs
-├── proto/                      # Protocol Buffers
-│   └── authorization.proto     # Service definitions
-├── verified-permissions/        # Rust workspace
-│   ├── domain/                 # Domain logic
-│   │   ├── src/
-│   │   │   ├── events/         # Domain events
-│   │   │   └── repository/     # Repository traits
-│   │   └── Cargo.toml
-│   ├── infrastructure/         # External integrations
-│   │   ├── src/
-│   │   │   ├── repository/     # SQLite implementation
-│   │   │   └── events/         # Event bus & store
-│   │   └── Cargo.toml
-│   ├── api/                    # gRPC service
-│   │   ├── src/
-│   │   │   └── grpc/          # Service implementations
-│   │   └── Cargo.toml
-│   ├── main/                   # Main executable
-│   │   ├── src/main.rs
-│   │   └── Cargo.toml
-│   └── Cargo.toml
-├── web-nextjs/                 # Next.js frontend
-│   ├── src/
-│   │   ├── components/        # React components
-│   │   ├── pages/api/         # API routes
-│   │   └── hooks/             # Custom hooks
-│   └── package.json
-├── postman/                    # API testing
-│   └── VerifiedPermissions.postman_collection.json
-├── sdk/                        # Client SDK
-│   └── src/lib.rs
-└── examples/                   # Example applications
+# Deploy with Docker
+make docker-build && make docker-run
 ```
 
+#### Troubleshooting
+```bash
+# Check system status
+make status
+
+# View server logs for debugging
+make server-logs
+
+# Reset everything if issues
+make stop && make clean && make db-reset
+```
 ## 📊 Monitoring
 
 ### Health Check
@@ -461,31 +489,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - **[Audit Trail Guide](verified-permissions/docs/AUDIT_TRAIL_IMPLEMENTATION.md)** - Event sourcing system
 - **[Architecture Guide](verified-permissions/docs/)** - Hexagonal architecture details
 - **[Cedar Policies](https://cedar-policy.github.io/)** - Policy language reference
-
-## 🔄 Version History
-
-### v0.1.0 (Current)
-- ✅ Cedar Policy Engine integration
-- ✅ gRPC API with all CRUD operations
-- ✅ Comprehensive audit trail (CloudTrail-compatible)
-- ✅ Event sourcing infrastructure
-- ✅ Webhook system for external integrations
-- ✅ Next.js web interface
-- ✅ Postman collection
-- ✅ Complete test suite
-- ✅ Docker support
-
-### Roadmap
-
-- [ ] **v0.2.0** - Multi-tenancy support
-- [ ] **v0.3.0** - GraphQL API
-- [ ] **v0.4.0** - Kubernetes operators
-- [ ] **v0.5.0** - Policy templates
-- [ ] **v0.6.0** - External identity providers
-- [ ] **v0.7.0** - Compliance reporting
-- [ ] **v0.8.0** - Policy analysis tools
-- [ ] **v0.9.0** - Performance optimizations
-- [ ] **v1.0.0** - Production release
 
 ## 📄 License
 
