@@ -70,70 +70,84 @@ const SystemHealthHeader: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      {/* Status Items - Compact */}
-      <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-        {/* gRPC Server Status */}
-        {(() => {
-          const status = getHealthStatus("grpc_server");
-          const IconComponent = status.icon;
-          return (
-            <Badge variant="default" className={status.className}>
-              <IconComponent
-                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-              />
-              <span className="text-xs">
-                {isRefreshing
-                  ? "Checking..."
-                  : health.data?.grpc_server === "connected"
-                    ? "gRPC: Connected"
-                    : "gRPC: Disconnected"}
-              </span>
-            </Badge>
-          );
-        })()}
-
-        {/* Database Status */}
-        {(() => {
-          const status = getHealthStatus("database");
-          const IconComponent = status.icon;
-          return (
-            <Badge variant="default" className={status.className}>
-              <IconComponent
-                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-              />
-              <span className="text-xs">
-                {isRefreshing ? "Checking..." : "DB: Connected"}
-              </span>
-            </Badge>
-          );
-        })()}
-
-        {/* Last Check */}
-        <span className="text-xs text-gray-500">
-          {isRefreshing
-            ? "Checking..."
-            : health.data?.last_check
-              ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
-              : "Never checked"}
+      {/* Title */}
+      <div className="flex items-center space-x-2">
+        <Activity className="w-4 h-4 text-gray-700" />
+        <span className="text-sm font-semibold text-gray-900">
+          System Health
         </span>
       </div>
 
-      {/* Refresh Button - Compact */}
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing || isLoading}
-          className="h-7 px-2 text-xs hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
-        >
-          {isRefreshing || isLoading ? (
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3 h-3 mr-1 transition-transform duration-200 hover:rotate-180" />
-          )}
-          <span>{isRefreshing || isLoading ? "Refreshing..." : "Refresh"}</span>
-        </Button>
+      {/* Status Items - Centered */}
+      <div className="flex flex-col items-center space-y-2">
+        {/* Top Row - Status Badges */}
+        <div className="flex items-center justify-center space-x-2 flex-wrap">
+          {/* Verified-Permissions Server Status */}
+          {(() => {
+            const status = getHealthStatus("grpc_server");
+            const IconComponent = status.icon;
+            return (
+              <Badge variant="default" className={status.className}>
+                <IconComponent
+                  className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+                />
+                <span className="text-xs">
+                  {isRefreshing
+                    ? "Checking..."
+                    : health.data?.grpc_server === "connected"
+                      ? "Verified-Permissions Server"
+                      : "Verified-Permissions Server: Disconnected"}
+                </span>
+              </Badge>
+            );
+          })()}
+
+          {/* Database Status */}
+          {(() => {
+            const status = getHealthStatus("database");
+            const IconComponent = status.icon;
+            return (
+              <Badge variant="default" className={status.className}>
+                <IconComponent
+                  className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+                />
+                <span className="text-xs">
+                  {isRefreshing ? "Checking..." : "DB"}
+                </span>
+              </Badge>
+            );
+          })()}
+        </div>
+
+        {/* Bottom Row - Last Check and Refresh */}
+        <div className="flex items-center justify-center space-x-4">
+          {/* Last Check */}
+          <span className="text-xs text-gray-500">
+            {isRefreshing
+              ? "Checking..."
+              : health.data?.last_check
+                ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
+                : "Never checked"}
+          </span>
+
+          {/* Refresh Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoading}
+            className="h-7 px-2 text-xs hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+          >
+            {isRefreshing || isLoading ? (
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3 h-3 mr-1 transition-transform duration-200 hover:rotate-180" />
+            )}
+            <span>
+              {isRefreshing || isLoading ? "Refreshing..." : "Refresh"}
+            </span>
+          </Button>
+        </div>
       </div>
     </div>
   );
