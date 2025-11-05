@@ -1,7 +1,7 @@
 //! Basic tests for sdk-admin library
 
-use hodei_permissions_sdk::proto::{EntityIdentifier, IsAuthorizedRequest};
-use sdk_admin::{HodeiAdmin, SdkAdminError};
+use verified_permissions_sdk::proto::{EntityIdentifier, IsAuthorizedRequest};
+use verified_permissions_sdk_admin::{HodeiAdmin, SdkAdminError};
 
 #[test]
 fn test_sdk_admin_error_creation() {

@@ -21,11 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Old: `hodei_permissions_sdk::Client`
   - New: `sdk_admin::HodeiAdmin`
 
+- **DEPRECATED CODE REMOVED**: Completely removed compatibility layer
+  - Removed: `compat` module and `compat` feature flag
+  - Removed: All deprecated functions that returned error messages
+  - Users must migrate to HodeiAdmin library for Control Plane operations
+
 ### Added
 
 #### SDK Client (hodei-permissions-sdk)
-- ✅ Enhanced backward compatibility layer with deprecation warnings
-- ✅ `compat` feature flag to enable deprecated methods (returns helpful errors)
 - ✅ Comprehensive middleware support for Axum and Tower
 - ✅ Builder patterns for authorization requests
 - ✅ Client trait for testing and mocking
@@ -167,6 +170,21 @@ See `docs/MIGRATION_GUIDE_SDK.md` for complete migration instructions.
 - Basic authorization checking
 - Policy management
 - Schema handling
+
+---
+
+## [0.2.1] - 2025-11-05
+
+### Removed
+- Completely removed deprecated compatibility layer
+- Removed `compat` module and all deprecated functions
+- Removed `compat` feature flag from Cargo.toml
+- Removed compatibility test suite
+
+### Changed
+- SDK now focuses exclusively on Data Plane operations
+- Cleaner codebase without deprecated code
+- No more runtime warnings about deprecated methods
 
 ---
 

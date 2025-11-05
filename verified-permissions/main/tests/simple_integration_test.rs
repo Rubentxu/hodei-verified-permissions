@@ -6,7 +6,7 @@ async fn test_simple_policy_store_crud() {
     println!("\n🚀 Running Simple Integration Test\n");
 
     // Connect to server
-    let client = hodei_permissions_sdk::AuthorizationClient::connect("http://localhost:50051")
+    let mut client = verified_permissions_sdk_admin::HodeiAdmin::connect("http://localhost:50051")
         .await
         .expect("Failed to connect to server");
 
@@ -14,7 +14,10 @@ async fn test_simple_policy_store_crud() {
 
     // CREATE
     let store = client
-        .create_policy_store("Test Store".to_string(), "Integration Test Store".to_string())
+        .create_policy_store(
+            "Test Store".to_string(),
+            Some("Integration Test Store".to_string()),
+        )
         .await
         .expect("Failed to create policy store");
 
@@ -51,9 +54,20 @@ async fn test_simple_policy_store_crud() {
 async fn test_multiple_stores() {
     println!("\n🚀 Running Multiple Stores Test\n");
 
-    let client = hodei_permissions_sdk::AuthorizationClient::connect("http://localhost:50051")
+    let mut client = verified_permissions_sdk_admin::HodeiAdmin::connect("http://localhost:50051")
         .await
         .expect("Failed to connect");
+
+    // Clean up any existing stores first
+    let existing_stores = client
+        .list_policy_stores(Some(100), None)
+        .await
+        .expect("Failed to list stores");
+
+    for store in existing_stores.policy_stores {
+        let _ = client.delete_policy_store(&store.policy_store_id).await;
+    }
+    println!("  ✓ Cleaned up existing stores");
 
     let num_stores = 3;
     let mut store_ids = Vec::new();
@@ -61,7 +75,7 @@ async fn test_multiple_stores() {
     // Create multiple stores
     for i in 0..num_stores {
         let store = client
-            .create_policy_store("Test Store".to_string(), format!("Store {}", i))
+            .create_policy_store("Test Store".to_string(), Some(format!("Store {}", i)))
             .await
             .expect("Failed to create store");
         let store_id = store.policy_store_id.clone();
@@ -94,28 +108,44 @@ async fn test_multiple_stores() {
 async fn test_authorization() {
     println!("\n🚀 Running Authorization Test\n");
 
-    let client = hodei_permissions_sdk::AuthorizationClient::connect("http://localhost:50051")
-        .await
-        .expect("Failed to connect");
+    // Use Admin client for Control Plane operations
+    let mut admin_client =
+        verified_permissions_sdk_admin::HodeiAdmin::connect("http://localhost:50051")
+            .await
+            .expect("Failed to connect");
 
     // Create store
-    let store = client
-        .create_policy_store("Test Store".to_string(), "Auth Test Store".to_string())
+    let store = admin_client
+        .create_policy_store(
+            "Test Store".to_string(),
+            Some("Auth Test Store".to_string()),
+        )
         .await
         .expect("Failed to create store");
 
     println!("  ✓ Created store for auth test");
 
+    // Use Authorization client for Data Plane operations
+    let auth_client =
+        verified_permissions_sdk::AuthorizationClient::connect("http://localhost:50051")
+            .await
+            .expect("Failed to connect");
+
     // Test authorization
-    let response = client
-        .is_authorized(&store.policy_store_id, "User::alice", "Action::view", "Resource::doc1")
+    let response = auth_client
+        .is_authorized(
+            &store.policy_store_id,
+            "User::alice",
+            "Action::view",
+            "Resource::doc1",
+        )
         .await
         .expect("Authorization failed");
 
     println!("  ✓ Authorization decision: {}", response.decision);
 
     // Cleanup
-    client
+    admin_client
         .delete_policy_store(&store.policy_store_id)
         .await
         .expect("Failed to delete store");

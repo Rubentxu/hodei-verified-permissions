@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview - Navbar Icons (HVP)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --icon-size: 24px; --icon-color: #2563eb; }
+    /* Small helper to display SVGs with currentColor when possible */
+    .icon-original { filter: none; }
+    /* Mask-based colorable icon: use the PNG alpha as a mask and paint the element background */
+    .icon-mask {
+      display: inline-block;
+      width: var(--icon-size, 24px);
+      height: var(--icon-size, 24px);
+      background-color: var(--icon-color, #2563eb);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      /* Standard mask */
+      mask-repeat: no-repeat;
+      mask-position: center;
+      mask-size: contain;
+      /* Webkit support */
+      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      -webkit-mask-size: contain;
+      -webkit-mask-composite: source-in;
+      mask-composite: intersect;
+    }
+    /* When showing original PNG, hide the mask element (Tailwind .hidden is used on images) */
+    .icon-mask.hidden { display: none; }
+    /* Removed SVG-specific styles — this preview usa PNGs y máscaras */
+    .color-swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.06); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <main class="min-h-screen p-8">
+    <h1 class="text-2xl font-semibold mb-4">Preview: iconos de navbar (HVP)</h1>
+
+    <section class="mb-8">
+      <p class="text-sm text-gray-600 mb-4">Este archivo carga iconos PNG desde <code>docs/assets/</code> y muestra cómo tintarlos vía máscara CSS. Usa Tailwind CDN para estilos rápidos. Prueba hover, active, tamaños y colores.</p>
+
+      <!-- Interactive size & color control -->
+      <div class="mb-6 p-4 bg-white rounded shadow-sm max-w-3xl">
+        <h2 class="text-sm font-medium mb-2">Controles</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          <div class="col-span-1">
+            <label for="sizeRange" class="text-sm text-gray-600 block mb-1">Tamaño (px)</label>
+            <div class="flex items-center gap-3">
+              <input id="sizeRange" type="range" min="24" max="128" value="24" class="w-full" />
+              <div class="w-20 text-right text-sm text-gray-700"><span id="sizeValue" class="font-semibold">24</span>px</div>
+            </div>
+            <div class="mt-2 flex gap-2">
+              <button class="px-2 py-1 text-sm rounded bg-gray-100" data-size="24">24</button>
+              <button class="px-2 py-1 text-sm rounded bg-gray-100" data-size="32">32</button>
+              <button class="px-2 py-1 text-sm rounded bg-gray-100" data-size="48">48</button>
+              <button class="px-2 py-1 text-sm rounded bg-gray-100" data-size="64">64</button>
+              <button class="px-2 py-1 text-sm rounded bg-gray-100" data-size="128">128</button>
+            </div>
+          </div>
+
+          <div class="col-span-1">
+            <label class="text-sm text-gray-600 block mb-1">Color</label>
+            <div class="flex items-center gap-3">
+              <input id="colorPicker" type="color" value="#2563eb" class="w-12 h-8 p-0 border-0" aria-label="Seleccionar color" />
+              <div id="colorPresets" class="flex gap-2">
+                <button class="color-swatch" data-color="#2563eb" style="background:#2563eb" title="Azul"></button>
+                <button class="color-swatch" data-color="#10b981" style="background:#10b981" title="Verde"></button>
+                <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed" title="Morado"></button>
+                <button class="color-swatch" data-color="#6b7280" style="background:#6b7280" title="Gris"></button>
+                <button class="color-swatch" data-color="#000000" style="background:#000000" title="Negro"></button>
+              </div>
+            <div class="mt-2 flex items-center gap-2">
+              <input id="noColorToggle" type="checkbox" aria-label="Sin color (usar colores originales)" />
+              <label for="noColorToggle" class="text-sm text-gray-600">Sin color (usar colores originales)</label>
+            </div>
+            </div>
+            <div class="mt-2 text-xs text-gray-500">El color se aplica a los SVGs inyectados inline (fill/stroke).</div>
+          </div>
+
+          <div class="col-span-1">
+            <div class="text-sm text-gray-600">Vista rápida</div>
+            <div class="mt-2 flex items-center gap-4">
+              <div class="p-2 bg-white rounded shadow-sm">
+                <div id="previewSmall" class="w-14 h-14 flex items-center justify-center">
+                  <img src="./assets/hvp.png" alt="preview" class="dynamic-icon icon-original" />
+                  <div data-src="./assets/hvp.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="p-2 bg-white rounded shadow-sm">
+                <div id="previewMedium" class="w-16 h-16 flex items-center justify-center">
+                  <img src="./assets/hvp-2.png" alt="preview2" class="dynamic-icon icon-original" />
+                  <div data-src="./assets/hvp-2.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 text-xs text-gray-500">Los PNGs se pintan usando máscara CSS para permitir coloreado por JS.</div>
+          </div>
+        </div>
+
+        <div class="mt-4 border rounded p-4 bg-gray-50">
+          <div class="flex items-center gap-4">
+            <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-dynamic" class="dynamic-icon icon-original" />
+              <div data-src="./assets/hvp.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+            </div>
+            <div class="icon-wrap">
+              <img src="./assets/hvp-2.png" alt="icon-hvp-a-dynamic" class="dynamic-icon icon-original" />
+              <div data-src="./assets/hvp-2.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+            </div>
+            <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-b-dynamic" class="dynamic-icon icon-original" />
+              <div data-src="./assets/hvp.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+            </div>
+             <div class="icon-wrap">
+               <img src="./assets/iconos-hvp.png" alt="iconos-hvp-dynamic" class="dynamic-icon icon-original" />
+               <div data-src="./assets/iconos-hvp.png" class="dynamic-icon icon-mask hidden" aria-hidden="true"></div>
+             </div>
+           </div>
+         </div>
+       </div>
+
+      <!-- Navbar example -->
+      <nav class="bg-white rounded-lg shadow px-4 py-3 w-full max-w-3xl">
+        <ul class="flex items-center gap-6">
+          <li>
+            <a href="#" class="group flex items-center gap-3 text-gray-700 hover:text-blue-600">
+              <div class="icon-wrap">
+                <img src="./assets/hvp.png" alt="hvp" class="h-6 w-6 icon-original" />
+                <div data-src="./assets/hvp.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+              <span class="text-sm font-medium">Hodei Verified Permissions</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#" class="group flex items-center gap-3 text-gray-700 hover:text-green-600">
+              <div class="icon-wrap">
+                <img src="./assets/hvp-2.png" alt="hvp-2" class="h-6 w-6 icon-original" />
+                <div data-src="./assets/hvp-2.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+              <span class="text-sm font-medium">Hodei Verified Permissions</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#" class="group flex items-center gap-3 text-gray-700 hover:text-purple-600">
+              <div class="icon-wrap">
+                <img src="./assets/iconos-hvp.png" alt="iconos-hvp" class="h-6 w-6 icon-original" />
+                <div data-src="./assets/iconos-hvp.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+              <span class="text-sm font-medium">Hodei Verified Permissions</span>
+            </a>
+          </li>
+
+          <li class="ml-auto">
+            <a href="#" class="group inline-flex items-center gap-3 px-3 py-1 rounded-md text-sm bg-gray-100 hover:bg-gray-200">
+              <div class="icon-wrap">
+                <img src="./assets/hvp.png" alt="account" class="h-5 w-5 icon-original" />
+                <div data-src="./assets/hvp.png" class="h-5 w-5 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+              <span class="text-sm font-medium">Hodei Verified Permissions</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </section>
+
+    <!-- Icon gallery -->
+    <section>
+      <h2 class="text-lg font-medium mb-3">Galería de iconos y tamaños (>=24px)</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <div class="p-4 bg-white rounded shadow-sm">
+          <h3 class="text-sm font-semibold mb-2">icon-hvp (PNG)</h3>
+          <div class="flex items-center gap-4 mb-3">
+            <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-24" class="h-6 w-6 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">24</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-32" class="h-8 w-8 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-8 w-8 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">32</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-48" class="h-12 w-12 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-12 w-12 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">48</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-64" class="h-16 w-16 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-16 w-16 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">64</span>
+             </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-white rounded shadow-sm">
+          <h3 class="text-sm font-semibold mb-2">icon-hvp-a (PNG)</h3>
+          <div class="flex items-center gap-4 mb-3">
+            <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp-2.png" alt="icon-hvp-a-24" class="h-6 w-6 icon-original" />
+              <div data-src="./assets/hvp-2.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">24</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp-2.png" alt="icon-hvp-a-32" class="h-8 w-8 icon-original" />
+              <div data-src="./assets/hvp-2.png" class="h-8 w-8 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">32</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp-2.png" alt="icon-hvp-a-48" class="h-12 w-12 icon-original" />
+              <div data-src="./assets/hvp-2.png" class="h-12 w-12 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">48</span>
+             </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-white rounded shadow-sm">
+          <h3 class="text-sm font-semibold mb-2">icon-hvp-b (PNG)</h3>
+          <div class="flex items-center gap-4 mb-3">
+            <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-b-24" class="h-6 w-6 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">24</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-b-32" class="h-8 w-8 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-8 w-8 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">32</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/hvp.png" alt="icon-hvp-b-48" class="h-12 w-12 icon-original" />
+              <div data-src="./assets/hvp.png" class="h-12 w-12 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">48</span>
+             </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-white rounded shadow-sm">
+          <h3 class="text-sm font-semibold mb-2">iconos-hvp (PNG) (sprite / multi)</h3>
+          <div class="flex items-center gap-4 mb-3">
+            <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/iconos-hvp.png" alt="iconos-hvp-24" class="h-6 w-6 icon-original" />
+              <div data-src="./assets/iconos-hvp.png" class="h-6 w-6 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">24</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/iconos-hvp.png" alt="iconos-hvp-32" class="h-8 w-8 icon-original" />
+              <div data-src="./assets/iconos-hvp.png" class="h-8 w-8 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">32</span>
+             </div>
+             <div class="flex flex-col items-center">
+              <div class="icon-wrap">
+              <img src="./assets/iconos-hvp.png" alt="iconos-hvp-48" class="h-12 w-12 icon-original" />
+              <div data-src="./assets/iconos-hvp.png" class="h-12 w-12 icon-mask hidden" aria-hidden="true"></div>
+              </div>
+               <span class="text-xs text-gray-500">48</span>
+             </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-6 text-sm text-gray-500">
+         <p>Notas:</p>
+         <ul class="list-disc pl-5">
+          <li>Este preview usa PNGs y aplica color mediante <code>mask-image</code> / <code>-webkit-mask-image</code>, pintando un recuadro con el color deseado y usando el PNG como máscara (funciona en navegadores modernos).</li>
+          <li>Si prefieres usar SVGs (más control sobre trazados), puedo volver a la estrategia de inyectar SVG inline y aplicar <code>fill</code>/<code>stroke</code>.</li>
+          <li>Para probar en contexto real, abre este archivo con un servidor estático (por ejemplo: <code>python -m http.server</code> desde la carpeta <code>docs</code>).</li>
+         </ul>
+       </div>
+
+    </section>
+
+    <footer class="mt-12 text-xs text-gray-400">Preview generado localmente — paths: <code>docs/assets/</code></footer>
+  </main>
+
+  <script>
+    // Utilities to tint PNG icons using the PNG as mask: creates a colored box and sets
+    // -webkit-mask-image / mask-image to the PNG so only the icon shape is visible in that color.
+    function createMaskElementFor(src, sizePx){
+      const div = document.createElement('div');
+      div.className = 'icon-mask';
+      div.style.setProperty('width', sizePx + 'px');
+      div.style.setProperty('height', sizePx + 'px');
+      // background color will be set by CSS var or inline later
+      // set mask images
+      div.style.webkitMaskImage = `url(${src})`;
+      div.style.maskImage = `url(${src})`;
+      div.style.webkitMaskRepeat = 'no-repeat';
+      div.style.maskRepeat = 'no-repeat';
+      div.style.webkitMaskPosition = 'center';
+      div.style.maskPosition = 'center';
+      div.style.webkitMaskSize = 'contain';
+      div.style.maskSize = 'contain';
+      return div;
+    }
+
+    function enhancePngIcons(){
+      const imgs = Array.from(document.querySelectorAll('img[src$=".png"]'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src');
+        // find sibling mask if already present
+        let mask = img.parentElement.querySelector('.icon-mask');
+        if(!mask){
+          // create mask without forcing size here; sizing will be handled by applySize() to preserve aspect ratio
+          mask = createMaskElementFor(src, 24);
+           mask.classList.add('hidden');
+           // copy size classes from image if any (Tailwind h-6 w-6 etc.) via classList
+           mask.classList.add(...Array.from(img.classList).filter(c=>c.startsWith('h-')||c.startsWith('w-')||c.startsWith('h')||c.startsWith('w')));
+           img.parentElement.appendChild(mask);
+         } else {
+           // update mask src and size
+           mask.setAttribute('data-src', src);
+           mask.style.webkitMaskImage = `url(${src})`;
+           mask.style.maskImage = `url(${src})`;
+          // sizing left to applySize() to keep correct aspect ratio
+         }
+         // store reference for toggling
+         img.dataset._maskRef = '';
+       });
+    }
+
+    function applyTintToPngs(color){
+      document.documentElement.style.setProperty('--icon-color', color);
+      document.querySelectorAll('.icon-mask').forEach(mask => {
+        mask.style.backgroundColor = color;
+      });
+    }
+
+    function setPngColorMode(enabled){
+      document.querySelectorAll('.icon-mask').forEach(mask => mask.classList.toggle('hidden', !enabled));
+      document.querySelectorAll('img.icon-original').forEach(img => img.classList.toggle('hidden', enabled));
+    }
+
+     // Utility to clamp numeric sizes to minimum 24
+     function clampSize(px){
+       const n = Number(px) || 24;
+       return Math.max(24, Math.min(128, Math.round(n)));
+     }
+
+     // Interactive controls wiring
+      (function(){
+       const range = document.getElementById('sizeRange');
+       const sizeValue = document.getElementById('sizeValue');
+       const root = document.documentElement;
+       const presetButtons = document.querySelectorAll('[data-size]');
+       const colorPicker = document.getElementById('colorPicker');
+       const colorPresets = document.getElementById('colorPresets');
+       const noColorToggle = document.getElementById('noColorToggle');
+
+       function applySize(px){
+         const clamped = clampSize(px);
+         root.style.setProperty('--icon-size', clamped + 'px');
+         sizeValue.textContent = clamped;
+         // also enforce slider value
+         if(Number(range.value) !== clamped) range.value = String(clamped);
+
+         // For each image, compute width/height preserving aspect ratio.
+         document.querySelectorAll('img[src$=".png"]').forEach(img => {
+           // natural sizes are best to preserve aspect ratio
+           const natW = img.naturalWidth || img.width || clamped;
+           const natH = img.naturalHeight || img.height || clamped;
+           // if any natural dimension missing, fallback to bounding box
+           let maxNat = Math.max(natW, natH);
+           if(!maxNat || !isFinite(maxNat) || maxNat <= 0) {
+             const rect = img.getBoundingClientRect();
+             maxNat = Math.max(Math.round(rect.width) || clamped, Math.round(rect.height) || clamped);
+           }
+           // desired reference is clamped: it controls the maximal dimension
+           let scale = clamped / maxNat;
+           let w = Math.max(1, Math.round(natW * scale));
+           let h = Math.max(1, Math.round(natH * scale));
+           // ensure minimum dimension of 24px
+           if(w < 24 || h < 24){
+             const up = Math.max(24 / w, 24 / h);
+             w = Math.round(w * up);
+             h = Math.round(h * up);
+           }
+           // ensure maximum dimension of 128px
+           if(w > 128 || h > 128){
+             const down = Math.min(128 / w, 128 / h);
+             w = Math.round(w * down);
+             h = Math.round(h * down);
+           }
+
+           img.style.width = w + 'px';
+           img.style.height = h + 'px';
+           const mask = img.parentElement.querySelector('.icon-mask');
+           if(mask){
+             mask.style.width = w + 'px';
+             mask.style.height = h + 'px';
+             // ensure mask image points to updated src
+             const src = img.getAttribute('src');
+             mask.style.webkitMaskImage = `url(${src})`;
+             mask.style.maskImage = `url(${src})`;
+           }
+         });
+       }
+
+      // override previous applyColor function created earlier in the file
+      function applyColorSelected(color){
+        root.style.setProperty('--icon-color', color);
+        if(colorPicker && colorPicker.value.toLowerCase() !== color.toLowerCase()){
+          colorPicker.value = color;
+        }
+        applyTintToPngs(color);
+        // ensure mask mode is active when user picks a color
+        setPngColorMode(true);
+        if(noColorToggle) noColorToggle.checked = false;
+      }
+
+       // Toggle to use original colors (PNG) or apply selected color via masks
+       function setNoColorMode(enabled){
+        // For PNG approach: show original images when enabled; otherwise show colored masks
+        setPngColorMode(!enabled);
+        if (enabled) {
+          document.querySelectorAll('.icon-original').forEach(img => img.classList.remove('hidden'));
+          document.querySelectorAll('.icon-mask').forEach(m => m.classList.add('hidden'));
+        } else {
+          const color = getComputedStyle(root).getPropertyValue('--icon-color').trim() || (colorPicker ? colorPicker.value : '#2563eb');
+          applyTintToPngs(color);
+          document.querySelectorAll('.icon-original').forEach(img => img.classList.add('hidden'));
+          document.querySelectorAll('.icon-mask').forEach(m => m.classList.remove('hidden'));
+        }
+        // disable/enable color controls UI when no-color is active
+        if (colorPicker) colorPicker.disabled = enabled;
+        if (colorPresets) colorPresets.querySelectorAll('[data-color]').forEach(b => b.disabled = enabled);
+       }
+
+       if(noColorToggle){
+         noColorToggle.addEventListener('change', (e) => {
+           setNoColorMode(e.target.checked);
+           // if re-enabling color, reapply current color
+           if (!e.target.checked) applyColorSelected(colorPicker.value);
+         });
+       }
+
+       range.addEventListener('input', (e)=> applySize(e.target.value));
+
+       presetButtons.forEach(btn => {
+         btn.addEventListener('click', ()=>{
+           const s = btn.getAttribute('data-size');
+           applySize(s);
+         });
+       });
+
+      colorPicker.addEventListener('input', (e)=> applyColorSelected(e.target.value));
+
+       colorPresets.querySelectorAll('[data-color]').forEach(btn=>{
+        btn.addEventListener('click', ()=> applyColorSelected(btn.getAttribute('data-color')));
+       });
+
+       // Initialize defaults
+       applySize(range.value);
+       // set initial CSS var then apply via JS
+       const initialColor = getComputedStyle(root).getPropertyValue('--icon-color').trim() || '#2563eb';
+       root.style.setProperty('--icon-color', initialColor);
+
+       // Inline SVGs after DOM ready
+       document.addEventListener('DOMContentLoaded', function(){
+         // Prepare masks for PNG icons and initialize UI state
+         enhancePngIcons();
+
+         // Apply initial color if not in 'Sin color' mode
+         const noColorState = noColorToggle ? noColorToggle.checked : false;
+         if(!noColorState){
+           applyTintToPngs(initialColor);
+           document.querySelectorAll('.icon-mask').forEach(function(m){ m.classList.remove('hidden'); });
+           document.querySelectorAll('.icon-original').forEach(function(i){ i.classList.add('hidden'); });
+         } else {
+           setNoColorMode(true);
+         }
+
+         // Apply initial sizing
+         applySize(range.value);
+       });
+    })();
+    </script>
+  </body>
+  </html>

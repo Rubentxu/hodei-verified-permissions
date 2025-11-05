@@ -7,7 +7,8 @@ async fn test_policy_template_crud() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
 
     // Create policy store
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -62,7 +63,8 @@ async fn test_policy_template_crud() {
 #[tokio::test]
 async fn test_template_validation() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -86,7 +88,8 @@ async fn test_template_validation() {
 #[tokio::test]
 async fn test_template_with_principal_only() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -110,7 +113,8 @@ async fn test_template_with_principal_only() {
 #[tokio::test]
 async fn test_template_with_resource_only() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -134,7 +138,8 @@ async fn test_template_with_resource_only() {
 #[tokio::test]
 async fn test_multiple_templates() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -179,7 +184,8 @@ async fn test_multiple_templates() {
 #[tokio::test]
 async fn test_template_not_found() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -191,7 +197,8 @@ async fn test_template_not_found() {
 #[tokio::test]
 async fn test_template_cascade_delete() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 

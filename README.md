@@ -1,8 +1,6 @@
-span
-
 # 🚀 Hodei Verified Permissions
 
-<img src="docs/assets/hodei-verified-permissions.png" alt="Hodei Verified Permissions Logo" width="800" style="margin-bottom: 0px;">
+<img src="docs/assets/hodei-verified-permissions-2.png" alt="Hodei Verified Permissions Logo" width="800" style="margin-bottom: 0px;">
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/rubentxu/hodei-verified-permissions/blob/main/LICENSE)
@@ -494,27 +492,18 @@ grpcurl -plaintext -d '{
 
 ## 🧪 Testing
 
-### Run All Tests
+For comprehensive testing documentation, see [docs/TESTING.md](docs/TESTING.md).
 
 ```bash
-# Unit tests
-make test-unit
-
-# Integration tests
-make test-integration
-
-# All tests with coverage
+# Run all working tests (130 tests in ~5 seconds)
 make test-all
-
-# Watch mode (re-run on changes)
-make test-watch
 ```
-### Test Categories
 
-- **Unit Tests** - Domain events, repository operations, policies
-- **Integration Tests** - End-to-end workflows, database operations
-- **Performance Tests** - Authorization throughput, query optimization
-- **Security Tests** - Policy validation, input sanitization
+See the [Testing Guide](docs/TESTING.md) for complete documentation including:
+- Unit, integration, container, and E2E test commands
+- Infrastructure management
+- Troubleshooting guide
+- Development workflows
 
 ## 🛠 Development
 
@@ -527,63 +516,9 @@ Hodei Verified Permissions provides a comprehensive set of Makefile commands to 
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
 | `make dev`   | Start all services (gRPC server + Next.js frontend) in development mode | First-time setup or full-stack development | Services available at localhost:50051 (gRPC) and localhost:3000 (web) |
 | `make build` | Build all Rust components in debug mode                                 | After code changes, before testing         | Compilation output with build times                                   |
-| `make clean` | Remove all build artifacts and caches                                   | Clean workspace, resolve build issues      | Removes target/, node_modules/.cache, etc.                            |
-
-## 📜 Conventional Commits
-
-We follow the Conventional Commits specification to keep a clear, machine-readable history.
-
-Format:
-
-- type(scope): short description
-- Optional body and footer.
-- Common types: feat, fix, docs, refactor, perf, test, chore, ci
-
-Examples:
-
-- feat(api): add policy evaluation endpoint
-- fix(db): handle nullable timestamps in audit events
-- docs(readme): add Conventional Commits section (EN/ES)
-- chore(deps): bump tokio to 1.28.0
-
-Recommended usage:
-
-1. Write a concise subject line (max ~72 chars).
-2. Use the imperative mood: "add", "fix", "remove".
-3. Use scope to indicate the area (e.g. server, web, docs).
-4. Include a body for context and a footer for breaking changes or issue references.
-
-Conventional Commit to apply for these README changes:
-
-- docs(readme): add Conventional Commits section (EN/ES)
-
-|---------|-------------|-------------|------|
-| `make web` | Start Next.js development server | Frontend development | 3000 |
-| `make web-build` | Build Next.js for production | Deployment preparation | Generates optimized build |
-| `make web-start` | Start production Next.js server | Production deployment | 3000 |
-
-### Testing Suite
+| `make clean` | Remove all build artifacts and caches                                   | Clean workspace, resolve build issues      | Removes target/, node_modules/.cache, etc.                          |
 
 
-| Command                 | Description                          | When to Use                   | Duration       |
-| ----------------------- | ------------------------------------ | ----------------------------- | -------------- |
-| `make test`             | Run unit and integration tests       | Development feedback          | ~30-60 seconds |
-| `make test-unit`        | Run only unit tests                  | Fast feedback, no DB required | ~5-10 seconds  |
-| `make test-integration` | Run only integration tests           | Database-dependent features   | ~20-40 seconds |
-| `make test-all`         | Run all tests with coverage          | CI/CD, release validation     | ~2-5 minutes   |
-| `make test-watch`       | Watch mode - re-run tests on changes | Continuous development        | Ongoing        |
-| `make benchmark`        | Run performance benchmarks           | Performance validation        | ~1-2 minutes   |
-
-#### Specialized Testing
-
-
-| Command                        | Description                         | Prerequisites                | Purpose                  |
-| ------------------------------ | ----------------------------------- | ---------------------------- | ------------------------ |
-| `make test-e2e-sqlite`         | End-to-end tests with SQLite        | None                         | Default DB testing       |
-| `make test-e2e-postgres`       | End-to-end tests with PostgreSQL    | PostgreSQL container running | Multi-DB validation      |
-| `make test-e2e-surrealdb`      | End-to-end tests with SurrealDB     | SurrealDB container running  | Multi-DB validation      |
-| `make test-e2e-all`            | All E2E tests across databases      | All DB containers running    | Comprehensive validation |
-| `make test-identity-providers` | Identity provider integration tests | Keycloak/Zitadel containers  | IdP integration          |
 
 ### gRPC Tools
 

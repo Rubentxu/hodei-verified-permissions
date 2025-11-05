@@ -39,6 +39,8 @@ anyhow.workspace = true
 testcontainers = { version = "0.25.0", features = ["blocking"] }
 testcontainers-modules = { version = "0.13.0", features = ["postgres", "surrealdb"] }
 tokio-test = "0.4"
+verified-permissions-sdk = { path = "../../verified-permissions-sdk" }
+verified-permissions-sdk-admin = { path = "../../verified-permissions-sdk-admin" }
 
 [[bin]]
 name = "hodei-cli"
@@ -47,13 +49,3 @@ path = "src/bin/cli.rs"
 [[bin]]
 name = "hodei-agent"
 path = "src/bin/agent.rs"
-
-[[test]]
-name = "container_integration_tests"
-path = "tests/container_integration_tests.rs"
-required-features = ["containers"]
-
-[[test]]
-name = "e2e_policy_store_tests"
-path = "tests/e2e_policy_store_tests.rs"
-required-features = ["containers"]

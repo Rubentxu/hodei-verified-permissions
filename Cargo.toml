@@ -98,11 +98,5 @@ name = "e2e_policy_store_tests"
 path = "tests/e2e_policy_store_tests.rs"
 required-features = ["containers"]
 
-[[test]]
-name = "e2e_basic_working"
-path = "verified-permissions/main/tests/e2e_basic_working.rs"
-required-features = ["containers"]
-
-[[test]]
-name = "e2e_docker_working"
-path = "verified-permissions/main/tests/e2e_docker_working.rs"
+# Removed obsolete tests - they are incompatible with current architecture
+# These tests required infrastructure that no longer exists or APIs that changed

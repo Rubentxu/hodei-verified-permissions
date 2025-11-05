@@ -6,8 +6,8 @@
 //! - Uploading a schema
 //! - Creating, reading, updating, and deleting policies
 
-use sdk_admin::HodeiAdmin;
 use std::error::Error;
+use verified_permissions_sdk_admin::HodeiAdmin;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

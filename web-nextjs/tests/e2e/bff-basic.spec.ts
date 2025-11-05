@@ -1,108 +1,114 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Hodei Verified Permissions - BFF E2E Tests', () => {
-  test('Health check endpoint', async ({ request }) => {
+test.describe("Hodei Verified Permissions - BFF E2E Tests", () => {
+  test("Health check endpoint", async ({ request }) => {
     // Test the health endpoint directly
-    const response = await request.get('/api/health');
+    const response = await request.get("/api/health");
     expect(response.status()).toBe(200);
-    
+
     const body = await response.json();
-    expect(body).toHaveProperty('status');
+    expect(body).toHaveProperty("status");
     // The gRPC server might not be running, so we expect either healthy or unhealthy
-    expect(['healthy', 'unhealthy']).toContain(body.status);
+    expect(["healthy", "unhealthy"]).toContain(body.status);
   });
 
-  test('Authorization endpoint - basic request', async ({ request }) => {
+  test("Authorization endpoint - basic request", async ({ request }) => {
     const authRequest = {
-      policy_store_id: 'test-store',
+      policy_store_id: "test-store",
       principal: {
-        entity_type: 'User',
-        entity_id: 'alice'
+        entity_type: "User",
+        entity_id: "alice",
       },
       action: {
-        entity_type: 'Action',
-        entity_id: 'viewDocument'
+        entity_type: "Action",
+        entity_id: "viewDocument",
       },
       resource: {
-        entity_type: 'Document',
-        entity_id: 'doc123'
+        entity_type: "Document",
+        entity_id: "doc123",
       },
-      context: '{}',
-      entities: []
+      context: "{}",
+      entities: [],
     };
 
-    const response = await request.post('/api/authorize', {
-      data: authRequest
+    const response = await request.post("/api/authorize", {
+      data: authRequest,
     });
 
     // If gRPC server is not running, we expect 500
     // If it is running, we expect 200
     expect([200, 500]).toContain(response.status());
-    
+
     if (response.status() === 200) {
       const body = await response.json();
-      expect(body).toHaveProperty('decision');
-      expect(['DECISION_UNSPECIFIED', 'ALLOW', 'DENY']).toContain(body.decision);
+      expect(body).toHaveProperty("decision");
+      expect(["DECISION_UNSPECIFIED", "ALLOW", "DENY"]).toContain(
+        body.decision,
+      );
     }
   });
 
-  test('Policy store creation endpoint', async ({ request }) => {
+  test("Policy store creation endpoint", async ({ request }) => {
     const policyStoreRequest = {
-      description: 'Test policy store for E2E testing'
+      name: "Test Policy Store E2E",
+      description: "Test policy store for E2E testing",
     };
 
-    const response = await request.post('/api/policy-stores', {
-      data: policyStoreRequest
+    const response = await request.post("/api/policy-stores", {
+      data: policyStoreRequest,
     });
 
-    // If gRPC server is not running, we expect 500
-    // If it is running, we expect 201
-    expect([201, 500]).toContain(response.status());
-    
-    if (response.status() === 201) {
-      const body = await response.json();
-      expect(body).toHaveProperty('policy_store_id');
-      expect(body).toHaveProperty('created_at');
-    }
+    // With backend running, we expect 201
+    expect(response.status()).toBe(201);
+
+    const body = await response.json();
+    expect(body).toHaveProperty("policy_store_id");
+    expect(body).toHaveProperty("created_at");
   });
 
-  test('Frontend loads correctly', async ({ page }) => {
-    await page.goto('/');
-    
+  test("Frontend loads correctly", async ({ page }) => {
+    await page.goto("/");
+
     // Check that the page loads
     await expect(page).toHaveTitle(/Hodei Verified Permissions/);
-    
+
     // Check for main content
-    await expect(page.locator('h1')).toContainText('Hodei Verified Permissions');
-    await expect(page.locator('p')).toContainText('Backend for Frontend');
+    await expect(page.locator("h1")).toContainText(
+      "Hodei Verified Permissions",
+    );
+    await expect(
+      page.getByText("Manage your verified permissions"),
+    ).toBeVisible();
   });
 
-  test('Error handling - invalid authorization request', async ({ request }) => {
+  test("Error handling - invalid authorization request", async ({
+    request,
+  }) => {
     const invalidRequest = {
       // Missing required fields
       principal: {
-        entity_type: 'User',
-        entity_id: 'alice'
-      }
+        entity_type: "User",
+        entity_id: "alice",
+      },
     };
 
-    const response = await request.post('/api/authorize', {
-      data: invalidRequest
+    const response = await request.post("/api/authorize", {
+      data: invalidRequest,
     });
 
+    // Should be 400 for validation error
     expect(response.status()).toBe(400);
-    
+
     const body = await response.json();
-    expect(body).toHaveProperty('error');
-    expect(body.error).toContain('Missing required fields');
+    expect(body).toHaveProperty("error");
   });
 
-  test('Error handling - method not allowed', async ({ request }) => {
-    const response = await request.get('/api/authorize');
+  test("Error handling - method not allowed", async ({ request }) => {
+    const response = await request.get("/api/authorize");
     expect(response.status()).toBe(405);
-    
+
     const body = await response.json();
-    expect(body).toHaveProperty('error');
-    expect(body.error).toContain('Method not allowed');
+    expect(body).toHaveProperty("error");
+    expect(body.error).toContain("Method not allowed");
   });
 });

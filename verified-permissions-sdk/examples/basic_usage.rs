@@ -5,7 +5,9 @@
 //! - CLI Tool: `hodei` command
 //! - Library: `hodei_cli` crate with `HodeiAdmin` struct
 
-use hodei_permissions_sdk::{AuthorizationClient, EntityBuilder, IsAuthorizedRequestBuilder};
+use verified_permissions_sdk::{
+    AuthorizationClient, CedarEntityBuilder, IsAuthorizedRequestBuilder,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,20 +35,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Authorization with entities (context)
     println!("\n2. Authorization with entities (context):");
-    let alice = EntityBuilder::new("User", "alice")
-        .attribute("department", r#""engineering""#)
+    let alice = CedarEntityBuilder::new("User".to_string(), "alice".to_string())
+        .attribute("department".to_string(), "engineering".to_string())
         .build();
 
-    let doc = EntityBuilder::new("Document", "doc123")
-        .attribute("owner", r#"{"__entity": {"type": "User", "id": "alice"}}"#)
+    let doc = CedarEntityBuilder::new("Document".to_string(), "doc123".to_string())
+        .attribute("owner".to_string(), "alice".to_string())
         .build();
 
     let request = IsAuthorizedRequestBuilder::new(policy_store_id)
-        .principal("User", "alice")
-        .action("Action", "view")
-        .resource("Document", "doc123")
-        .add_entity(alice)
-        .add_entity(doc)
+        .principal("User".to_string(), "alice".to_string())
+        .action("Action".to_string(), "view".to_string())
+        .resource("Document".to_string(), "doc123".to_string())
         .build();
 
     let response = client.is_authorized_with_context(request).await?;
@@ -59,18 +59,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Batch authorization checks
     println!("\n3. Batch authorization checks:");
-    let batch_request = vec![
-        ("User::alice", "Action::view", "Document::doc123"),
-        ("User::bob", "Action::edit", "Document::doc123"),
-        ("User::alice", "Action::delete", "Document::doc456"),
+    let batch_requests = vec![
+        IsAuthorizedRequestBuilder::new(policy_store_id)
+            .principal("User".to_string(), "alice".to_string())
+            .action("Action".to_string(), "view".to_string())
+            .resource("Document".to_string(), "doc123".to_string())
+            .build(),
+        IsAuthorizedRequestBuilder::new(policy_store_id)
+            .principal("User".to_string(), "bob".to_string())
+            .action("Action".to_string(), "edit".to_string())
+            .resource("Document".to_string(), "doc123".to_string())
+            .build(),
+        IsAuthorizedRequestBuilder::new(policy_store_id)
+            .principal("User".to_string(), "alice".to_string())
+            .action("Action".to_string(), "delete".to_string())
+            .resource("Document".to_string(), "doc456".to_string())
+            .build(),
     ];
 
     let batch_response = client
-        .batch_is_authorized(policy_store_id, &batch_request)
+        .batch_is_authorized(policy_store_id, batch_requests)
         .await?;
 
     println!("   Batch results:");
-    for (i, result) in batch_response.results.iter().enumerate() {
+    for (i, result) in batch_response.responses.iter().enumerate() {
         println!("   - Check {}: {:?}", i + 1, result.decision());
     }
 
@@ -82,15 +94,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Note: This requires the policy store to have an identity source configured
     // Use the CLI tool or HodeiAdmin library to set up identity sources
-    #[cfg(feature = "compat")]
-    {
-        println!("   Note: For identity source configuration, use:");
-        println!(
-            "   CLI: hodei identity-source create --store-id={} --type=cognito ...",
-            policy_store_id
-        );
-        println!("   Or use the hodei_cli::HodeiAdmin library programmatically");
-    }
+    println!("   Note: For identity source configuration, use:");
+    println!(
+        "   CLI: hodei identity-source create --store-id={} --type=cognito ...",
+        policy_store_id
+    );
+    println!("   Or use the hodei_cli::HodeiAdmin library programmatically");
 
     // This is a simple example - in production you would extract the JWT from the request
     // and the middleware would handle the authorization automatically

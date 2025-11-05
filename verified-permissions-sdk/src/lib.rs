@@ -66,10 +66,6 @@ pub mod policies;
 #[cfg(feature = "middleware")]
 pub mod middleware;
 
-// Compatibility layer for v0.1.x users (optional, requires "compat" feature)
-#[cfg(feature = "compat")]
-pub mod compat;
-
 // Re-export generated proto types (Data Plane only)
 pub mod proto {
     tonic::include_proto!("authorization");
@@ -79,24 +75,12 @@ pub use auth_decision::AuthorizationDecision;
 pub use builders::*;
 pub use client::AuthorizationClient;
 pub use client_trait::AuthorizationClientTrait;
+pub use entities::{CedarEntity, CedarEntityBuilder, EntityIdentifier};
 pub use error::{Result, SdkError};
 pub use validation::OidcConfigValidator;
 
 // Re-export Data Plane types (most commonly used)
 pub use proto::{
-    BatchIsAuthorizedRequest, BatchIsAuthorizedResponse, Decision, EntityIdentifier,
-    IsAuthorizedRequest, IsAuthorizedResponse, IsAuthorizedWithTokenRequest,
-};
-
-// Re-export compatibility layer (if enabled)
-#[cfg(feature = "compat")]
-pub use compat::{
-    create_identity_source_deprecated, create_policy_deprecated,
-    create_policy_from_template_deprecated, create_policy_store_deprecated,
-    create_policy_template_deprecated, delete_identity_source_deprecated, delete_policy_deprecated,
-    delete_policy_store_deprecated, delete_policy_template_deprecated,
-    get_identity_source_deprecated, get_policy_deprecated, get_policy_store_deprecated,
-    get_policy_template_deprecated, get_schema_deprecated, list_identity_sources_deprecated,
-    list_policies_deprecated, list_policy_stores_deprecated, list_policy_templates_deprecated,
-    put_schema_deprecated, update_policy_deprecated,
+    BatchIsAuthorizedRequest, BatchIsAuthorizedResponse, Decision, IsAuthorizedRequest,
+    IsAuthorizedResponse, IsAuthorizedWithTokenRequest,
 };

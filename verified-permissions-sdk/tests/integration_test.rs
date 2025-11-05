@@ -1,11 +1,11 @@
 //! Unit tests for lightweight SDK (Data Plane operations only)
 
-use hodei_permissions_sdk::AuthorizationClient;
-use hodei_permissions_sdk::AuthorizationDecision;
-use hodei_permissions_sdk::IsAuthorizedRequestBuilder;
-use hodei_permissions_sdk::SdkError;
-use hodei_permissions_sdk::entities::CedarEntityBuilder;
-use hodei_permissions_sdk::proto::{Decision, EntityIdentifier};
+use verified_permissions_sdk::AuthorizationClient;
+use verified_permissions_sdk::AuthorizationDecision;
+use verified_permissions_sdk::IsAuthorizedRequestBuilder;
+use verified_permissions_sdk::SdkError;
+use verified_permissions_sdk::entities::CedarEntityBuilder;
+use verified_permissions_sdk::proto::{Decision, EntityIdentifier};
 
 #[test]
 fn test_entity_builder() {

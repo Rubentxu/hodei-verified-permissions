@@ -8,13 +8,15 @@ async fn test_identity_source_crud() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
 
     // Create a policy store first
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
     // Create OIDC identity source
     let oidc_config = r#"{"issuer":"https://accounts.google.com","client_ids":["client-123"],"jwks_uri":"https://www.googleapis.com/oauth2/v3/certs","group_claim":"groups"}"#;
-    let claims_mapping = r#"{"principal_id_claim":"sub","group_claim":"groups","attribute_mappings":{}}"#;
+    let claims_mapping =
+        r#"{"principal_id_claim":"sub","group_claim":"groups","attribute_mappings":{}}"#;
 
     let identity_source = repo
         .create_identity_source(
@@ -51,14 +53,17 @@ async fn test_identity_source_crud() {
         .unwrap();
 
     // Verify deletion
-    let result = repo.get_identity_source(&store.id, &identity_source.id).await;
+    let result = repo
+        .get_identity_source(&store.id, &identity_source.id)
+        .await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_multiple_identity_sources() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -78,7 +83,10 @@ async fn test_multiple_identity_sources() {
     let sources = repo.list_identity_sources(&store.id).await.unwrap();
     assert_eq!(sources.len(), 2);
 
-    let types: Vec<&str> = sources.iter().map(|s| s.configuration_type.as_str()).collect();
+    let types: Vec<&str> = sources
+        .iter()
+        .map(|s| s.configuration_type.as_str())
+        .collect();
     assert!(types.contains(&"oidc"));
     assert!(types.contains(&"cognito"));
 }
@@ -86,7 +94,8 @@ async fn test_multiple_identity_sources() {
 #[tokio::test]
 async fn test_identity_source_not_found() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 
@@ -98,7 +107,8 @@ async fn test_identity_source_not_found() {
 #[tokio::test]
 async fn test_identity_source_cascade_delete() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
-    let store = repo.create_policy_store("Test Store".to_string(), "Test Store".to_string())
+    let store = repo
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
         .await
         .unwrap();
 

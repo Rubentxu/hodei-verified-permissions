@@ -1,0 +1,67 @@
+version: "3.8"
+
+networks:
+  hodei-network:
+    driver: bridge
+
+services:
+  # SurrealDB Database
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    container_name: hodei-surrealdb
+    ports:
+      - "8001:8000"
+    command: start --log trace --user root --pass root memory
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 5s
+    networks:
+      - hodei-network
+
+  # Hodei Server with SurrealDB
+  hodei-server-surrealdb:
+    build:
+      context: verified-permissions
+      dockerfile: Dockerfile
+      args:
+        DATABASE_TYPE: surrealdb
+    container_name: hodei-server-surrealdb
+    ports:
+      - "50053:50051"
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=surrealdb://root:root@surrealdb:8000/hodei/permissions
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 5s
+    networks:
+      - hodei-network
+
+  # TODO App with SurrealDB
+  todo-app-surrealdb:
+    build:
+      context: .
+      dockerfile: examples/todo-app/Dockerfile
+      args:
+        DATABASE_TYPE: surrealdb
+    container_name: todo-app-surrealdb
+    ports:
+      - "3002:3000"
+    environment:
+      - HODEI_ENDPOINT=http://hodei-server-surrealdb:50051
+      - DATABASE_URL=surrealdb://root:root@surrealdb:8000/todoapp/todos
+      - RUST_LOG=info
+    depends_on:
+      hodei-server-surrealdb:
+        condition: service_healthy
+    networks:
+      - hodei-network
