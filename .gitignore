@@ -51,6 +51,8 @@ Thumbs.db
 
 # Archivos generados o temporales específicos del proyecto
 .windsurf/
+.kilocode/
+.claude/
 
 # ficheros de bloqueo de dependencias
 Cargo.lock
@@ -60,4 +62,4 @@ package-lock.json
 
 web-nextjs/test-results
 web-nextjs/playwright-report/
-.kilocode/mcp.json
+

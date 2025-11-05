@@ -124,7 +124,7 @@ test.describe("Scenarios Management", () => {
 
     // Reload the page to refresh data
     await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify scenario was removed
     const updatedScenarioCards = page.locator('[data-testid="scenario-card"]');
