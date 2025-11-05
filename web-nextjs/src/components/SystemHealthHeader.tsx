@@ -70,18 +70,23 @@ const SystemHealthHeader: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      {/* Title */}
-      <div className="flex items-center space-x-2">
-        <Activity className="w-4 h-4 text-gray-700" />
-        <span className="text-sm font-semibold text-gray-900">
-          System Health
-        </span>
-      </div>
-
-      {/* Status Items - Centered */}
-      <div className="flex flex-col items-center space-y-2">
-        {/* Top Row - Status Badges */}
+      {/* All in one line */}
+      <div className="flex flex-col items-center">
         <div className="flex items-center justify-center space-x-2 flex-wrap">
+          <Activity className="w-4 h-4 text-gray-700" />
+          <span className="text-sm font-semibold text-gray-900">
+            System Health
+          </span>
+
+          {/* Last Check */}
+          <span className="text-xs text-gray-500">
+            {isRefreshing
+              ? "Checking..."
+              : health.data?.last_check
+                ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
+                : "Never checked"}
+          </span>
+
           {/* Verified-Permissions Server Status */}
           {(() => {
             const status = getHealthStatus("grpc_server");
@@ -117,18 +122,6 @@ const SystemHealthHeader: React.FC = () => {
               </Badge>
             );
           })()}
-        </div>
-
-        {/* Bottom Row - Last Check and Refresh */}
-        <div className="flex items-center justify-center space-x-4">
-          {/* Last Check */}
-          <span className="text-xs text-gray-500">
-            {isRefreshing
-              ? "Checking..."
-              : health.data?.last_check
-                ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
-                : "Never checked"}
-          </span>
 
           {/* Refresh Button */}
           <Button
