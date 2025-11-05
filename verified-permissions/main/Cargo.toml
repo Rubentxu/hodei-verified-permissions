@@ -23,7 +23,7 @@ hodei-api.workspace = true
 tonic.workspace = true
 
 # Async runtime
-tokio.workspace = true
+tokio = { workspace = true, features = ["signal"] }
 
 # CLI
 clap.workspace = true
@@ -41,6 +41,10 @@ testcontainers-modules = { version = "0.13.0", features = ["postgres", "surreald
 tokio-test = "0.4"
 verified-permissions-sdk = { path = "../../verified-permissions-sdk" }
 verified-permissions-sdk-admin = { path = "../../verified-permissions-sdk-admin" }
+
+[[bin]]
+name = "hodei-verified-permissions"
+path = "src/main.rs"
 
 [[bin]]
 name = "hodei-cli"

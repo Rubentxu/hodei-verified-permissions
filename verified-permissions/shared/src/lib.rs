@@ -2,10 +2,12 @@
 //!
 //! This crate contains common types, traits, and utilities shared across all crates.
 
-pub mod types;
-pub mod traits;
+pub mod config;
 pub mod result;
+pub mod traits;
+pub mod types;
 
-pub use types::*;
-pub use traits::*;
+pub use config::*;
 pub use result::*;
+pub use traits::*;
+pub use types::*;
