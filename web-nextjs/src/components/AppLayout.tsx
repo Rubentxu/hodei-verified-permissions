@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { PropsWithChildren, useState } from "react";
+import SystemHealthHeader from "./SystemHealthHeader";
 
 const nav = [
   {
@@ -111,8 +112,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
               <h2 className="text-2xl font-bold">
                 {nav.find((n) => active(n.href))?.label ??
                   "Hodei Verified Permissions"}
@@ -120,6 +121,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
               <p className="text-sm text-gray-600 mt-1">
                 Manage your verified permissions
               </p>
+              {active("/dashboard") && <SystemHealthHeader />}
             </div>
             <div className="flex items-center space-x-3 text-sm">
               <span className="inline-flex items-center">

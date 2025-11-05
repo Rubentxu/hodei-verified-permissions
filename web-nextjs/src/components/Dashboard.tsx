@@ -2,7 +2,13 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -20,7 +26,8 @@ import { useDashboardData } from "../hooks/useDashboardMetrics";
 
 const Dashboard: React.FC = () => {
   const router = useRouter();
-  const { metrics, activity, health, isLoading, isError, error, refetch } = useDashboardData();
+  const { metrics, activity, health, isLoading, isError, error, refetch } =
+    useDashboardData();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {
@@ -36,56 +43,56 @@ const Dashboard: React.FC = () => {
   };
 
   // Determinar estado visual del System Health
-  const getHealthStatus = (component: 'grpc_server' | 'database') => {
+  const getHealthStatus = (component: "grpc_server" | "database") => {
     if (isRefreshing) {
       return {
-        status: 'checking',
-        label: 'Checking...',
+        status: "checking",
+        label: "Checking...",
         icon: Loader2,
-        className: 'bg-yellow-100 text-yellow-800',
-        showSpinner: true
+        className: "bg-yellow-100 text-yellow-800",
+        showSpinner: true,
       };
     }
 
     const currentStatus = health.data?.[component];
-    if (component === 'grpc_server') {
-      if (currentStatus === 'connected') {
+    if (component === "grpc_server") {
+      if (currentStatus === "connected") {
         return {
-          status: 'connected',
-          label: 'Connected',
+          status: "connected",
+          label: "Connected",
           icon: CheckCircle,
-          className: 'bg-green-100 text-green-800',
-          showSpinner: false
+          className: "bg-green-100 text-green-800",
+          showSpinner: false,
         };
       } else {
         return {
-          status: 'disconnected',
-          label: 'Disconnected',
+          status: "disconnected",
+          label: "Disconnected",
           icon: XCircle,
-          className: 'bg-red-100 text-red-800',
-          showSpinner: false
+          className: "bg-red-100 text-red-800",
+          showSpinner: false,
         };
       }
     }
 
     // Para database (por ahora siempre conectado)
     return {
-      status: 'connected',
-      label: 'Connected',
+      status: "connected",
+      label: "Connected",
       icon: CheckCircle,
-      className: 'bg-green-100 text-green-800',
-      showSpinner: false
+      className: "bg-green-100 text-green-800",
+      showSpinner: false,
     };
   };
 
   const handleMetricClick = (section: string) => {
     const routes: Record<string, string> = {
-      policies: '/policies',
-      schemas: '/schemas',
-      templates: '/templates',
-      'policy-stores': '/policy-stores',
+      policies: "/policies",
+      schemas: "/schemas",
+      templates: "/templates",
+      "policy-stores": "/policy-stores",
     };
-    router.push(routes[section] || '/');
+    router.push(routes[section] || "/");
   };
 
   if (isError) {
@@ -93,9 +100,11 @@ const Dashboard: React.FC = () => {
       <div className="space-y-6">
         <Card className="border-red-200">
           <CardHeader>
-            <CardTitle className="text-red-600">Error Loading Dashboard</CardTitle>
+            <CardTitle className="text-red-600">
+              Error Loading Dashboard
+            </CardTitle>
             <CardDescription>
-              {error?.message || 'Failed to load dashboard data'}
+              {error?.message || "Failed to load dashboard data"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -111,88 +120,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Health Status */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="w-5 h-5" />
-                <span>System Health</span>
-              </CardTitle>
-              <CardDescription>Real-time status of system components</CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoading}
-              className="transition-all duration-200 hover:bg-blue-50 hover:border-blue-300 hover:shadow-md active:scale-95 disabled:hover:bg-gray-50 disabled:hover:border-gray-300"
-            >
-              {(isRefreshing || isLoading) ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2 transition-transform duration-200 hover:rotate-180" />
-              )}
-              <span className="transition-all duration-200">
-                {(isRefreshing || isLoading) ? 'Refreshing...' : 'Refresh'}
-              </span>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* gRPC Server Status */}
-            <div className="flex items-center space-x-3">
-              {(() => {
-                const status = getHealthStatus('grpc_server');
-                const IconComponent = status.icon;
-                return (
-                  <Badge variant="default" className={status.className}>
-                    <IconComponent className={`w-4 h-4 mr-1 ${status.showSpinner ? 'animate-spin' : ''}`} />
-                    gRPC Server
-                  </Badge>
-                );
-              })()}
-              <span className="text-sm text-gray-600">
-                {isRefreshing ? 'Checking...' : (health.data?.grpc_server === 'connected' ? 'Connected' : 'Disconnected')}
-              </span>
-            </div>
-
-            {/* Database Status */}
-            <div className="flex items-center space-x-3">
-              {(() => {
-                const status = getHealthStatus('database');
-                const IconComponent = status.icon;
-                return (
-                  <Badge variant="default" className={status.className}>
-                    <IconComponent className={`w-4 h-4 mr-1 ${status.showSpinner ? 'animate-spin' : ''}`} />
-                    Database
-                  </Badge>
-                );
-              })()}
-              <span className="text-sm text-gray-600">
-                {isRefreshing ? 'Checking...' : 'Connected'}
-              </span>
-            </div>
-
-            {/* Last Check */}
-            <div className="flex items-center space-x-3">
-              <span className="text-sm text-gray-600">
-                {isRefreshing ? 'Checking connections...' : (
-                  health.data?.last_check
-                    ? `Last check: ${new Date(health.data.last_check).toLocaleTimeString()}`
-                    : 'Never checked'
-                )}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleMetricClick('policy-stores')}>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => handleMetricClick("policy-stores")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Policy Stores</CardTitle>
             <Shield className="w-6 h-6" />
@@ -208,22 +141,35 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold">
                   {metrics.data?.metrics?.policyStores?.total ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">Total policy stores</p>
+                <p className="text-xs text-muted-foreground">
+                  Total policy stores
+                </p>
                 <div className="flex items-center mt-2">
                   <Badge
-                    variant={metrics.data?.metrics?.policyStores?.trend?.isPositive ? 'default' : 'secondary'}
+                    variant={
+                      metrics.data?.metrics?.policyStores?.trend?.isPositive
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {metrics.data?.metrics?.policyStores?.trend?.isPositive ? '+' : ''}
+                    {metrics.data?.metrics?.policyStores?.trend?.isPositive
+                      ? "+"
+                      : ""}
                     {metrics.data?.metrics?.policyStores?.trend?.value ?? 0}%
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">from last week</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    from last week
+                  </span>
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleMetricClick('policies')}>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => handleMetricClick("policies")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Policies</CardTitle>
             <Code className="w-6 h-6" />
@@ -242,19 +188,30 @@ const Dashboard: React.FC = () => {
                 <p className="text-xs text-muted-foreground">Active policies</p>
                 <div className="flex items-center mt-2">
                   <Badge
-                    variant={metrics.data?.metrics?.policies?.trend?.isPositive ? 'default' : 'secondary'}
+                    variant={
+                      metrics.data?.metrics?.policies?.trend?.isPositive
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {metrics.data?.metrics?.policies?.trend?.isPositive ? '+' : ''}
+                    {metrics.data?.metrics?.policies?.trend?.isPositive
+                      ? "+"
+                      : ""}
                     {metrics.data?.metrics?.policies?.trend?.value ?? 0}%
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">from last week</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    from last week
+                  </span>
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleMetricClick('schemas')}>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => handleMetricClick("schemas")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Schemas</CardTitle>
             <FileText className="w-6 h-6" />
@@ -273,19 +230,30 @@ const Dashboard: React.FC = () => {
                 <p className="text-xs text-muted-foreground">Entity schemas</p>
                 <div className="flex items-center mt-2">
                   <Badge
-                    variant={metrics.data?.metrics?.schemas?.trend?.isPositive ? 'default' : 'secondary'}
+                    variant={
+                      metrics.data?.metrics?.schemas?.trend?.isPositive
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {metrics.data?.metrics?.schemas?.trend?.isPositive ? '+' : ''}
+                    {metrics.data?.metrics?.schemas?.trend?.isPositive
+                      ? "+"
+                      : ""}
                     {metrics.data?.metrics?.schemas?.trend?.value ?? 0}%
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">from last week</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    from last week
+                  </span>
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleMetricClick('templates')}>
+        <Card
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => handleMetricClick("templates")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Templates</CardTitle>
             <Layers className="w-6 h-6" />
@@ -301,15 +269,25 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold">
                   {metrics.data?.metrics?.templates?.total ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">Policy templates</p>
+                <p className="text-xs text-muted-foreground">
+                  Policy templates
+                </p>
                 <div className="flex items-center mt-2">
                   <Badge
-                    variant={metrics.data?.metrics?.templates?.trend?.isPositive ? 'default' : 'secondary'}
+                    variant={
+                      metrics.data?.metrics?.templates?.trend?.isPositive
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {metrics.data?.metrics?.templates?.trend?.isPositive ? '+' : ''}
+                    {metrics.data?.metrics?.templates?.trend?.isPositive
+                      ? "+"
+                      : ""}
                     {metrics.data?.metrics?.templates?.trend?.value ?? 0}%
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">from last week</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    from last week
+                  </span>
                 </div>
               </>
             )}
@@ -322,7 +300,9 @@ const Dashboard: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Authorization Requests</CardTitle>
-            <CardDescription>Daily authorization request volume</CardDescription>
+            <CardDescription>
+              Daily authorization request volume
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] flex items-center justify-center text-gray-500">
@@ -334,7 +314,9 @@ const Dashboard: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Authorization Decisions</CardTitle>
-            <CardDescription>Breakdown of allow vs deny decisions</CardDescription>
+            <CardDescription>
+              Breakdown of allow vs deny decisions
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] flex items-center justify-center text-gray-500">
@@ -348,7 +330,9 @@ const Dashboard: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest system activities and changes</CardDescription>
+          <CardDescription>
+            Latest system activities and changes
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -356,17 +340,24 @@ const Dashboard: React.FC = () => {
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="ml-2">Loading activity...</span>
             </div>
-          ) : activity.data?.activities && activity.data.activities.length > 0 ? (
+          ) : activity.data?.activities &&
+            activity.data.activities.length > 0 ? (
             <div className="space-y-4">
               {activity.data.activities.slice(0, 5).map((activityItem) => (
-                <div key={activityItem.id} className="flex items-start space-x-4 pb-4 border-b last:border-0">
+                <div
+                  key={activityItem.id}
+                  className="flex items-start space-x-4 pb-4 border-b last:border-0"
+                >
                   <div className="flex-shrink-0">
                     <Badge variant="outline">{activityItem.type}</Badge>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{activityItem.description}</p>
+                    <p className="text-sm font-medium">
+                      {activityItem.description}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {activityItem.user} • {new Date(activityItem.timestamp).toLocaleString()}
+                      {activityItem.user} •{" "}
+                      {new Date(activityItem.timestamp).toLocaleString()}
                     </p>
                   </div>
                 </div>
