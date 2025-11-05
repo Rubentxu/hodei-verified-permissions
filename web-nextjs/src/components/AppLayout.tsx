@@ -121,13 +121,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
               <p className="text-sm text-gray-600 mt-1">
                 Manage your verified permissions
               </p>
-              {active("/dashboard") && <SystemHealthHeader />}
             </div>
-            <div className="flex items-center space-x-3 text-sm">
-              <span className="inline-flex items-center">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />{" "}
-                Connected
-              </span>
+            <div className="flex flex-col items-end space-y-2">
+              {active("/dashboard") && (
+                <div className="max-w-md">
+                  <SystemHealthHeader />
+                </div>
+              )}
+              <div className="flex items-center space-x-3 text-sm">
+                <span className="inline-flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />{" "}
+                  Connected
+                </span>
+              </div>
             </div>
           </div>
         </header>

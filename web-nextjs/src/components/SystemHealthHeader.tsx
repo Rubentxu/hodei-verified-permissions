@@ -69,92 +69,71 @@ const SystemHealthHeader: React.FC = () => {
   };
 
   return (
-    <div className="mt-3 space-y-3">
-      {/* Title and Description */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
-        <div className="flex items-center space-x-2">
-          <Activity className="w-5 h-5 text-gray-700" />
-          <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
-        </div>
-        <p className="text-sm text-gray-600 sm:ml-2">
-          Real-time status of system components
-        </p>
-      </div>
-
-      {/* Status Grid - Responsive */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+    <div className="space-y-2">
+      {/* Status Items - Compact */}
+      <div className="flex items-center space-x-2 flex-wrap gap-y-1">
         {/* gRPC Server Status */}
-        <div className="flex items-center space-x-3">
-          {(() => {
-            const status = getHealthStatus("grpc_server");
-            const IconComponent = status.icon;
-            return (
-              <Badge variant="default" className={status.className}>
-                <IconComponent
-                  className={`w-4 h-4 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-                />
-                gRPC Server
-              </Badge>
-            );
-          })()}
-          <span className="text-sm text-gray-600">
-            {isRefreshing
-              ? "Checking..."
-              : health.data?.grpc_server === "connected"
-                ? "Connected"
-                : "Disconnected"}
-          </span>
-        </div>
+        {(() => {
+          const status = getHealthStatus("grpc_server");
+          const IconComponent = status.icon;
+          return (
+            <Badge variant="default" className={status.className}>
+              <IconComponent
+                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+              />
+              <span className="text-xs">
+                {isRefreshing
+                  ? "Checking..."
+                  : health.data?.grpc_server === "connected"
+                    ? "gRPC: Connected"
+                    : "gRPC: Disconnected"}
+              </span>
+            </Badge>
+          );
+        })()}
 
         {/* Database Status */}
-        <div className="flex items-center space-x-3">
-          {(() => {
-            const status = getHealthStatus("database");
-            const IconComponent = status.icon;
-            return (
-              <Badge variant="default" className={status.className}>
-                <IconComponent
-                  className={`w-4 h-4 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-                />
-                Database
-              </Badge>
-            );
-          })()}
-          <span className="text-sm text-gray-600">
-            {isRefreshing ? "Checking..." : "Connected"}
-          </span>
-        </div>
+        {(() => {
+          const status = getHealthStatus("database");
+          const IconComponent = status.icon;
+          return (
+            <Badge variant="default" className={status.className}>
+              <IconComponent
+                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+              />
+              <span className="text-xs">
+                {isRefreshing ? "Checking..." : "DB: Connected"}
+              </span>
+            </Badge>
+          );
+        })()}
 
         {/* Last Check */}
-        <div className="flex items-center space-x-3">
-          <span className="text-sm text-gray-600">
-            {isRefreshing
-              ? "Checking connections..."
-              : health.data?.last_check
-                ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
-                : "Never checked"}
-          </span>
-        </div>
+        <span className="text-xs text-gray-500">
+          {isRefreshing
+            ? "Checking..."
+            : health.data?.last_check
+              ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
+              : "Never checked"}
+        </span>
+      </div>
 
-        {/* Refresh Button */}
-        <div className="flex justify-start sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing || isLoading}
-            className="w-full sm:w-auto transition-all duration-200 hover:bg-blue-50 hover:border-blue-300 hover:shadow-md active:scale-95 disabled:hover:bg-gray-50 disabled:hover:border-gray-300"
-          >
-            {isRefreshing || isLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2 transition-transform duration-200 hover:rotate-180" />
-            )}
-            <span className="transition-all duration-200">
-              {isRefreshing || isLoading ? "Refreshing..." : "Refresh"}
-            </span>
-          </Button>
-        </div>
+      {/* Refresh Button - Compact */}
+      <div className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          className="h-7 px-2 text-xs hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+        >
+          {isRefreshing || isLoading ? (
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3 mr-1 transition-transform duration-200 hover:rotate-180" />
+          )}
+          <span>{isRefreshing || isLoading ? "Refreshing..." : "Refresh"}</span>
+        </Button>
       </div>
     </div>
   );
