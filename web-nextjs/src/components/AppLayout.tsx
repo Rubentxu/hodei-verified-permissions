@@ -72,8 +72,8 @@ export default function AppLayout({ children }: PropsWithChildren) {
               <Image
                 src="/hvp-icon.png"
                 alt="HVP Icon"
-                width={32}
-                height={32}
+                width={48}
+                height={48}
                 className="rounded-md"
               />
               <h1 className="text-lg font-semibold">
