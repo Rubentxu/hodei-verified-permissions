@@ -69,14 +69,15 @@ const SystemHealthHeader: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="flex items-center justify-center space-x-3 flex-wrap">
+    <div className="flex items-center justify-center">
+      <div className="flex items-center space-x-3">
         <Activity className="w-4 h-4 text-gray-700" />
         <span className="text-sm font-semibold text-gray-900">
           System Health
         </span>
 
-        {/* Last Check */}
+        <span className="text-gray-300">|</span>
+
         <span className="text-xs text-gray-500">
           {isRefreshing
             ? "Checking..."
@@ -85,10 +86,8 @@ const SystemHealthHeader: React.FC = () => {
               : "Never checked"}
         </span>
 
-        {/* Separator */}
         <span className="text-gray-300">|</span>
 
-        {/* Verified-Permissions Server Status */}
         {(() => {
           const status = getHealthStatus("grpc_server");
           const IconComponent = status.icon;
@@ -108,29 +107,8 @@ const SystemHealthHeader: React.FC = () => {
           );
         })()}
 
-        {/* Separator */}
         <span className="text-gray-300">|</span>
 
-        {/* Database Status */}
-        {(() => {
-          const status = getHealthStatus("database");
-          const IconComponent = status.icon;
-          return (
-            <Badge variant="default" className={status.className}>
-              <IconComponent
-                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-              />
-              <span className="text-xs">
-                {isRefreshing ? "Checking..." : "DB"}
-              </span>
-            </Badge>
-          );
-        })()}
-
-        {/* Separator */}
-        <span className="text-gray-300">|</span>
-
-        {/* Refresh Button */}
         <Button
           variant="ghost"
           size="sm"
