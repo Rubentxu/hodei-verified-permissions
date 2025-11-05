@@ -36,14 +36,14 @@ dev: ## Start all services in development mode
 	@echo "$(CYAN)🚀 Starting development environment...$(NC)"
 	@$(MAKE) build
 	@$(MAKE) db-init
-	@echo "$(CYAN)📡 Starting gRPC server in background...$(NC)"
-	@cd $(PROJECT_ROOT)/verified-permissions && nohup DATABASE_URL=$(DATABASE_URL) cargo run --bin hodei-verified-permissions > /tmp/hodei-server.log 2>&1 &
+	@echo "$(CYAN)📡 Starting verified-permissions Server in background...$(NC)"
+	@cd $(PROJECT_ROOT)/verified-permissions && nohup env DATABASE_URL=$(DATABASE_URL) cargo run --bin hodei-verified-permissions > /tmp/hodei-server.log 2>&1 &
 	@echo "$(CYAN)🌐 Starting Next.js frontend in background...$(NC)"
 	@cd $(PROJECT_ROOT)/web-nextjs && nohup npm run dev > /tmp/hodei-web.log 2>&1 &
 	@sleep 3
 	@echo "$(GREEN)✅ Services started!$(NC)"
 	@echo "$(YELLOW)📍 Frontend: http://localhost:3000$(NC)"
-	@echo "$(YELLOW)📍 gRPC API: localhost:50051$(NC)"
+	@echo "$(YELLOW)📍 Verified Permissions API: localhost:50051$(NC)"
 	@echo "$(YELLOW)💡 View logs: tail -f /tmp/hodei-server.log (backend) or /tmp/hodei-web.log (frontend)$(NC)"
 	@echo "$(YELLOW)💡 Stop services: make stop$(NC)"
 
