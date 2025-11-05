@@ -9,7 +9,6 @@ import {
   XCircle,
   RefreshCw,
   Loader2,
-  Database,
 } from "lucide-react";
 import React from "react";
 
@@ -34,7 +33,7 @@ const SystemHealthHeader: React.FC = () => {
         status: "checking",
         label: "Checking...",
         icon: Loader2,
-        className: "bg-yellow-100 text-yellow-800",
+        className: "bg-yellow-100 text-yellow-700",
         showSpinner: true,
       };
     }
@@ -46,7 +45,7 @@ const SystemHealthHeader: React.FC = () => {
           status: "connected",
           label: "Connected",
           icon: CheckCircle,
-          className: "bg-green-100 text-green-800",
+          className: "bg-green-50 text-green-700 border border-green-200",
           showSpinner: false,
         };
       } else {
@@ -54,7 +53,7 @@ const SystemHealthHeader: React.FC = () => {
           status: "disconnected",
           label: "Disconnected",
           icon: XCircle,
-          className: "bg-red-100 text-red-800",
+          className: "bg-red-50 text-red-700 border border-red-200",
           showSpinner: false,
         };
       }
@@ -63,98 +62,76 @@ const SystemHealthHeader: React.FC = () => {
     return {
       status: "connected",
       label: "Connected",
-      icon: Database,
-      className: "bg-blue-100 text-blue-800",
+      icon: CheckCircle,
+      className: "bg-blue-50 text-blue-700 border border-blue-200",
       showSpinner: false,
     };
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-      <div className="flex items-center justify-center">
-        <div className="flex items-center space-x-4">
-          {/* System Health Label */}
-          <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-full border border-gray-200">
-            <Activity className="w-4 h-4 text-indigo-600" />
-            <span className="text-sm font-semibold text-gray-900">
-              System Health
-            </span>
-          </div>
+    <div className="flex items-center justify-center">
+      <div className="flex items-center space-x-2">
+        <Activity className="w-4 h-4 text-gray-600" />
+        <span className="text-sm font-medium text-gray-800">System Health</span>
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-gray-300" />
+        <span className="text-gray-300">•</span>
 
-          {/* Last Check */}
-          <div className="bg-white px-3 py-1 rounded-full border border-gray-200">
-            <span className="text-xs text-gray-600">
-              {isRefreshing
-                ? "Checking..."
-                : health.data?.last_check
-                  ? `Last: ${new Date(health.data.last_check).toLocaleTimeString()}`
-                  : "Never checked"}
-            </span>
-          </div>
+        <span className="text-xs text-gray-500">
+          {isRefreshing
+            ? "Checking..."
+            : health.data?.last_check
+              ? `${new Date(health.data.last_check).toLocaleTimeString()}`
+              : "Never"}
+        </span>
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-gray-300" />
+        <span className="text-gray-300">•</span>
 
-          {/* Verified-Permissions Server Status */}
-          {(() => {
-            const status = getHealthStatus("grpc_server");
-            const IconComponent = status.icon;
-            return (
-              <Badge variant="default" className={status.className}>
-                <IconComponent
-                  className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-                />
-                <span className="text-xs font-medium">
-                  {isRefreshing
-                    ? "Checking..."
-                    : health.data?.grpc_server === "connected"
-                      ? "Verified-Permissions Server"
-                      : "Verified-Permissions Server: Disconnected"}
-                </span>
-              </Badge>
-            );
-          })()}
+        {(() => {
+          const status = getHealthStatus("grpc_server");
+          const IconComponent = status.icon;
+          return (
+            <div
+              className={`inline-flex items-center px-2 py-1 rounded-full ${status.className}`}
+            >
+              <IconComponent
+                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+              />
+              <span className="text-xs font-medium">Server</span>
+            </div>
+          );
+        })()}
 
-          {/* Database Status */}
-          {(() => {
-            const status = getHealthStatus("database");
-            const IconComponent = status.icon;
-            return (
-              <Badge variant="default" className={status.className}>
-                <IconComponent
-                  className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
-                />
-                <span className="text-xs font-medium">
-                  {isRefreshing ? "Checking..." : "Database"}
-                </span>
-              </Badge>
-            );
-          })()}
+        {(() => {
+          const status = getHealthStatus("database");
+          const IconComponent = status.icon;
+          return (
+            <div
+              className={`inline-flex items-center px-2 py-1 rounded-full ${status.className}`}
+            >
+              <IconComponent
+                className={`w-3 h-3 mr-1 ${status.showSpinner ? "animate-spin" : ""}`}
+              />
+              <span className="text-xs font-medium">DB</span>
+            </div>
+          );
+        })()}
 
-          {/* Divider */}
-          <div className="h-6 w-px bg-gray-300" />
+        <span className="text-gray-300">•</span>
 
-          {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing || isLoading}
-            className="bg-white hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200 shadow-sm"
-          >
-            {isRefreshing || isLoading ? (
-              <Loader2 className="w-3 h-3 mr-1 animate-spin text-indigo-600" />
-            ) : (
-              <RefreshCw className="w-3 h-3 mr-1 transition-transform duration-200 hover:rotate-180 text-indigo-600" />
-            )}
-            <span className="text-xs font-medium text-gray-700">
-              {isRefreshing || isLoading ? "Refreshing..." : "Refresh"}
-            </span>
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        >
+          {isRefreshing || isLoading ? (
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3 mr-1" />
+          )}
+          <span>Refresh</span>
+        </Button>
       </div>
     </div>
   );
