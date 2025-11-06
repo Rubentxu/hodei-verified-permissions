@@ -404,22 +404,4 @@ impl PolicyRepository for SurrealRepository {
 
         Ok(())
     }
-
-    // Audit Operations
-    async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
-        let sql = format!(
-            "CREATE authorization_logs SET policy_store_id = '{}', principal = '{}', action = '{}', resource = '{}', decision = '{}', timestamp = '{}'",
-            log.policy_store_id,
-            log.principal.replace("'", "\\'"),
-            log.action.replace("'", "\\'"),
-            log.resource.replace("'", "\\'"),
-            log.decision,
-            log.timestamp.to_rfc3339()
-        );
-
-        self.db.query(&sql).await
-            .map_err(|e| AuthorizationError::Database(e.into()))?;
-
-        Ok(())
-    }
 }

@@ -5,8 +5,9 @@ use tracing::{info, warn};
 
 use hodei_domain::{
     PolicyRepository, AuthorizationEvaluator, Principal, Action, Resource,
-    PolicyStoreId, AuthorizationDecision,
+    PolicyStoreId,
 };
+use hodei_domain::value_objects::AuthorizationDecision;
 use crate::dto::{AuthorizationRequest, AuthorizationResponse};
 use crate::errors::{ApplicationError, ApplicationResult};
 

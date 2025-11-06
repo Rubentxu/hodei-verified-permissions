@@ -7,8 +7,10 @@ use cedar_policy::{
     Request as CedarRequest, Schema, Validator,
 };
 use hodei_domain::events::{
-    DomainEvent, PolicyStoreCreated, PolicyStoreTagsUpdated, PolicyStoreUpdated,
+    PolicyStoreCreated, PolicyStoreTagsUpdated, PolicyStoreUpdated, DomainEventEnvelope,
 };
+use hodei_infrastructure::events::{InMemoryEventBus, EventStoreBox};
+use hodei_domain::events::{EventDispatcher, EventDispatcherPort};
 use hodei_domain::{CedarPolicy, IdentitySourceType, PolicyId, PolicyRepository, PolicyStoreId};
 use hodei_infrastructure::repository::RepositoryAdapter;
 use serde_json;
@@ -19,15 +21,18 @@ use tracing::{error, info};
 
 pub struct AuthorizationControlService {
     repository: Arc<RepositoryAdapter>,
+    dispatcher: Arc<EventDispatcher<InMemoryEventBus, EventStoreBox>>,
 }
 
 impl AuthorizationControlService {
-    pub fn new(repository: Arc<RepositoryAdapter>) -> Self {
-        Self { repository }
+    pub fn new(repository: Arc<RepositoryAdapter>, dispatcher: Arc<EventDispatcher<InMemoryEventBus, EventStoreBox>>) -> Self {
+        Self { repository, dispatcher }
     }
 
-    async fn publish_event(&self, _event: Box<dyn DomainEvent>) {
-        // Event publishing disabled for simplicity
+    async fn publish_event(&self, event: DomainEventEnvelope) {
+        if let Err(e) = self.dispatcher.dispatch(event).await {
+            error!("Failed to publish event: {}", e);
+        }
     }
 }
 
@@ -70,7 +75,7 @@ impl AuthorizationControl for AuthorizationControlService {
             occurred_at: store.created_at,
             version: 1,
         };
-        self.publish_event(Box::new(created_event)).await;
+        self.publish_event(DomainEventEnvelope::PolicyStoreCreated(Box::new(created_event))).await;
 
         Ok(Response::new(CreatePolicyStoreResponse {
             policy_store_id,
@@ -1731,56 +1736,6 @@ impl AuthorizationControl for AuthorizationControlService {
             policy_store_id: store.id.into_string(),
             tags: store.tags,
             updated_at: store.updated_at.to_rfc3339(),
-        }))
-    }
-
-    async fn get_policy_store_audit_log(
-        &self,
-        request: Request<GetPolicyStoreAuditLogRequest>,
-    ) -> Result<Response<GetPolicyStoreAuditLogResponse>, Status> {
-        let req = request.into_inner();
-        info!(
-            "Getting audit log for policy store: {}",
-            req.policy_store_id
-        );
-
-        let policy_store_id = PolicyStoreId::new(req.policy_store_id)
-            .map_err(|e| Status::invalid_argument(format!("Invalid policy store ID: {}", e)))?;
-
-        // Build audit log filters
-        let filters = hodei_domain::AuditLogFilters {
-            event_types: None,
-            service_name: None,
-            policy_store_id: Some(policy_store_id.into_string()),
-            start_date: None,
-            end_date: None,
-            limit: match req.max_results {
-                Some(max) if max > 0 => Some(max as u32),
-                _ => Some(100),
-            },
-        };
-
-        let audit_logs = self.repository.get_audit_log(filters).await.map_err(|e| {
-            error!("Failed to get audit log: {}", e);
-            Status::internal(format!("Failed to get audit log: {}", e))
-        })?;
-
-        let log_entries = audit_logs
-            .into_iter()
-            .map(|log| PolicyStoreAuditLogEntry {
-                id: 0, // Will be assigned by database
-                policy_store_id: log.aggregate_id,
-                action: log.event_type,
-                user_id: "system".to_string(),
-                changes: Some(log.event_data.to_string()),
-                ip_address: None,
-                timestamp: log.occurred_at.to_rfc3339(),
-            })
-            .collect();
-
-        Ok(Response::new(GetPolicyStoreAuditLogResponse {
-            log_entries,
-            next_token: None,
         }))
     }
 }

@@ -2,47 +2,60 @@
 
 use crate::proto::authorization_data_server::AuthorizationData;
 use crate::proto::*;
-use hodei_infrastructure::repository::RepositoryAdapter;
-use hodei_infrastructure::jwt::JwtValidator;
-use hodei_domain::{PolicyStoreId, PolicyRepository};
-use tonic::{Request, Response, Status};
-use tracing::{info, error};
-use cedar_policy::{
-    Authorizer, Context, Entities, EntityUid, PolicySet,
-    Request as CedarRequest,
+use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request as CedarRequest};
+use hodei_domain::{
+    DomainEventEnvelope, EventBusPort, EventDispatcher, EventStorePort, PolicyRepository, PolicyStoreId,
 };
+use hodei_infrastructure::jwt::JwtValidator;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
+use tonic::{Request, Response, Status};
+use tracing::{error, info};
+use async_trait::async_trait;
 
-pub struct AuthorizationDataService {
-    repository: Arc<RepositoryAdapter>,
+pub struct AuthorizationDataService<R> {
+    repository: Arc<R>,
     jwt_validator: JwtValidator,
 }
 
-impl AuthorizationDataService {
-    pub fn new(repository: Arc<RepositoryAdapter>) -> Self {
-        Self { 
+impl<R> AuthorizationDataService<R>
+where
+    R: PolicyRepository + Send + Sync + 'static,
+{
+    pub fn new(repository: Arc<R>) -> Self {
+        Self {
             repository,
             jwt_validator: JwtValidator::new(),
         }
     }
 
+    async fn publish_event(&self, _event: DomainEventEnvelope) {
+        // Event publishing not implemented
+        info!("Event would be published here");
+    }
+
     fn build_entity_uid(identifier: &EntityIdentifier) -> Result<EntityUid, Status> {
-        EntityUid::from_str(&format!("{}::\"{}\"", identifier.entity_type, identifier.entity_id))
-            .map_err(|e| {
-                error!("Failed to parse entity UID: {}", e);
-                Status::invalid_argument(format!("Invalid entity identifier: {}", e))
-            })
+        EntityUid::from_str(&format!(
+            "{}::\"{}\"",
+            identifier.entity_type, identifier.entity_id
+        ))
+        .map_err(|e| {
+            error!("Failed to parse entity UID: {}", e);
+            Status::invalid_argument(format!("Invalid entity identifier: {}", e))
+        })
     }
 
     fn build_entities(entities: &[Entity]) -> Result<Entities, Status> {
         let mut entities_json = Vec::new();
 
         for entity in entities {
-            let uid = Self::build_entity_uid(entity.identifier.as_ref().ok_or_else(|| {
-                Status::invalid_argument("Entity identifier is required")
-            })?)?;
+            let uid = Self::build_entity_uid(
+                entity
+                    .identifier
+                    .as_ref()
+                    .ok_or_else(|| Status::invalid_argument("Entity identifier is required"))?,
+            )?;
 
             let mut entity_obj = serde_json::json!({
                 "uid": uid.to_string(),
@@ -98,8 +111,11 @@ impl AuthorizationDataService {
     }
 }
 
-#[tonic::async_trait]
-impl AuthorizationData for AuthorizationDataService {
+#[async_trait]
+impl<R> AuthorizationData for AuthorizationDataService<R>
+where
+    R: PolicyRepository + Send + Sync + 'static,
+{
     async fn is_authorized(
         &self,
         request: Request<IsAuthorizedRequest>,
@@ -125,7 +141,10 @@ impl AuthorizationData for AuthorizationDataService {
             })?;
 
         if policies.is_empty() {
-            info!("No policies found for policy store: {}", req.policy_store_id);
+            info!(
+                "No policies found for policy store: {}",
+                req.policy_store_id
+            );
             return Ok(Response::new(IsAuthorizedResponse {
                 decision: Decision::Deny as i32,
                 determining_policies: vec![],
@@ -146,17 +165,23 @@ impl AuthorizationData for AuthorizationDataService {
         })?;
 
         // 4. Build Cedar entities
-        let principal = Self::build_entity_uid(req.principal.as_ref().ok_or_else(|| {
-            Status::invalid_argument("Principal is required")
-        })?)?;
+        let principal = Self::build_entity_uid(
+            req.principal
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Principal is required"))?,
+        )?;
 
-        let action = Self::build_entity_uid(req.action.as_ref().ok_or_else(|| {
-            Status::invalid_argument("Action is required")
-        })?)?;
+        let action = Self::build_entity_uid(
+            req.action
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Action is required"))?,
+        )?;
 
-        let resource = Self::build_entity_uid(req.resource.as_ref().ok_or_else(|| {
-            Status::invalid_argument("Resource is required")
-        })?)?;
+        let resource = Self::build_entity_uid(
+            req.resource
+                .as_ref()
+                .ok_or_else(|| Status::invalid_argument("Resource is required"))?,
+        )?;
 
         // 5. Build context
         let context = Self::build_context(req.context.as_deref())?;
@@ -165,8 +190,8 @@ impl AuthorizationData for AuthorizationDataService {
         let entities = Self::build_entities(&req.entities)?;
 
         // 7. Create Cedar request
-        let cedar_request = CedarRequest::new(principal, action, resource, context, None)
-            .map_err(|e| {
+        let cedar_request =
+            CedarRequest::new(principal, action, resource, context, None).map_err(|e| {
                 error!("Failed to create Cedar request: {}", e);
                 Status::internal(format!("Failed to create Cedar request: {}", e))
             })?;
@@ -222,9 +247,7 @@ impl AuthorizationData for AuthorizationDataService {
 
         for auth_request in req.requests {
             // Wrap in a Request for the is_authorized method
-            let result = self
-                .is_authorized(Request::new(auth_request))
-                .await;
+            let result = self.is_authorized(Request::new(auth_request)).await;
 
             match result {
                 Ok(response) => responses.push(response.into_inner()),
@@ -266,8 +289,9 @@ impl AuthorizationData for AuthorizationDataService {
             })?;
 
         // 2. Parse Identity Source configuration
-        let config_json: serde_json::Value = serde_json::from_str(&identity_source.configuration_json)
-            .map_err(|e| Status::internal(format!("Invalid identity source config: {}", e)))?;
+        let config_json: serde_json::Value =
+            serde_json::from_str(&identity_source.configuration_json)
+                .map_err(|e| Status::internal(format!("Invalid identity source config: {}", e)))?;
 
         let issuer = config_json["issuer"]
             .as_str()
@@ -284,7 +308,10 @@ impl AuthorizationData for AuthorizationDataService {
             .as_str()
             .ok_or_else(|| Status::internal("Identity source missing 'jwks_uri'"))?;
 
-        info!("Validating token with issuer: {}, jwks_uri: {}", issuer, jwks_uri);
+        info!(
+            "Validating token with issuer: {}, jwks_uri: {}",
+            issuer, jwks_uri
+        );
 
         // 3. Validate JWT token (signature, issuer, audience, expiration)
         let validated_claims = self
@@ -296,7 +323,10 @@ impl AuthorizationData for AuthorizationDataService {
                 Status::unauthenticated(format!("Invalid token: {}", e))
             })?;
 
-        info!("Token validated successfully for subject: {}", validated_claims.sub);
+        info!(
+            "Token validated successfully for subject: {}",
+            validated_claims.sub
+        );
 
         // 4. Extract principal ID from claims
         let principal_id = validated_claims.sub.clone();
@@ -309,17 +339,17 @@ impl AuthorizationData for AuthorizationDataService {
 
         // 5. Extract groups from claims and create entities
         let mut entities = Vec::new();
-        
+
         // Create principal entity
         let mut principal_attrs = HashMap::new();
-        
+
         // Add email if present
         if let Some(email) = validated_claims.additional_claims.get("email") {
             if let Some(email_str) = email.as_str() {
                 principal_attrs.insert("email".to_string(), format!("\"{}\"", email_str));
             }
         }
-        
+
         // Extract groups as parent entities
         let mut parents = Vec::new();
         if let Some(groups_value) = validated_claims.additional_claims.get("groups") {
@@ -334,7 +364,7 @@ impl AuthorizationData for AuthorizationDataService {
                 }
             }
         }
-        
+
         // Create principal entity with attributes and parents
         entities.push(Entity {
             identifier: Some(principal.clone()),

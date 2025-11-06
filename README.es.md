@@ -516,7 +516,7 @@ Hodei Verified Permissions provides a comprehensive set of Makefile commands to 
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
 | `make dev`   | Start all services (gRPC server + Next.js frontend) in development mode | First-time setup or full-stack development | Services available at localhost:50051 (gRPC) and localhost:3000 (web) |
 | `make build` | Build all Rust components in debug mode                                 | After code changes, before testing         | Compilation output with build times                                   |
-| `make clean` | Remove all build artifacts and caches                                   | Clean workspace, resolve build issues      | Removes target/, node_modules/.cache, etc.                            |
+| `make clean` | Remove all build artifacts and caches                                   | Clean workspace, resolve build issues      | Removes target/, node_modules/.cache, etc.                           |
 
 
 

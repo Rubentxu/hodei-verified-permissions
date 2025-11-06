@@ -6,12 +6,14 @@
 use hodei_api::grpc::{AuthorizationControlService, AuthorizationDataService};
 use hodei_api::proto::authorization_control_server::AuthorizationControlServer;
 use hodei_api::proto::authorization_data_server::AuthorizationDataServer;
+use hodei_domain::events::EventDispatcher;
+use hodei_infrastructure::factory::{create_event_bus, create_event_store};
 use hodei_infrastructure::repository::RepositoryAdapter;
 use hodei_shared::config::{Configuration, Settings};
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing::info;
-use tracing_subscriber::{FmtSubscriber, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -51,8 +53,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     info!("✅ Repository initialized successfully");
 
-    // Create gRPC services with repository (Dependency Injection)
-    let control_service = AuthorizationControlService::new(repository.clone());
+    // Initialize Event Store infrastructure (Hexagonal Architecture - Infrastructure Layer)
+    info!("🔔 Initializing event store and audit system...");
+    let event_store = create_event_store(settings.database_url())
+        .await
+        .map_err(|e| {
+            eprintln!("❌ Failed to create event store: {}", e);
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Event store error: {}", e),
+            )) as Box<dyn std::error::Error + Send + Sync>
+        })?;
+
+    let event_bus = create_event_bus();
+    let dispatcher = Arc::new(EventDispatcher::new(event_bus, event_store));
+
+    info!("✅ Event store and audit system initialized successfully");
+
+    // Create gRPC services with repository and event dispatcher (Dependency Injection)
+    let control_service = AuthorizationControlService::new(repository.clone(), dispatcher.clone());
     let data_service = AuthorizationDataService::new(repository.clone());
 
     // Configure gRPC server
@@ -67,6 +86,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         server_builder = server_builder
             .http2_keepalive_interval(Some(std::time::Duration::from_secs(keepalive_time)));
     }
+
+    // TODO: Re-enable audit interceptor after fixing compilation errors
+    // Apply audit interceptor layer to capture all gRPC calls
+    // info!("🔍 Applying audit interceptor for CloudTrail-style logging...");
+    // let audit_layer =
+    //     AuditInterceptorLayer::new(dispatcher.clone(), "AuthorizationControl".to_string());
+    // server_builder = server_builder.layer(audit_layer);
 
     let addr = settings.server_address().parse()?;
     info!("🚀 Server listening on {}", addr);
@@ -85,7 +111,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Spawn server task
     let server_handle = tokio::spawn(async move {
         if let Err(e) = server_future.await {
-            eprintln!("❌ Server error: {}", e);
+            eprintln!("❌ Server error: {:?}", e);
+            eprintln!("❌ Server error type: {}", std::any::type_name_of_val(&e));
+            eprintln!("❌ Error debug: {:#?}", e);
         }
         info!("✅ Server stopped");
     });

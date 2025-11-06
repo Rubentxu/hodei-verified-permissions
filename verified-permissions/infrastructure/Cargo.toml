@@ -31,9 +31,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 
-# Async trait support
-async-trait.workspace = true
-
 # Time handling
 chrono.workspace = true
 
@@ -55,3 +52,10 @@ base64.workspace = true
 
 # Regex support
 regex.workspace = true
+
+# Async trait support
+async-trait = "0.1"
+
+[dev-dependencies]
+# Temporary directory for tests
+tempfile = "3.0"

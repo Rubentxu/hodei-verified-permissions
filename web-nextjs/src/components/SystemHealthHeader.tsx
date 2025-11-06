@@ -70,13 +70,16 @@ const SystemHealthHeader: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center">
-      <div className="flex items-center space-x-2">
-        <Activity className="w-4 h-4 text-gray-600" />
-        <span className="text-sm font-medium text-gray-800">System Health</span>
+      <div className="flex items-center flex-wrap justify-center gap-x-2 gap-y-1">
+        <div className="flex items-center space-x-2">
+          <Activity className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-800 hidden sm:inline">
+            System Health
+          </span>
+          <span className="text-gray-300 hidden md:inline">•</span>
+        </div>
 
-        <span className="text-gray-300">•</span>
-
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-500 hidden lg:inline">
           {isRefreshing
             ? "Checking..."
             : health.data?.last_check
@@ -84,7 +87,7 @@ const SystemHealthHeader: React.FC = () => {
               : "Never"}
         </span>
 
-        <span className="text-gray-300">•</span>
+        <span className="text-gray-300 hidden lg:inline">•</span>
 
         {(() => {
           const status = getHealthStatus("grpc_server");
@@ -101,6 +104,8 @@ const SystemHealthHeader: React.FC = () => {
           );
         })()}
 
+        <span className="text-gray-300 hidden md:inline">•</span>
+
         {(() => {
           const status = getHealthStatus("database");
           const IconComponent = status.icon;
@@ -116,7 +121,7 @@ const SystemHealthHeader: React.FC = () => {
           );
         })()}
 
-        <span className="text-gray-300">•</span>
+        <span className="text-gray-300 hidden sm:inline">•</span>
 
         <Button
           variant="ghost"
@@ -126,11 +131,11 @@ const SystemHealthHeader: React.FC = () => {
           className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100"
         >
           {isRefreshing || isLoading ? (
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
-            <RefreshCw className="w-3 h-3 mr-1" />
+            <RefreshCw className="w-3 h-3" />
           )}
-          <span>Refresh</span>
+          <span className="hidden sm:inline ml-1">Refresh</span>
         </Button>
       </div>
     </div>

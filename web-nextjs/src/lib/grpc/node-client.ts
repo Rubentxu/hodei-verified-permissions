@@ -144,24 +144,6 @@ interface ValidationIssue {
   issue_type: string;
 }
 
-interface GetPolicyStoreAuditLogRequest {
-  policy_store_id: string;
-}
-
-interface PolicyStoreAuditLogEntry {
-  id?: number;
-  policy_store_id: string;
-  action: string;
-  user_id: string;
-  changes?: string;
-  ip_address?: string;
-  timestamp?: string;
-}
-
-interface GetPolicyStoreAuditLogResponse {
-  audit_logs: PolicyStoreAuditLogEntry[];
-}
-
 interface UpdatePolicyStoreTagsRequest {
   policy_store_id: string;
   tags: string[];
@@ -307,7 +289,8 @@ interface BatchDeletePolicyResult {
 
 const VERIFIED_PERMISSIONS_ADDR =
   process.env.VERIFIED_PERMISSIONS_ADDR || "localhost:50051";
-const PROTO_PATH = path.join(process.cwd(), "../proto/authorization.proto");
+
+const PROTO_PATH = path.join(process.cwd(), "public/proto/authorization.proto");
 
 // Load proto file
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -672,28 +655,6 @@ export const grpcClients = {
     });
   },
 
-  getPolicyStoreAuditLog: (
-    request: GetPolicyStoreAuditLogRequest,
-  ): Promise<GetPolicyStoreAuditLogResponse> => {
-    return new Promise((resolve, reject) => {
-      authorizationControlClient.getPolicyStoreAuditLog(
-        request,
-        (err: any, response: GetPolicyStoreAuditLogResponse) => {
-          if (err) {
-            console.error("gRPC getPolicyStoreAuditLog error:", err);
-            reject(
-              new Error(
-                `gRPC error: ${err.message || err.details || "Unknown error"}`,
-              ),
-            );
-          } else {
-            resolve(response);
-          }
-        },
-      );
-    });
-  },
-
   updatePolicyStoreTags: (
     request: UpdatePolicyStoreTagsRequest,
   ): Promise<UpdatePolicyStoreTagsResponse> => {
@@ -917,9 +878,6 @@ export type {
   TestAuthorizationRequest,
   TestAuthorizationResponse,
   ValidationIssue,
-  GetPolicyStoreAuditLogRequest,
-  PolicyStoreAuditLogEntry,
-  GetPolicyStoreAuditLogResponse,
   UpdatePolicyStoreTagsRequest,
   UpdatePolicyStoreTagsResponse,
   CreatePolicyStoreSnapshotRequest,

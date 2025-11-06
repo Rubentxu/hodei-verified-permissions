@@ -1,44 +1,10 @@
 //! Repository traits - Abstraction for persistence layer
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 
 use crate::entities::*;
 use crate::errors::DomainResult;
 use crate::value_objects::*;
-
-/// Authorization log for auditing
-#[derive(Debug, Clone)]
-pub struct AuthorizationLog {
-    pub policy_store_id: PolicyStoreId,
-    pub principal: Principal,
-    pub action: Action,
-    pub resource: Resource,
-    pub decision: AuthorizationDecision,
-    pub timestamp: DateTime<Utc>,
-}
-
-/// Audit log filters for querying events
-#[derive(Debug, Clone)]
-pub struct AuditLogFilters {
-    pub event_types: Option<Vec<String>>,
-    pub service_name: Option<String>,
-    pub policy_store_id: Option<String>,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
-    pub limit: Option<u32>,
-}
-
-/// Audit log entry - deserialized domain event
-#[derive(Debug, Clone)]
-pub struct AuditLogEntry {
-    pub event_id: String,
-    pub event_type: String,
-    pub aggregate_id: String,
-    pub event_data: serde_json::Value,
-    pub occurred_at: DateTime<Utc>,
-    pub version: u32,
-}
 
 /// Repository trait for policy store operations
 #[async_trait]
@@ -77,10 +43,6 @@ pub trait PolicyRepository: Send + Sync {
         id: &PolicyStoreId,
         tags_json: String,
     ) -> DomainResult<PolicyStore>;
-
-    // ============================================================================
-    // Audit Log Operations
-    // ============================================================================
 
     // ============================================================================
     // Schema Operations
@@ -237,14 +199,4 @@ pub trait PolicyRepository: Send + Sync {
         policy_store_id: &PolicyStoreId,
         snapshot_id: &str,
     ) -> DomainResult<()>;
-
-    // ============================================================================
-    // Audit Operations
-    // ============================================================================
-
-    /// Get audit log events with optional filtering
-    async fn get_audit_log(&self, filters: AuditLogFilters) -> DomainResult<Vec<AuditLogEntry>>;
-
-    /// Logs an authorization decision for auditing
-    async fn log_authorization(&self, log: AuthorizationLog) -> DomainResult<()>;
 }

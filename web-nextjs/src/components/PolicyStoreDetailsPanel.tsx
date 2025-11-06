@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   usePolicyStore,
-  usePolicyStoreAuditLog,
   usePolicyStoreSnapshots,
   usePolicyStoreTags,
   useUpdatePolicyStore,
@@ -17,7 +16,6 @@ import {
   FileText,
   Layers,
   Clock,
-  User,
   Calendar,
   Tag,
   History,
@@ -26,81 +24,6 @@ import {
   X,
 } from "lucide-react";
 import TagManager from "./TagManager";
-
-// Audit Log Panel Component
-interface AuditLogPanelProps {
-  policyStoreId: string;
-}
-
-const AuditLogPanel: React.FC<AuditLogPanelProps> = ({ policyStoreId }) => {
-  const {
-    data: auditLog,
-    isLoading,
-    error,
-  } = usePolicyStoreAuditLog(policyStoreId);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="animate-pulse h-16 bg-gray-200 rounded"></div>
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-red-600">
-        Error loading audit log: {error.message}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {auditLog?.log_entries?.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">
-          No audit log entries found
-        </p>
-      ) : (
-        auditLog?.log_entries?.map((entry: any, index: number) => (
-          <div key={index} className="border rounded-lg p-4 hover:bg-gray-50">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Badge
-                    variant={
-                      entry.action?.includes("create")
-                        ? "default"
-                        : entry.action?.includes("delete")
-                          ? "destructive"
-                          : "secondary"
-                    }
-                  >
-                    {entry.action || "Unknown"}
-                  </Badge>
-                  <span className="text-sm text-gray-500">
-                    {new Date(entry.timestamp).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700">
-                  {entry.description || "No description"}
-                </p>
-                {entry.user_id && (
-                  <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500">
-                    <User className="w-3 h-3" />
-                    <span>{entry.user_id}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
 
 // Tags Panel Component
 interface TagsPanelProps {
@@ -255,9 +178,9 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
   policyStoreId,
 }) => {
   const { data: policyStore, isLoading, error } = usePolicyStore(policyStoreId);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "audit" | "tags" | "versions"
-  >("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "tags" | "versions">(
+    "overview",
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [descriptionText, setDescriptionText] = useState("");
   const updateMutation = useUpdatePolicyStore();
@@ -310,17 +233,6 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
         >
           <FileText className="w-4 h-4" />
           <span>Overview</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("audit")}
-          className={`px-4 py-2 flex items-center space-x-2 ${
-            activeTab === "audit"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <History className="w-4 h-4" />
-          <span>Audit Log</span>
         </button>
         <button
           onClick={() => setActiveTab("tags")}
@@ -417,9 +329,6 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
         </>
       )}
 
-      {activeTab === "audit" && (
-        <AuditLogPanel policyStoreId={policyStore.policy_store_id} />
-      )}
       {activeTab === "tags" && (
         <TagsPanel policyStoreId={policyStore.policy_store_id} />
       )}

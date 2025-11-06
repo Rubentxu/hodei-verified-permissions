@@ -270,18 +270,6 @@ pub struct RollbackResult {
     pub schema_restored: bool,
 }
 
-/// Policy Store Audit Log entity - Represents an audit log entry for a policy store
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PolicyStoreAuditLog {
-    pub id: i64,
-    pub policy_store_id: PolicyStoreId,
-    pub action: String,
-    pub user_id: String,
-    pub changes: Option<String>,
-    pub ip_address: Option<String>,
-    pub timestamp: DateTime<Utc>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

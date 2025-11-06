@@ -58,27 +58,6 @@ pub struct PolicyTemplate {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone)]
-pub struct AuthorizationLog {
-    pub policy_store_id: String,
-    pub principal: String,
-    pub action: String,
-    pub resource: String,
-    pub decision: String,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PolicyStoreAuditLog {
-    pub id: i64,
-    pub policy_store_id: String,
-    pub action: String, // "CREATE", "UPDATE", "DELETE"
-    pub user_id: String,
-    pub changes: Option<String>, // JSON string of changes
-    pub ip_address: Option<String>,
-    pub timestamp: DateTime<Utc>,
-}
-
 /// Snapshot database model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -109,15 +88,4 @@ pub struct RollbackResult {
     pub rolled_back_at: DateTime<Utc>,
     pub policies_restored: i32,
     pub schema_restored: bool,
-}
-
-/// Audit log entry model for event sourcing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuditLogEntry {
-    pub event_id: String,
-    pub event_type: String,
-    pub aggregate_id: String,
-    pub event_data: String, // JSON serialized event data
-    pub occurred_at: DateTime<Utc>,
-    pub version: u32,
 }

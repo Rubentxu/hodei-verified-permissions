@@ -490,24 +490,4 @@ impl PolicyRepository for PostgresRepository {
 
         Ok(())
     }
-
-    // Audit Operations
-    async fn log_authorization(&self, log: AuthorizationLog) -> Result<()> {
-        let store_uuid = Uuid::parse_str(&log.policy_store_id)
-            .map_err(|_| AuthorizationError::NotFound(format!("Invalid policy store ID: {}", log.policy_store_id)))?;
-
-        sqlx::query(
-            "INSERT INTO authorization_logs (policy_store_id, principal, action, resource, decision, timestamp) VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(store_uuid)
-        .bind(&log.principal)
-        .bind(&log.action)
-        .bind(&log.resource)
-        .bind(&log.decision)
-        .bind(log.timestamp)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
 }

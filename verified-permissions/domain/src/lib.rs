@@ -12,6 +12,7 @@ pub mod value_objects;
 
 pub use entities::*;
 pub use errors::{DomainError, DomainResult};
+pub use events::*;
 pub use repository::*;
 pub use services::{AuthorizationEvaluator, PolicyValidator};
 pub use value_objects::*;

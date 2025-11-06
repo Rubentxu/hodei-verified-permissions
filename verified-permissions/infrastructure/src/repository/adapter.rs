@@ -1,15 +1,10 @@
 //! Adapter that implements domain PolicyRepository trait using SQLite
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use hodei_domain::events::{
-    ApiCalled, ApiCompleted, AuthorizationPerformed, DomainEvent, PolicyStoreAccessed,
-};
 use hodei_domain::{
-    Action, AuditLogEntry, AuditLogFilters, AuthorizationDecision, AuthorizationEvaluator,
-    AuthorizationLog, CedarPolicy, DomainError, DomainResult, IdentitySource, IdentitySourceType,
-    Policy, PolicyId, PolicyRepository, PolicyStore, PolicyStoreId, PolicyTemplate, Principal,
-    Resource, RollbackResult, Schema, Snapshot, SnapshotPolicy,
+    CedarPolicy, DomainError, DomainResult, IdentitySource, IdentitySourceType,
+    Policy, PolicyId, PolicyRepository, PolicyStore, PolicyStoreId, PolicyTemplate,
+    RollbackResult, Schema, Snapshot, SnapshotPolicy,
 };
 use serde_json;
 
@@ -96,39 +91,6 @@ impl RepositoryAdapter {
             description: model.description,
             created_at: model.created_at,
             updated_at: model.updated_at,
-        })
-    }
-
-    fn to_model_authorization_log(log: AuthorizationLog) -> models::AuthorizationLog {
-        models::AuthorizationLog {
-            policy_store_id: log.policy_store_id.into_string(),
-            principal: log.principal.to_string(),
-            action: log.action.to_string(),
-            resource: log.resource.to_string(),
-            decision: log.decision.to_string(),
-            timestamp: log.timestamp,
-        }
-    }
-
-    fn to_domain_authorization_log(
-        model: models::AuthorizationLog,
-    ) -> DomainResult<AuthorizationLog> {
-        Ok(AuthorizationLog {
-            policy_store_id: PolicyStoreId::new(model.policy_store_id)?,
-            principal: Principal::new(model.principal)?,
-            action: Action::new(model.action)?,
-            resource: Resource::new(model.resource)?,
-            decision: match model.decision.as_str() {
-                "ALLOW" => AuthorizationDecision::Allow,
-                "DENY" => AuthorizationDecision::Deny,
-                other => {
-                    return Err(DomainError::Internal(format!(
-                        "Invalid decision: {}",
-                        other
-                    )));
-                }
-            },
-            timestamp: model.timestamp,
         })
     }
 
@@ -577,41 +539,5 @@ impl PolicyRepository for RepositoryAdapter {
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Ok(())
-    }
-
-    async fn log_authorization(&self, log: AuthorizationLog) -> DomainResult<()> {
-        let model = Self::to_model_authorization_log(log);
-        self.sqlite_repo
-            .log_authorization(model)
-            .await
-            .map_err(|e| DomainError::Internal(e.to_string()))?;
-        Ok(())
-    }
-
-    /// Get audit log events with optional filtering
-    async fn get_audit_log(&self, filters: AuditLogFilters) -> DomainResult<Vec<AuditLogEntry>> {
-        let events = self
-            .sqlite_repo
-            .get_audit_log(filters)
-            .await
-            .map_err(|e| DomainError::Internal(e.to_string()))?;
-
-        events.into_iter().map(Self::map_audit_log_entry).collect()
-    }
-}
-
-impl RepositoryAdapter {
-    fn map_audit_log_entry(model: models::AuditLogEntry) -> DomainResult<AuditLogEntry> {
-        let event_data: serde_json::Value = serde_json::from_str(&model.event_data)
-            .map_err(|e| DomainError::Internal(format!("Failed to parse event data: {}", e)))?;
-
-        Ok(AuditLogEntry {
-            event_id: model.event_id,
-            event_type: model.event_type,
-            aggregate_id: model.aggregate_id,
-            event_data,
-            occurred_at: model.occurred_at,
-            version: model.version,
-        })
     }
 }

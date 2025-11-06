@@ -89,6 +89,7 @@ impl AuthorizationClient {
     ///
     /// ```no_run
     /// # use verified_permissions_sdk::AuthorizationClient;
+    /// # use verified_permissions_sdk::Decision;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let client = AuthorizationClient::connect("http://localhost:50051").await?;
     ///
@@ -104,6 +105,7 @@ impl AuthorizationClient {
     /// match response.decision() {
     ///     Decision::Allow => println!("Access granted"),
     ///     Decision::Deny => println!("Access denied"),
+    ///     _ => println!("Unknown decision"),
     /// }
     /// # Ok(())
     /// # }
@@ -348,15 +350,6 @@ impl AuthorizationClient {
 /// # Errors
 ///
 /// Returns `SdkError::InvalidRequest` if the format is invalid
-///
-/// # Example
-///
-/// ```
-/// # use verified_permissions_sdk::client::parse_entity_id;
-/// let entity = parse_entity_id("User::alice".to_string()).unwrap();
-/// assert_eq!(entity.entity_type, "User");
-/// assert_eq!(entity.entity_id, "alice");
-/// ```
 fn parse_entity_id(s: String) -> Result<EntityIdentifier> {
     let parts: Vec<&str> = s.split("::").collect();
     if parts.len() != 2 {

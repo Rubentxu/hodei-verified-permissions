@@ -177,6 +177,7 @@ service AuthorizationControl {
 
   // Update policy store tags
   rpc UpdatePolicyStoreTags(UpdatePolicyStoreTagsRequest) returns (UpdatePolicyStoreTagsResponse);
+
 }
 
 // ============================================================================

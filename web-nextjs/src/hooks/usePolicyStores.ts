@@ -238,32 +238,6 @@ export const usePolicyStoreMetrics = (policyStoreId: string) => {
   });
 };
 
-// Hook to get audit log for a specific policy store
-export const usePolicyStoreAuditLog = (policyStoreId: string) => {
-  return useQuery({
-    queryKey: ["policy-store-audit", policyStoreId],
-    queryFn: async () => {
-      if (!policyStoreId) return [];
-
-      try {
-        const response = await fetch(
-          `/api/policy-stores/${policyStoreId}/audit`,
-        );
-        if (!response.ok) {
-          return [];
-        }
-        const data = await response.json();
-        return data.log_entries || [];
-      } catch (error) {
-        console.error("Failed to fetch audit log:", error);
-        return [];
-      }
-    },
-    enabled: !!policyStoreId,
-    staleTime: 30000,
-  });
-};
-
 // Hook to get all existing tags for autocomplete
 export const useAllTags = () => {
   return useQuery({

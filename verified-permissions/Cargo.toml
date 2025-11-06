@@ -16,6 +16,13 @@ authors = ["Hodei Team"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
+# Internal crates
+hodei-shared = { path = "shared" }
+hodei-domain = { path = "domain" }
+hodei-application = { path = "application" }
+hodei-infrastructure = { path = "infrastructure" }
+hodei-api = { path = "api" }
+
 # Configuration
 toml = "0.9.8"
 
@@ -24,13 +31,6 @@ base64 = "0.22"
 
 # Regex support
 regex = "1.10"
-
-# Internal crates
-hodei-shared = { path = "shared" }
-hodei-domain = { path = "domain" }
-hodei-application = { path = "application" }
-hodei-infrastructure = { path = "infrastructure" }
-hodei-api = { path = "api" }
 
 # gRPC and async runtime
 tonic = "0.14.2"
@@ -47,7 +47,8 @@ serde_json = "1.0"
 
 # Database
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite"] }
-surrealdb = { version = "2.0" }
+postgres = { package = "postgres", version = "0.19" }
+surrealdb = "2.0"
 
 # Error handling
 thiserror = "2.0.17"
@@ -69,6 +70,4 @@ reqwest = { version = "0.12", features = ["json"] }
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
-
-# Async trait support
 async-trait = "0.1"
