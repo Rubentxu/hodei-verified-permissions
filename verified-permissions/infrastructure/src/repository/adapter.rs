@@ -153,10 +153,11 @@ impl PolicyRepository for RepositoryAdapter {
         id: &PolicyStoreId,
         name: Option<String>,
         description: Option<String>,
+        status: Option<String>,
     ) -> DomainResult<PolicyStore> {
         let model = self
             .sqlite_repo
-            .update_policy_store(Self::policy_store_id_str(id), name, description)
+            .update_policy_store(Self::policy_store_id_str(id), name, description, status)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Self::map_policy_store(model)

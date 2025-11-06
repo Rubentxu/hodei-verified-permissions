@@ -34,6 +34,7 @@ pub trait PolicyRepository: Send + Sync {
         id: &PolicyStoreId,
         name: Option<String>,
         description: Option<String>,
+        status: Option<String>,
     ) -> DomainResult<PolicyStore>;
 
     /// Deletes a Policy Store and all its content (cascade)

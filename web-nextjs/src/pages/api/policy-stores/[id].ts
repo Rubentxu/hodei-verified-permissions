@@ -51,7 +51,7 @@ export default async function handler(
       case "PUT":
       case "PATCH": {
         try {
-          const { description, tags } = req.body;
+          const { description, tags, status } = req.body;
 
           // Description is required
           if (!description || typeof description !== "string") {
@@ -74,6 +74,7 @@ export default async function handler(
           const updatedStore = await grpcClients.updatePolicyStore({
             policy_store_id: policyStoreId,
             description,
+            status: status || "active", // Send status if provided
           });
 
           // Update tags if provided

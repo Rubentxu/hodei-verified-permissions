@@ -299,6 +299,7 @@ impl SqliteRepository {
         id: &str,
         name: Option<String>,
         description: Option<String>,
+        status: Option<String>,
     ) -> anyhow::Result<models::PolicyStore> {
         let now = Utc::now();
 
@@ -308,12 +309,13 @@ impl SqliteRepository {
         sqlx::query(
             r#"
             UPDATE policy_stores
-            SET name = COALESCE(?, name), description = COALESCE(?, description), updated_at = ?
+            SET name = COALESCE(?, name), description = COALESCE(?, description), status = COALESCE(?, status), updated_at = ?
             WHERE id = ?
             "#,
         )
         .bind(name.as_ref())
         .bind(description.as_ref())
+        .bind(status.as_ref())
         .bind(now.to_rfc3339())
         .bind(id)
         .execute(&self.pool)

@@ -29,9 +29,21 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        Policy Store Overview
-      </h2>
+      {/* Header with name and ID */}
+      <div className="mb-6 pb-4 border-b border-gray-200">
+        <div className="flex items-center space-x-3 mb-2">
+          <Shield className="w-8 h-8 text-blue-600" />
+          <h2 className="text-3xl font-bold text-gray-900">
+            {policyStore.name || "Untitled Policy Store"}
+          </h2>
+        </div>
+        <div className="flex items-center space-x-3">
+          <span className="text-sm font-medium text-gray-600">ID:</span>
+          <Badge variant="outline" className="font-mono text-sm">
+            {policyStore.policy_store_id}
+          </Badge>
+        </div>
+      </div>
 
       <div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

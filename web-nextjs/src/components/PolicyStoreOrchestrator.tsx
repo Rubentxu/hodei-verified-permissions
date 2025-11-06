@@ -24,8 +24,7 @@ const PolicyStoreOrchestrator = () => {
     if (content === "create") return "Create Policy Store";
     if (content === "edit")
       return `Edit Policy Store${store?.name ? `: ${store.name}` : ""}`;
-    if (content === "details")
-      return `Policy Store Details${store?.name ? `: ${store.name}` : ""}`;
+    if (content === "details") return "Policy Store Details";
     return "";
   };
 

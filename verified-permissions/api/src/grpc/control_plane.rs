@@ -191,7 +191,7 @@ impl AuthorizationControl for AuthorizationControlService {
 
         let store = self
             .repository
-            .update_policy_store(&policy_store_id, req.name, req.description)
+            .update_policy_store(&policy_store_id, req.name, req.description, req.status)
             .await
             .map_err(|e| {
                 error!("Failed to update policy store: {}", e);
