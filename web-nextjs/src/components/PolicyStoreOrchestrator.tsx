@@ -19,6 +19,16 @@ const PolicyStoreOrchestrator = () => {
   const updateMutation = useUpdatePolicyStore();
   const { data: policyStore } = usePolicyStore(selectedStoreId || "");
 
+  // Helper function to get display name
+  const getDisplayName = (content: string, storeId?: string, store?: any) => {
+    if (content === "create") return "Create Policy Store";
+    if (content === "edit")
+      return `Edit Policy Store${store?.name ? `: ${store.name}` : ""}`;
+    if (content === "details")
+      return `Policy Store Details${store?.name ? `: ${store.name}` : ""}`;
+    return "";
+  };
+
   const handleCreate = async (
     name: string,
     description: string,
@@ -61,13 +71,7 @@ const PolicyStoreOrchestrator = () => {
     <BottomSheet
       isOpen={isOpen}
       onClose={closePanel}
-      title={
-        content === "details"
-          ? `Policy Store Details: ${selectedStoreId}`
-          : content === "create"
-            ? "Create Policy Store"
-            : "Edit Policy Store"
-      }
+      title={getDisplayName(content, selectedStoreId, policyStore)}
       marginLeft={256} // Adjust this value to match the width of the side navigation
     >
       <motion.div
