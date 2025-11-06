@@ -7,6 +7,8 @@ import { handleGRPCError } from "@/lib/grpc/handle-grpc-error";
 const createPolicyStoreSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name too long"),
   description: z.string().max(500, "Description too long").optional(),
+  tags: z.array(z.string()).optional(),
+  user: z.string().min(1, "User is required"),
 });
 
 const updatePolicyStoreSchema = z.object({
@@ -43,12 +45,14 @@ export default async function handler(
       case "POST": {
         // Validate request body
         const body = createPolicyStoreSchema.parse(req.body);
-        const { name, description } = body;
+        const { name, description, tags, user } = body;
 
         // Call gRPC backend
         const response = await grpcClients.createPolicyStore({
           name,
           description,
+          tags,
+          user,
         });
 
         return res.status(201).json(response);

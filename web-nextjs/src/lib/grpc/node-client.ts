@@ -35,6 +35,8 @@ interface IsAuthorizedResponse {
 interface CreatePolicyStoreRequest {
   name: string;
   description?: string;
+  tags?: string[];
+  user: string;
 }
 
 interface CreatePolicyStoreResponse {

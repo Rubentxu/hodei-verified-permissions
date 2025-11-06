@@ -135,7 +135,12 @@ async fn handle_store_command(
     match cmd {
         StoreCommands::Create { name, description } => {
             let response = client
-                .create_policy_store(CreatePolicyStoreRequest { name, description })
+                .create_policy_store(CreatePolicyStoreRequest {
+                    name,
+                    description,
+                    tags: vec![],
+                    user: "cli_user".to_string(),
+                })
                 .await?;
             let store = response.into_inner();
             println!("✅ Policy store created:");

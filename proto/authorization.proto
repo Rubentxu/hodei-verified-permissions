@@ -188,6 +188,10 @@ message CreatePolicyStoreRequest {
   string name = 1;
   // Optional description
   optional string description = 2;
+  // Optional tags for categorization
+  repeated string tags = 3;
+  // User/author who created the policy store
+  string user = 4;
 }
 
 message CreatePolicyStoreResponse {

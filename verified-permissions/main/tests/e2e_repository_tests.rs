@@ -15,7 +15,7 @@ async fn test_policy_store_lifecycle() {
 
     // Test: Create policy store
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .expect("Failed to create policy store");
 
@@ -59,15 +59,15 @@ async fn test_multiple_policy_stores() {
 
     // Create 3 stores
     let store_a = repo
-        .create_policy_store("Test Store".to_string(), Some("Store A".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Store A".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
     let store_b = repo
-        .create_policy_store("Test Store".to_string(), Some("Store B".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Store B".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
     let store_c = repo
-        .create_policy_store("Test Store".to_string(), Some("Store C".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Store C".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -91,7 +91,7 @@ async fn test_schema_management() {
 
     // Create store
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Schema Test".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Schema Test".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -126,7 +126,7 @@ async fn test_policy_crud() {
 
     // Create store with schema
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Policy Test".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Policy Test".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -172,6 +172,8 @@ async fn test_policy_with_conditions() {
         .create_policy_store(
             "Test Store".to_string(),
             Some("Conditions Test".to_string()),
+            vec![],
+            "test_user".to_string(),
         )
         .await
         .unwrap();
@@ -222,7 +224,7 @@ async fn test_identity_source_crud() {
     let repo = create_test_repo().await;
 
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Identity Test".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Identity Test".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -270,7 +272,7 @@ async fn test_cascade_delete() {
 
     // Create store with schema, policies, and identity source
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Cascade Test".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Cascade Test".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 

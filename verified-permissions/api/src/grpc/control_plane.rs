@@ -44,13 +44,20 @@ impl AuthorizationControl for AuthorizationControlService {
     ) -> Result<Response<CreatePolicyStoreResponse>, Status> {
         let req = request.into_inner();
         info!(
-            "Creating policy store with name: {:?} description: {:?}",
-            req.name, req.description
+            "Creating policy store with name: {:?} description: {:?} tags: {:?} user: {:?}",
+            req.name, req.description, req.tags, req.user
         );
+
+        let tags = req.tags;
+        let user = if !req.user.is_empty() {
+            req.user
+        } else {
+            "system".to_string()
+        };
 
         let store = self
             .repository
-            .create_policy_store(req.name, req.description)
+            .create_policy_store(req.name, req.description, tags, user)
             .await
             .map_err(|e| {
                 error!("Failed to create policy store: {}", e);

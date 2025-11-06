@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 pub struct CreatePolicyStoreRequest {
     pub name: String,
     pub description: Option<String>,
+    pub tags: Vec<String>,
+    pub user: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

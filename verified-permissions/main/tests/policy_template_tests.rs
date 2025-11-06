@@ -8,7 +8,7 @@ async fn test_policy_template_crud() {
 
     // Create policy store
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -64,7 +64,7 @@ async fn test_policy_template_crud() {
 async fn test_template_validation() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -89,7 +89,7 @@ async fn test_template_validation() {
 async fn test_template_with_principal_only() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -114,7 +114,7 @@ async fn test_template_with_principal_only() {
 async fn test_template_with_resource_only() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -139,7 +139,7 @@ async fn test_template_with_resource_only() {
 async fn test_multiple_templates() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -185,7 +185,7 @@ async fn test_multiple_templates() {
 async fn test_template_not_found() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 
@@ -198,7 +198,7 @@ async fn test_template_not_found() {
 async fn test_template_cascade_delete() {
     let repo = SqliteRepository::new(":memory:").await.unwrap();
     let store = repo
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .unwrap();
 

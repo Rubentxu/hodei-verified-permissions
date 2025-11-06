@@ -18,6 +18,8 @@ pub trait PolicyRepository: Send + Sync {
         &self,
         name: String,
         description: Option<String>,
+        tags: Vec<String>,
+        user: String,
     ) -> DomainResult<PolicyStore>;
 
     /// Gets a Policy Store by ID

@@ -24,7 +24,12 @@ impl<R: PolicyRepository> CreatePolicyStoreUseCase<R> {
 
         let policy_store = self
             .repository
-            .create_policy_store(request.name.clone(), request.description)
+            .create_policy_store(
+                request.name.clone(),
+                request.description,
+                request.tags,
+                request.user,
+            )
             .await
             .map_err(|e| ApplicationError::Repository(e.to_string()))?;
 

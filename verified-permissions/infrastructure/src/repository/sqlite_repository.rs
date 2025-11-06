@@ -215,9 +215,12 @@ impl SqliteRepository {
         &self,
         name: String,
         description: Option<String>,
+        tags: Vec<String>,
+        user: String,
     ) -> anyhow::Result<models::PolicyStore> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
+        let tags_json = serde_json::to_string(&tags).unwrap_or_default();
 
         sqlx::query(
             "INSERT INTO policy_stores (id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -227,8 +230,8 @@ impl SqliteRepository {
         .bind(&description)
         .bind("active")
         .bind("1.0")
-        .bind("system")
-        .bind("[]")
+        .bind(&user)
+        .bind(&tags_json)
         .bind("[]")
         .bind::<Option<String>>(None)
         .bind(now.to_rfc3339())
@@ -243,7 +246,7 @@ impl SqliteRepository {
             status: "active".to_string(),
             version: "1.0".to_string(),
             author: "system".to_string(),
-            tags: "[]".to_string(),
+            tags: tags_json,
             identity_source_ids: "[]".to_string(),
             default_identity_source_id: None,
             created_at: now,

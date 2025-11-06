@@ -29,7 +29,13 @@ pub struct PolicyStore {
 }
 
 impl PolicyStore {
-    pub fn new(id: PolicyStoreId, name: String, description: Option<String>) -> Self {
+    pub fn new(
+        id: PolicyStoreId,
+        name: String,
+        description: Option<String>,
+        tags: Vec<String>,
+        user: String,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id,
@@ -37,8 +43,8 @@ impl PolicyStore {
             description,
             status: PolicyStoreStatus::Active,
             version: "1.0".to_string(),
-            author: "system".to_string(),
-            tags: Vec::new(),
+            author: user,
+            tags,
             identity_source_ids: Vec::new(),
             default_identity_source_id: None,
             created_at: now,
@@ -280,6 +286,8 @@ mod tests {
             PolicyStoreId::new("store-1".to_string()).unwrap(),
             "Test Store".to_string(),
             None,
+            vec![],
+            "test_user".to_string(),
         );
 
         store.add_identity_source("identity-1".to_string());
@@ -293,6 +301,8 @@ mod tests {
             PolicyStoreId::new("store-1".to_string()).unwrap(),
             "Test Store".to_string(),
             None,
+            vec![],
+            "test_user".to_string(),
         );
 
         store.add_identity_source("identity-1".to_string());
@@ -307,6 +317,8 @@ mod tests {
             PolicyStoreId::new("store-1".to_string()).unwrap(),
             "Test Store".to_string(),
             None,
+            vec![],
+            "test_user".to_string(),
         );
 
         store.add_identity_source("identity-1".to_string());
@@ -321,6 +333,8 @@ mod tests {
             PolicyStoreId::new("store-1".to_string()).unwrap(),
             "Test Store".to_string(),
             None,
+            vec![],
+            "test_user".to_string(),
         );
 
         store.add_identity_source("identity-1".to_string());
@@ -336,6 +350,8 @@ mod tests {
             PolicyStoreId::new("store-1".to_string()).unwrap(),
             "Test Store".to_string(),
             None,
+            vec![],
+            "test_user".to_string(),
         );
 
         store.add_identity_source("identity-1".to_string());

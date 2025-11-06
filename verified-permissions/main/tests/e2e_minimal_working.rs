@@ -21,7 +21,7 @@ async fn tc_001_simple_crud() -> Result<(), Box<dyn std::error::Error>> {
 
     // CREATE
     let store = client
-        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()))
+        .create_policy_store("Test Store".to_string(), Some("Test Store".to_string()), vec![], "test_user".to_string())
         .await
         .expect("Failed to create store");
     println!("  ✓ Created: {}", store.policy_store_id);

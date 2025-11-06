@@ -120,10 +120,12 @@ impl PolicyRepository for RepositoryAdapter {
         &self,
         name: String,
         description: Option<String>,
+        tags: Vec<String>,
+        user: String,
     ) -> DomainResult<PolicyStore> {
         let model = self
             .sqlite_repo
-            .create_policy_store(name, description)
+            .create_policy_store(name, description, tags, user)
             .await
             .map_err(|e| DomainError::Internal(e.to_string()))?;
         Self::map_policy_store(model)
