@@ -39,6 +39,7 @@ const PolicyStoreOrchestrator = () => {
     description: string,
     tags: string[] = [],
     user: string = "",
+    status: string = "active",
   ) => {
     if (!selectedStoreId) return;
     try {
@@ -47,6 +48,7 @@ const PolicyStoreOrchestrator = () => {
         name,
         description,
         tags,
+        status,
       });
       closePanel();
     } catch (error) {
@@ -92,6 +94,7 @@ const PolicyStoreOrchestrator = () => {
             initialDescription={policyStore?.description || ""}
             initialTags={policyStore?.tags || []}
             initialUser={policyStore?.author || ""}
+            initialStatus={policyStore?.status || "active"}
             showTagsAndUser={true}
           />
         )}

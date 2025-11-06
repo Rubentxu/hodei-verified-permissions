@@ -101,19 +101,27 @@ const PolicyStores = () => {
         {filteredStores.map((store) => (
           <Card
             key={store.policy_store_id}
-            className={`hover:shadow-md transition-shadow ${isOpen && selectedStoreId === store.policy_store_id ? "border-blue-500" : ""}`}
+            className={`hover:shadow-md transition-all duration-200 ${isOpen && selectedStoreId === store.policy_store_id ? "border-blue-500 shadow-lg" : ""} ${
+              store.status === "inactive"
+                ? "border-l-4 border-l-gray-400"
+                : "border-l-4 border-l-green-500"
+            }`}
           >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Shield className="w-9 h-9 text-blue-600" />
+                  <Shield
+                    className={`w-9 h-9 ${store.status === "active" ? "text-blue-600" : "text-gray-400"}`}
+                  />
                   <Badge variant="outline">{store.policy_store_id}</Badge>
                   <Badge
-                    variant={
-                      store.status === "active" ? "default" : "secondary"
+                    className={
+                      store.status === "active"
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                     }
                   >
-                    {store.status}
+                    {store.status === "active" ? "🟢 Active" : "⚪ Inactive"}
                   </Badge>
                 </div>
                 <div className="flex items-center space-x-1">

@@ -10,11 +10,13 @@ interface PolicyStoreFormPanelProps {
     description: string,
     tags: string[],
     user: string,
+    status: string,
   ) => void;
   initialName?: string;
   initialDescription?: string;
   initialTags?: string[];
   initialUser?: string;
+  initialStatus?: string;
   currentUser?: string;
   showTagsAndUser?: boolean;
 }
@@ -26,6 +28,7 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
   initialDescription = "",
   initialTags = [],
   initialUser = "",
+  initialStatus = "active",
   currentUser = "web_user", // Default fallback
   showTagsAndUser = false,
 }) => {
@@ -34,6 +37,7 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
   const [tags, setTags] = useState<string[]>(initialTags);
   const [tagInput, setTagInput] = useState("");
   const [user, setUser] = useState(initialUser || currentUser);
+  const [status, setStatus] = useState(initialStatus);
   const [errors, setErrors] = useState<{
     name?: string;
     user?: string;
@@ -45,6 +49,7 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
     setDescription(initialDescription);
     setTags(initialTags);
     setUser(initialUser || currentUser);
+    setStatus(initialStatus);
     if (!isEditing && showTagsAndUser) {
       setUser(currentUser);
     }
@@ -55,6 +60,7 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
     initialDescription,
     initialTags,
     initialUser,
+    initialStatus,
     currentUser,
     isEditing,
     showTagsAndUser,
@@ -98,7 +104,7 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
     // Clear errors and submit
     setErrors({});
     const userValue = showTagsAndUser ? user : "system";
-    onSubmit(name.trim(), description, tags, userValue.trim());
+    onSubmit(name.trim(), description, tags, userValue.trim(), status);
   };
 
   return (
@@ -147,6 +153,21 @@ const PolicyStoreFormPanel: React.FC<PolicyStoreFormPanelProps> = ({
           placeholder="Enter policy store description (optional)"
         />
       </div>
+      {isEditing && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Status
+          </label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      )}
       {showTagsAndUser && (
         <>
           <div className="mb-4">
