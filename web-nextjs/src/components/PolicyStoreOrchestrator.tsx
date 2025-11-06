@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePolicyStorePanelStore } from "@/lib/stores/policy-store-panel-store";
+import { usePolicyStore } from "@/hooks/usePolicyStores";
 import BottomSheet from "@/components/ui/BottomSheet";
 import PolicyStoreDetailsPanel from "@/components/PolicyStoreDetailsPanel";
 import PolicyStoreFormPanel from "@/components/PolicyStoreFormPanel";
@@ -16,10 +17,16 @@ const PolicyStoreOrchestrator = () => {
     usePolicyStorePanelStore();
   const createMutation = useCreatePolicyStore();
   const updateMutation = useUpdatePolicyStore();
+  const { data: policyStore } = usePolicyStore(selectedStoreId || "");
 
-  const handleCreate = async (name: string, description: string) => {
+  const handleCreate = async (
+    name: string,
+    description: string,
+    tags: string[],
+    user: string,
+  ) => {
     try {
-      await createMutation.mutateAsync({ name, description });
+      await createMutation.mutateAsync({ name, description, tags, user });
       closePanel();
     } catch (error) {
       console.error("Failed to create policy store:", error);
@@ -27,13 +34,19 @@ const PolicyStoreOrchestrator = () => {
     }
   };
 
-  const handleUpdate = async (name: string, description: string) => {
+  const handleUpdate = async (
+    name: string,
+    description: string,
+    tags: string[] = [],
+    user: string = "",
+  ) => {
     if (!selectedStoreId) return;
     try {
       await updateMutation.mutateAsync({
         policyStoreId: selectedStoreId,
         name,
         description,
+        tags,
       });
       closePanel();
     } catch (error) {
@@ -68,14 +81,18 @@ const PolicyStoreOrchestrator = () => {
           <PolicyStoreFormPanel
             isLoading={createMutation.isPending}
             onSubmit={handleCreate}
+            showTagsAndUser={true}
           />
         )}
         {content === "edit" && selectedStoreId && (
           <PolicyStoreFormPanel
             isLoading={updateMutation.isPending}
             onSubmit={handleUpdate}
-            initialName=""
-            initialDescription=""
+            initialName={policyStore?.name || ""}
+            initialDescription={policyStore?.description || ""}
+            initialTags={policyStore?.tags || []}
+            initialUser={policyStore?.author || ""}
+            showTagsAndUser={true}
           />
         )}
       </motion.div>

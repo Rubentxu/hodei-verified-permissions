@@ -245,7 +245,7 @@ impl SqliteRepository {
             description,
             status: "active".to_string(),
             version: "1.0".to_string(),
-            author: "system".to_string(),
+            author: user,
             tags: tags_json,
             identity_source_ids: "[]".to_string(),
             default_identity_source_id: None,

@@ -81,7 +81,7 @@ export const useCreatePolicyStore = () => {
   return useMutation<
     CreatePolicyStoreResponse,
     Error,
-    { name: string; description: string }
+    { name: string; description?: string; tags?: string[]; user: string }
   >({
     mutationFn: async (data) => {
       const response = await fetch("/api/policy-stores", {
@@ -143,15 +143,15 @@ export const useUpdatePolicyStore = () => {
   return useMutation<
     void,
     Error,
-    { policyStoreId: string; description: string }
+    { policyStoreId: string; description: string; tags?: string[] }
   >({
-    mutationFn: async ({ policyStoreId, description }) => {
+    mutationFn: async ({ policyStoreId, description, tags }) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({ description, tags }),
       });
 
       if (!response.ok) {

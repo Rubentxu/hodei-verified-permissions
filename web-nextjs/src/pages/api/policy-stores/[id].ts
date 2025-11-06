@@ -51,8 +51,9 @@ export default async function handler(
       case "PUT":
       case "PATCH": {
         try {
-          const { description } = req.body;
+          const { description, tags } = req.body;
 
+          // Description is required
           if (!description || typeof description !== "string") {
             return res.status(400).json({
               error: "Validation failed",
@@ -69,10 +70,19 @@ export default async function handler(
             });
           }
 
+          // Update policy store
           const updatedStore = await grpcClients.updatePolicyStore({
             policy_store_id: policyStoreId,
             description,
           });
+
+          // Update tags if provided
+          if (tags && Array.isArray(tags)) {
+            await grpcClients.updatePolicyStoreTags({
+              policy_store_id: policyStoreId,
+              tags,
+            });
+          }
 
           return res.status(200).json(updatedStore);
         } catch (error: any) {
