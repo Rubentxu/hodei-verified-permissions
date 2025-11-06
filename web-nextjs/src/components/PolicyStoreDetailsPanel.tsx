@@ -62,26 +62,25 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Version</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    v{policyStore.version}
-                  </p>
-                </div>
-                <FileText className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm font-medium text-gray-600">Author</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
                     {policyStore.author}
                   </p>
                 </div>
                 <User className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">
+                  Description
+                </p>
+                <p className="text-sm font-bold text-gray-900">
+                  {policyStore.description || "No description"}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -95,19 +94,10 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
                     {policyStore.tags?.length || 0}
                   </p>
                 </div>
-                <Tag className="w-8 h-8 text-orange-600" />
+                <Tag className="w-8 h-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold mb-2">Description</h4>
-          <div>
-            <span className="text-gray-700">
-              {policyStore.description || "No description provided"}
-            </span>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -144,11 +134,29 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
               <h4 className="text-sm font-semibold text-gray-600 mb-3">Tags</h4>
               {policyStore.tags && policyStore.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {policyStore.tags.map((tag: string, index: number) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
+                  {policyStore.tags.map((tag: string, index: number) => {
+                    // Color palette for tags
+                    const colors = [
+                      "bg-blue-100 text-blue-800 border-blue-300",
+                      "bg-green-100 text-green-800 border-green-300",
+                      "bg-purple-100 text-purple-800 border-purple-300",
+                      "bg-orange-100 text-orange-800 border-orange-300",
+                      "bg-pink-100 text-pink-800 border-pink-300",
+                      "bg-cyan-100 text-cyan-800 border-cyan-300",
+                      "bg-indigo-100 text-indigo-800 border-indigo-300",
+                      "bg-yellow-100 text-yellow-800 border-yellow-300",
+                    ];
+                    const colorClass = colors[index % colors.length];
+
+                    return (
+                      <Badge
+                        key={index}
+                        className={`text-xs font-medium ${colorClass}`}
+                      >
+                        {tag}
+                      </Badge>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">No tags assigned</p>

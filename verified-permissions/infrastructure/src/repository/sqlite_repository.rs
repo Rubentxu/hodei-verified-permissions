@@ -23,7 +23,6 @@ impl SqliteRepository {
                 name TEXT NOT NULL,
                 description TEXT,
                 status TEXT DEFAULT 'active',
-                version TEXT DEFAULT '1.0',
                 author TEXT DEFAULT 'system',
                 tags TEXT DEFAULT '[]',
                 identity_source_ids TEXT DEFAULT '[]',
@@ -46,10 +45,6 @@ impl SqliteRepository {
             .await;
 
         // Try to add columns, ignore if they already exist
-        let _ = sqlx::query("ALTER TABLE policy_stores ADD COLUMN version TEXT DEFAULT '1.0'")
-            .execute(&pool)
-            .await;
-
         let _ = sqlx::query("ALTER TABLE policy_stores ADD COLUMN author TEXT DEFAULT 'system'")
             .execute(&pool)
             .await;
@@ -223,13 +218,12 @@ impl SqliteRepository {
         let tags_json = serde_json::to_string(&tags).unwrap_or_default();
 
         sqlx::query(
-            "INSERT INTO policy_stores (id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO policy_stores (id, name, description, status, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&id)
         .bind(&name)
         .bind(&description)
         .bind("active")
-        .bind("1.0")
         .bind(&user)
         .bind(&tags_json)
         .bind("[]")
@@ -244,7 +238,6 @@ impl SqliteRepository {
             name,
             description,
             status: "active".to_string(),
-            version: "1.0".to_string(),
             author: user,
             tags: tags_json,
             identity_source_ids: "[]".to_string(),
@@ -256,7 +249,7 @@ impl SqliteRepository {
 
     pub async fn get_policy_store(&self, id: &str) -> anyhow::Result<models::PolicyStore> {
         let row = sqlx::query(
-            "SELECT id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores WHERE id = ?",
+            "SELECT id, name, description, status, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores WHERE id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -268,7 +261,6 @@ impl SqliteRepository {
             name: row.get("name"),
             description: row.get("description"),
             status: row.get("status"),
-            version: row.get("version"),
             author: row.get("author"),
             tags: row.get("tags"),
             identity_source_ids: row.get("identity_source_ids"),
@@ -280,7 +272,7 @@ impl SqliteRepository {
 
     pub async fn list_policy_stores(&self) -> anyhow::Result<Vec<models::PolicyStore>> {
         let rows = sqlx::query(
-            "SELECT id, name, description, status, version, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores ORDER BY created_at DESC",
+            "SELECT id, name, description, status, author, tags, identity_source_ids, default_identity_source_id, created_at, updated_at FROM policy_stores ORDER BY created_at DESC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -292,7 +284,6 @@ impl SqliteRepository {
                 name: row.get("name"),
                 description: row.get("description"),
                 status: row.get("status"),
-                version: row.get("version"),
                 author: row.get("author"),
                 tags: row.get("tags"),
                 identity_source_ids: row.get("identity_source_ids"),

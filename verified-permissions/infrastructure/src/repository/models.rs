@@ -9,7 +9,6 @@ pub struct PolicyStore {
     pub name: String,
     pub description: Option<String>,
     pub status: String, // "active" or "inactive"
-    pub version: String,
     pub author: String,
     pub tags: String,                // JSON serialized vector of strings
     pub identity_source_ids: String, // JSON serialized vector of strings

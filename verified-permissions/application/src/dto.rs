@@ -21,7 +21,6 @@ pub struct PolicyStoreResponse {
     pub name: String,
     pub description: Option<String>,
     pub status: String,
-    pub version: String,
     pub author: String,
     pub tags: Vec<String>,
     pub identity_source_ids: Vec<String>,

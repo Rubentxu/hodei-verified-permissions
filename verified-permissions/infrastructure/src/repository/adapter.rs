@@ -33,7 +33,6 @@ impl RepositoryAdapter {
             name: model.name,
             description: model.description,
             status,
-            version: model.version,
             author: model.author,
             tags,
             created_at: model.created_at,

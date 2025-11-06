@@ -209,18 +209,16 @@ message GetPolicyStoreResponse {
   optional string description = 3;
   // Current status of the policy store (active/inactive)
   string status = 4;
-  // Version number for versioning support
-  string version = 5;
   // Author/owner of the policy store
-  string author = 6;
+  string author = 5;
   // List of tags for categorization
-  repeated string tags = 7;
+  repeated string tags = 6;
   // List of identity source IDs associated with this policy store
-  repeated string identity_source_ids = 8;
+  repeated string identity_source_ids = 7;
   // Default identity source ID to use when not explicitly specified
-  optional string default_identity_source_id = 9;
-  string created_at = 10;
-  string updated_at = 11;
+  optional string default_identity_source_id = 8;
+  string created_at = 9;
+  string updated_at = 10;
 }
 
 message ListPolicyStoresRequest {
@@ -239,18 +237,16 @@ message PolicyStoreItem {
   optional string description = 3;
   // Current status of the policy store (active/inactive)
   string status = 4;
-  // Version number for versioning support
-  string version = 5;
   // Author/owner of the policy store
-  string author = 6;
+  string author = 5;
   // List of tags for categorization
-  repeated string tags = 7;
+  repeated string tags = 6;
   // List of identity source IDs associated with this policy store
-  repeated string identity_source_ids = 8;
+  repeated string identity_source_ids = 7;
   // Default identity source ID to use when not explicitly specified
-  optional string default_identity_source_id = 9;
-  string created_at = 10;
-  string updated_at = 11;
+  optional string default_identity_source_id = 8;
+  string created_at = 9;
+  string updated_at = 10;
 }
 
 message DeletePolicyStoreRequest {

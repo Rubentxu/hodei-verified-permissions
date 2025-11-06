@@ -14,8 +14,6 @@ pub struct PolicyStore {
     pub description: Option<String>,
     /// Current status of the policy store (active/inactive)
     pub status: PolicyStoreStatus,
-    /// Version number for versioning support
-    pub version: String,
     /// Author/owner of the policy store
     pub author: String,
     /// List of tags for categorization
@@ -42,7 +40,6 @@ impl PolicyStore {
             name,
             description,
             status: PolicyStoreStatus::Active,
-            version: "1.0".to_string(),
             author: user,
             tags,
             identity_source_ids: Vec::new(),

@@ -143,8 +143,6 @@ const PolicyStores = () => {
                 {store.description || "No description"}
               </CardDescription>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <span>v{store.version}</span>
-                <span>•</span>
                 <span>by {store.author}</span>
                 <span>•</span>
                 <span>
@@ -153,11 +151,29 @@ const PolicyStores = () => {
               </div>
               {store.tags && store.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {store.tags.map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
+                  {store.tags.map((tag, index) => {
+                    // Color palette for tags
+                    const colors = [
+                      "bg-blue-100 text-blue-800 border-blue-300",
+                      "bg-green-100 text-green-800 border-green-300",
+                      "bg-purple-100 text-purple-800 border-purple-300",
+                      "bg-orange-100 text-orange-800 border-orange-300",
+                      "bg-pink-100 text-pink-800 border-pink-300",
+                      "bg-cyan-100 text-cyan-800 border-cyan-300",
+                      "bg-indigo-100 text-indigo-800 border-indigo-300",
+                      "bg-yellow-100 text-yellow-800 border-yellow-300",
+                    ];
+                    const colorClass = colors[index % colors.length];
+
+                    return (
+                      <Badge
+                        key={index}
+                        className={`text-xs font-medium ${colorClass}`}
+                      >
+                        {tag}
+                      </Badge>
+                    );
+                  })}
                 </div>
               )}
             </CardHeader>
