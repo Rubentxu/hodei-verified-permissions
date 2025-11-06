@@ -106,7 +106,7 @@ const PolicyStores = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
+                  <Shield className="w-9 h-9 text-blue-600" />
                   <Badge variant="outline">{store.policy_store_id}</Badge>
                   <Badge
                     variant={
@@ -123,7 +123,7 @@ const PolicyStores = () => {
                     onClick={() => openPanel("edit", store.policy_store_id)}
                     title="Edit policy store"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-6 h-6 text-blue-600" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -132,7 +132,7 @@ const PolicyStores = () => {
                     disabled={deleteMutation.isPending}
                     title="Delete policy store"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-6 h-6 text-red-600" />
                   </Button>
                 </div>
               </div>

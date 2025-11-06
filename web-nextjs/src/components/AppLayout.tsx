@@ -22,38 +22,42 @@ const nav = [
   {
     href: "/dashboard",
     label: "Dashboard",
-    icon: <LayoutDashboard className="w-5 h-5" />,
+    icon: <LayoutDashboard className="w-6 h-6 text-gray-600" />,
   },
   {
     href: "/policy-stores",
     label: "Policy Stores",
-    icon: <Shield className="w-5 h-5" />,
+    icon: <Shield className="w-10 h-10 text-blue-600" />,
   },
   {
     href: "/schemas",
     label: "Schemas",
-    icon: <FileText className="w-5 h-5" />,
+    icon: <FileText className="w-6 h-6 text-gray-600" />,
   },
-  { href: "/policies", label: "Policies", icon: <Code className="w-5 h-5" /> },
+  {
+    href: "/policies",
+    label: "Policies",
+    icon: <Code className="w-6 h-6 text-gray-600" />,
+  },
   {
     href: "/templates",
     label: "Templates",
-    icon: <Layers className="w-5 h-5" />,
+    icon: <Layers className="w-6 h-6 text-gray-600" />,
   },
   {
     href: "/playground",
     label: "Authorization Playground",
-    icon: <TestTube className="w-5 h-5" />,
+    icon: <TestTube className="w-6 h-6 text-gray-600" />,
   },
   {
     href: "/identity-sources",
     label: "Identity Sources",
-    icon: <Users className="w-5 h-5" />,
+    icon: <Users className="w-6 h-6 text-gray-600" />,
   },
   {
     href: "/settings",
     label: "Settings",
-    icon: <SettingsIcon className="w-5 h-5" />,
+    icon: <SettingsIcon className="w-6 h-6 text-gray-600" />,
   },
 ];
 
