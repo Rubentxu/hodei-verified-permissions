@@ -90,6 +90,7 @@ interface UpdatePolicyStoreRequest {
   policy_store_id: string;
   name?: string;
   description?: string;
+  status?: string;
 }
 
 interface UpdatePolicyStoreResponse {

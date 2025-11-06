@@ -143,15 +143,20 @@ export const useUpdatePolicyStore = () => {
   return useMutation<
     void,
     Error,
-    { policyStoreId: string; description: string; tags?: string[] }
+    {
+      policyStoreId: string;
+      description: string;
+      tags?: string[];
+      status?: string;
+    }
   >({
-    mutationFn: async ({ policyStoreId, description, tags }) => {
+    mutationFn: async ({ policyStoreId, description, tags, status }) => {
       const response = await fetch(`/api/policy-stores/${policyStoreId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ description, tags }),
+        body: JSON.stringify({ description, tags, status }),
       });
 
       if (!response.ok) {
