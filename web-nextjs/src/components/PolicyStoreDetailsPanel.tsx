@@ -53,7 +53,7 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
                     </Badge>
                   </p>
                 </div>
-                <Shield className="w-8 h-8 text-blue-600" />
+                <Shield className="w-10 h-10 text-blue-600" />
               </div>
             </CardContent>
           </Card>
@@ -67,7 +67,7 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
                     {policyStore.author}
                   </p>
                 </div>
-                <User className="w-8 h-8 text-purple-600" />
+                <User className="w-10 h-10 text-indigo-600" />
               </div>
             </CardContent>
           </Card>
@@ -94,7 +94,7 @@ const PolicyStoreDetailsPanel: React.FC<PolicyStoreDetailsPanelProps> = ({
                     {policyStore.tags?.length || 0}
                   </p>
                 </div>
-                <Tag className="w-8 h-8 text-orange-500" />
+                <Tag className="w-10 h-10 text-pink-600" />
               </div>
             </CardContent>
           </Card>
