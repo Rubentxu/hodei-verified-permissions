@@ -202,6 +202,7 @@ impl AuthorizationControl for AuthorizationControlService {
             policy_store_id: store.id.into_string(),
             name: store.name,
             description: store.description,
+            status: Some(store.status.to_string()),
             updated_at: store.updated_at.to_rfc3339(),
         }))
     }

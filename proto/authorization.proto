@@ -268,7 +268,8 @@ message UpdatePolicyStoreResponse {
   string policy_store_id = 1;
   string name = 2;
   optional string description = 3;
-  string updated_at = 4;
+  optional string status = 4;
+  string updated_at = 5;
 }
 
 // ============================================================================
