@@ -22,42 +22,42 @@ const nav = [
   {
     href: "/dashboard",
     label: "Dashboard",
-    icon: <LayoutDashboard className="w-6 h-6 text-gray-600" />,
+    icon: <LayoutDashboard className="w-6 h-6 text-blue-600" />,
   },
   {
     href: "/policy-stores",
     label: "Policy Stores",
-    icon: <Shield className="w-10 h-10 text-blue-600" />,
+    icon: <Shield className="w-6 h-6 text-indigo-600" />,
   },
   {
     href: "/schemas",
     label: "Schemas",
-    icon: <FileText className="w-6 h-6 text-gray-600" />,
+    icon: <FileText className="w-6 h-6 text-green-600" />,
   },
   {
     href: "/policies",
     label: "Policies",
-    icon: <Code className="w-6 h-6 text-gray-600" />,
+    icon: <Code className="w-6 h-6 text-purple-600" />,
   },
   {
     href: "/templates",
     label: "Templates",
-    icon: <Layers className="w-6 h-6 text-gray-600" />,
+    icon: <Layers className="w-6 h-6 text-orange-600" />,
   },
   {
     href: "/playground",
     label: "Authorization Playground",
-    icon: <TestTube className="w-6 h-6 text-gray-600" />,
+    icon: <TestTube className="w-6 h-6 text-pink-600" />,
   },
   {
     href: "/identity-sources",
     label: "Identity Sources",
-    icon: <Users className="w-6 h-6 text-gray-600" />,
+    icon: <Users className="w-6 h-6 text-cyan-600" />,
   },
   {
     href: "/settings",
     label: "Settings",
-    icon: <SettingsIcon className="w-6 h-6 text-gray-600" />,
+    icon: <SettingsIcon className="w-6 h-6 text-yellow-600" />,
   },
 ];
 
