@@ -22,6 +22,7 @@ import {
   Edit,
   Save,
   X,
+  User,
 } from "lucide-react";
 import TagManager from "./TagManager";
 
