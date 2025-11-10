@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Mascotas{% endblock %}
+
+{% block content %}
+<div class="pets-container">
+    <div class="page-header">
+        <h2>🐾 Mascotas Registradas</h2>
+        {% if can_create %}
+            <a href="/pets/create" class="btn-primary">➕ Nueva Mascota</a>
+        {% endif %}
+    </div>
+    
+    {% if pets.len() > 0 %}
+        <div class="pets-grid">
+            {% for pet in pets %}
+                <div class="pet-card">
+                    <div class="pet-header">
+                        <h3>{{ pet.name }}</h3>
+                        <span class="species-badge">{{ pet.species }}</span>
+                    </div>
+                    
+                    <div class="pet-details">
+                        <p><strong>Raza:</strong> {{ pet.breed }}</p>
+                        <p><strong>Dueño:</strong> {{ pet.owner_username }}</p>
+                        <p><strong>ID:</strong> {{ pet.id }}</p>
+                        <p><small>Registrado: {{ pet.created_at }}</small></p>
+                    </div>
+                    
+                    <div class="pet-actions">
+                        <a href="/pets/{{ pet.id }}" class="btn-secondary">Ver Detalles</a>
+                        {% if can_delete %}
+                            <form method="POST" action="/pets/{{ pet.id }}/delete" style="display: inline;">
+                                <button type="submit" class="btn-danger" onclick="return confirm('¿Eliminar esta mascota?')">
+                                    🗑️ Eliminar
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No hay mascotas registradas.</p>
+            {% if can_create %}
+                <a href="/pets/create" class="btn-primary">Crear la primera mascota</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

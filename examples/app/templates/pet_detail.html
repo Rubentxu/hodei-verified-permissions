@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pet.name }} - Detalles{% endblock %}
+
+{% block content %}
+<div class="pet-detail-container">
+    <div class="page-header">
+        <h2>🐾 {{ pet.name }}</h2>
+        <div class="header-actions">
+            <a href="/pets" class="btn-secondary">← Volver a Mascotas</a>
+            {% if can_edit %}
+                <button type="button" class="btn-primary" onclick="toggleEditForm()">✏️ Editar</button>
+            {% endif %}
+            {% if can_delete %}
+                <form method="POST" action="/pets/{{ pet.id }}/delete" style="display: inline;">
+                    <button type="submit" class="btn-danger" onclick="return confirm('¿Eliminar esta mascota?')">
+                        🗑️ Eliminar
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="pet-info-grid">
+        <div class="pet-info-card">
+            <h3>Información Básica</h3>
+            <div class="info-row">
+                <strong>Nombre:</strong> {{ pet.name }}
+            </div>
+            <div class="info-row">
+                <strong>Especie:</strong> <span class="species-badge">{{ pet.species }}</span>
+            </div>
+            <div class="info-row">
+                <strong>Raza:</strong> {{ pet.breed }}
+            </div>
+            <div class="info-row">
+                <strong>Dueño:</strong> {{ pet.owner_username }}
+            </div>
+            <div class="info-row">
+                <strong>ID:</strong> <code>{{ pet.id }}</code>
+            </div>
+            <div class="info-row">
+                <strong>Registrado:</strong> {{ pet.created_at }}
+            </div>
+            <div class="info-row">
+                <strong>Última actualización:</strong> {{ pet.updated_at }}
+            </div>
+        </div>
+        
+        <div class="pet-appointments-card">
+            <h3>📅 Citas Programadas</h3>
+            {% if can_create_appointment %}
+                <a href="/appointments/create?pet_id={{ pet.id }}" class="btn-primary btn-small">➕ Nueva Cita</a>
+            {% endif %}
+            
+            {% if appointments.len() > 0 %}
+                <div class="appointments-list">
+                    {% for appointment in appointments %}
+                        <div class="appointment-item">
+                            <div class="appointment-date">
+                                {{ appointment.appointment_date }}
+                            </div>
+                            <div class="appointment-details">
+                                <strong>Veterinario:</strong> {{ appointment.vet_username }}<br>
+                                <strong>Notas:</strong> {{ appointment.notes }}
+                            </div>
+                            <div class="appointment-id">
+                                <small>ID: {{ appointment.id }}</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-appointments">No hay citas programadas para esta mascota.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Formulario de edición (oculto por defecto) -->
+    {% if can_edit %}
+        <div id="editForm" class="edit-form" style="display: none;">
+            <h3>✏️ Editar Mascota</h3>
+            <form method="POST" action="/pets/{{ pet.id }}/edit">
+                <div class="form-group">
+                    <label for="name">Nombre:</label>
+                    <input type="text" id="name" name="name" value="{{ pet.name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="species">Especie:</label>
+                    <select id="species" name="species" required>
+                        <option value="Dog" {% if pet.species == "Dog" %}selected{% endif %}>Perro</option>
+                        <option value="Cat" {% if pet.species == "Cat" %}selected{% endif %}>Gato</option>
+                        <option value="Bird" {% if pet.species == "Bird" %}selected{% endif %}>Ave</option>
+                        <option value="Other" {% if pet.species == "Other" %}selected{% endif %}>Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="breed">Raza:</label>
+                    <input type="text" id="breed" name="breed" value="{{ pet.breed }}" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
+                <button type="button" class="btn-secondary" onclick="toggleEditForm()">Cancelar</button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleEditForm() {
+    const form = document.getElementById('editForm');
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+    } else {
+        form.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

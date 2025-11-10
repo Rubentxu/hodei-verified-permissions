@@ -1,0 +1,99 @@
+{
+  "PetStore": {
+    "entityTypes": {
+      "User": {
+        "memberOfTypes": ["Group"],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "username": { "type": "String" },
+            "email": { "type": "String" },
+            "role": { "type": "String" }
+          }
+        }
+      },
+      "Pet": {
+        "memberOfTypes": [],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "id": { "type": "String" },
+            "name": { "type": "String" },
+            "species": { "type": "String" },
+            "breed": { "type": "String" },
+            "owner": { "type": "String" }
+          }
+        }
+      },
+      "Appointment": {
+        "memberOfTypes": [],
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "id": { "type": "String" },
+            "petId": { "type": "String" },
+            "vet": { "type": "String" },
+            "date": { "type": "String" }
+          }
+        }
+      },
+      "Group": {
+        "memberOfTypes": [],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {
+      "viewDashboard": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["PetStore"]
+        }
+      },
+      "listPets": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Pet"]
+        }
+      },
+      "createPet": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Pet"]
+        }
+      },
+      "updatePet": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Pet"]
+        }
+      },
+      "deletePet": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Pet"]
+        }
+      },
+      "viewPet": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Pet"]
+        }
+      },
+      "listAppointments": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Appointment"]
+        }
+      },
+      "createAppointment": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["Appointment"]
+        }
+      }
+    }
+  }
+}

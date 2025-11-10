@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h2>📊 Dashboard</h2>
+    <p>Bienvenido, <strong>{{ user.username }}</strong>! Rol: <span class="role-badge role-{{ user.role }}">{{ user.role }}</span></p>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🐾</div>
+            <div class="stat-number">{{ stats.total_pets }}</div>
+            <div class="stat-label">Mascotas Registradas</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-number">{{ stats.total_appointments }}</div>
+            <div class="stat-label">Citas Programadas</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">👤</div>
+            <div class="stat-number">1</div>
+            <div class="stat-label">Tu Rol: {{ stats.user_role }}</div>
+        </div>
+    </div>
+    
+    <div class="quick-actions">
+        <h3>Acciones Rápidas</h3>
+        <div class="action-buttons">
+            <a href="/pets" class="btn-primary">Ver Mascotas</a>
+            <a href="/appointments" class="btn-secondary">Ver Citas</a>
+        </div>
+    </div>
+    
+    <div class="permissions-info">
+        <h3>🔐 Tus Permisos</h3>
+        <ul class="permissions-list">
+            {% if user.role == "pet-admin" %}
+                <li>✅ Crear, editar y eliminar mascotas</li>
+                <li>✅ Crear citas</li>
+                <li>✅ Ver todo</li>
+            {% elif user.role == "pet-vet" %}
+                <li>❌ No puedes crear/editar mascotas</li>
+                <li>✅ Crear citas</li>
+                <li>✅ Ver todo</li>
+            {% else %}
+                <li>❌ No puedes crear/editar mascotas</li>
+                <li>❌ No puedes crear citas</li>
+                <li>✅ Solo ver información</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

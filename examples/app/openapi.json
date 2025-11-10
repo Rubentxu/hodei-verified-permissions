@@ -1,0 +1,374 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Pet Store API",
+    "description": "API para gestión de mascotas y citas veterinarias con autorización",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor local"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/login": {
+      "get": {
+        "summary": "Mostrar página de login",
+        "operationId": "showLogin",
+        "responses": {
+          "200": {
+            "description": "Página HTML de login"
+          }
+        }
+      },
+      "post": {
+        "summary": "Iniciar sesión",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Nombre de usuario"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Contraseña"
+                  }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "303": {
+            "description": "Redirect a dashboard"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "get": {
+        "summary": "Cerrar sesión",
+        "operationId": "logout",
+        "responses": {
+          "303": {
+            "description": "Redirect a login"
+          }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "summary": "Ver dashboard",
+        "operationId": "viewDashboard",
+        "responses": {
+          "200": {
+            "description": "Página HTML del dashboard"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["PetStore"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/pets": {
+      "get": {
+        "summary": "Listar todas las mascotas",
+        "operationId": "listPets",
+        "responses": {
+          "200": {
+            "description": "Página HTML con listado de mascotas"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Pet"],
+          "requiredAttributes": ["principal.role"]
+        }
+      },
+      "post": {
+        "summary": "Crear nueva mascota",
+        "operationId": "createPet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nombre de la mascota"
+                  },
+                  "species": {
+                    "type": "string",
+                    "enum": ["Dog", "Cat", "Bird", "Other"],
+                    "description": "Especie"
+                  },
+                  "breed": {
+                    "type": "string",
+                    "description": "Raza"
+                  }
+                },
+                "required": ["name", "species", "breed"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "303": {
+            "description": "Redirect a la mascota creada"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Pet"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/pets/{id}": {
+      "get": {
+        "summary": "Ver detalle de una mascota",
+        "operationId": "viewPet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la mascota"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página HTML con detalles de la mascota"
+          },
+          "404": {
+            "description": "Mascota no encontrada"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Pet"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/pets/{id}/edit": {
+      "post": {
+        "summary": "Actualizar mascota",
+        "operationId": "updatePet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la mascota"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nombre de la mascota"
+                  },
+                  "species": {
+                    "type": "string",
+                    "enum": ["Dog", "Cat", "Bird", "Other"],
+                    "description": "Especie"
+                  },
+                  "breed": {
+                    "type": "string",
+                    "description": "Raza"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "303": {
+            "description": "Redirect a la mascota actualizada"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Pet"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/pets/{id}/delete": {
+      "post": {
+        "summary": "Eliminar mascota",
+        "operationId": "deletePet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la mascota"
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Redirect al listado de mascotas"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Pet"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/appointments": {
+      "get": {
+        "summary": "Listar todas las citas",
+        "operationId": "listAppointments",
+        "responses": {
+          "200": {
+            "description": "Página HTML con listado de citas"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Appointment"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    },
+    "/appointments/create": {
+      "post": {
+        "summary": "Crear nueva cita",
+        "operationId": "createAppointment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pet_id": {
+                    "type": "string",
+                    "description": "ID de la mascota"
+                  },
+                  "vet_username": {
+                    "type": "string",
+                    "description": "Nombre del veterinario"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Notas de la cita"
+                  },
+                  "appointment_date": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Fecha y hora de la cita (ISO 8601)"
+                  }
+                },
+                "required": ["pet_id", "vet_username", "notes", "appointment_date"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "303": {
+            "description": "Redirect a la mascota"
+          }
+        },
+        "x-cedar": {
+          "appliesToResourceTypes": ["Appointment"],
+          "requiredAttributes": ["principal.role"]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["pet-admin", "pet-vet", "pet-customer"]
+          }
+        }
+      },
+      "Pet": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "breed": {
+            "type": "string"
+          },
+          "owner_username": {
+            "type": "string"
+          }
+        }
+      },
+      "Appointment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pet_id": {
+            "type": "string"
+          },
+          "vet_username": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "appointment_date": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

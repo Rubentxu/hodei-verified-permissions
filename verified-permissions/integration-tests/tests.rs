@@ -133,7 +133,6 @@ mod tests {
             updated_store.description,
             Some("Updated description".to_string())
         );
-        assert_eq!(updated_store.version, store.version);
     }
 
     #[tokio::test]

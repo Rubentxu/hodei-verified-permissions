@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Citas{% endblock %}
+
+{% block content %}
+<div class="appointments-container">
+    <div class="page-header">
+        <h2>📅 Citas Programadas</h2>
+        {% if can_create %}
+            <a href="/appointments/create" class="btn-primary">➕ Nueva Cita</a>
+        {% endif %}
+    </div>
+    
+    {% if appointments.len() > 0 %}
+        <div class="appointments-grid">
+            {% for appointment in appointments %}
+                <div class="appointment-card">
+                    <div class="appointment-header">
+                        <h3>{{ appointment.pet_name }}</h3>
+                        <span class="status-badge status-scheduled">Programada</span>
+                    </div>
+                    
+                    <div class="appointment-details">
+                        <div class="detail-row">
+                            <strong>Fecha:</strong> {{ appointment.appointment_date }}
+                        </div>
+                        <div class="detail-row">
+                            <strong>Veterinario:</strong> {{ appointment.vet_username }}
+                        </div>
+                        <div class="detail-row">
+                            <strong>Notas:</strong> {{ appointment.notes }}
+                        </div>
+                        <div class="detail-row">
+                            <strong>ID Cita:</strong> <code>{{ appointment.id }}</code>
+                        </div>
+                        <div class="detail-row">
+                            <small>Creada: {{ appointment.created_at }}</small>
+                        </div>
+                    </div>
+                    
+                    <div class="appointment-actions">
+                        <a href="/pets/{{ appointment.pet_id }}" class="btn-secondary btn-small">
+                            Ver Mascota
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No hay citas programadas.</p>
+            {% if can_create %}
+                <a href="/appointments/create" class="btn-primary">Crear la primera cita</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

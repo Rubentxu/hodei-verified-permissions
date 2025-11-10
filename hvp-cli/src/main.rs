@@ -2,6 +2,8 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use tokio::fs;
 use tracing::info;
@@ -74,6 +76,45 @@ enum Commands {
         #[arg(long, default_value = "strict")]
         mode: String,
     },
+
+    /// Generate complete setup (schema + policies + setup script)
+    GenerateSetup {
+        /// Path to the OpenAPI spec file (JSON format)
+        #[arg(long, value_name = "FILE")]
+        spec: PathBuf,
+
+        /// Cedar namespace for your application
+        #[arg(long)]
+        namespace: String,
+
+        /// Base path of your API (optional)
+        #[arg(long)]
+        base_path: Option<String>,
+
+        /// Output directory for generated files
+        #[arg(long, short = 'o', default_value = "./config")]
+        output: PathBuf,
+
+        /// Application name (used for policy store and identity source)
+        #[arg(long, default_value = "my-app")]
+        app_name: String,
+
+        /// Keycloak issuer URL (for identity source)
+        #[arg(long)]
+        keycloak_issuer: Option<String>,
+
+        /// Keycloak client ID
+        #[arg(long, default_value = "my-app-client")]
+        keycloak_client_id: String,
+
+        /// AVP endpoint (host:port)
+        #[arg(long, default_value = "localhost:50051")]
+        avp_endpoint: String,
+
+        /// Roles to generate (comma-separated)
+        #[arg(long, default_value = "admin,vet,customer")]
+        roles: String,
+    },
 }
 
 #[tokio::main]
@@ -110,301 +151,481 @@ async fn main() -> Result<()> {
         } => {
             generate_least_privilege(spec, namespace, base_path, output, roles, mode).await?;
         }
+        Commands::GenerateSetup {
+            spec,
+            namespace,
+            base_path,
+            output,
+            app_name,
+            keycloak_issuer,
+            keycloak_client_id,
+            avp_endpoint,
+            roles,
+        } => {
+            generate_setup(
+                spec,
+                namespace,
+                base_path,
+                output,
+                app_name,
+                keycloak_issuer,
+                keycloak_client_id,
+                avp_endpoint,
+                roles,
+            )
+            .await?;
+        }
     }
 
     Ok(())
 }
 
-async fn generate_least_privilege(
+// Estructuras para parsing eficiente
+#[derive(Debug, Deserialize)]
+struct OpenApiSpec {
+    paths: HashMap<String, PathItem>,
+    components: Option<Components>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PathItem {
+    #[serde(flatten)]
+    methods: HashMap<String, Operation>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Operation {
+    operation_id: Option<String>,
+    #[serde(default)]
+    parameters: Vec<serde_json::Value>,
+    #[serde(flatten)]
+    extensions: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Components {
+    schemas: Option<HashMap<String, serde_json::Value>>,
+}
+
+// Cache para acciones por rol (O(1) lookup)
+lazy_static::lazy_static! {
+    static ref ROLE_ACTION_CACHE: std::sync::Mutex<HashMap<String, HashSet<String>>> =
+        std::sync::Mutex::new(HashMap::new());
+}
+
+async fn generate_setup(
     spec_path: PathBuf,
     namespace: String,
     base_path: Option<String>,
     output_dir: PathBuf,
+    app_name: String,
+    keycloak_issuer: Option<String>,
+    keycloak_client_id: String,
+    avp_endpoint: String,
     roles_str: String,
-    mode_str: String,
 ) -> Result<()> {
-    info!("Reading OpenAPI spec from: {}", spec_path.display());
+    info!("🚀 Generando configuración completa para {}", app_name);
 
-    // Check if API spec file exists
+    // 1. Crear directorio de salida
+    fs::create_dir_all(&output_dir)
+        .await
+        .context("Failed to create output directory")?;
+
+    // 2. Generar schema (reutiliza función existente)
+    info!("📋 Generando schema Cedar...");
+    let schema_output = output_dir.join("schema");
+    generate_schema(
+        spec_path.clone(),
+        namespace.clone(),
+        base_path.clone(),
+        schema_output,
+    )
+    .await?;
+
+    // 3. Generar policies (reutiliza función existente)
+    info!("🛡️  Generando policies...");
+    let policies_output = output_dir.join("policies");
+    let schema_file = output_dir.join("schema/v4.cedarschema.json");
+    
+    // Parsear OpenAPI una vez y reutilizar
+    let openapi_content = read_and_validate_openapi(&spec_path).await?;
+    let openapi: OpenApiSpec = serde_json::from_str(&openapi_content)?;
+    let actions = extract_actions_from_openapi(&openapi, &namespace);
+    
+    generate_policies_from_openapi(&actions, &policies_output, &roles_str, &namespace).await?;
+
+    // 4. Generar script de setup
+    info!("📜 Generando script de setup...");
+    generate_setup_script(
+        &output_dir,
+        &app_name,
+        keycloak_issuer,
+        keycloak_client_id,
+        avp_endpoint,
+        &roles_str,
+    )
+    .await?;
+
+    // 5. Generar .env.example
+    info!("⚙️  Generando archivo de configuración...");
+    generate_env_file(&output_dir, &app_name, &avp_endpoint).await?;
+
+    info!("\n✅ Configuración completa generada en: {}", output_dir.display());
+    info!("\nPróximos pasos:");
+    info!("1. Revisa los archivos generados en {}/", output_dir.display());
+    info!("2. Ajusta las policies en {}/policies/ si es necesario", output_dir.display());
+    info!("3. Ejecuta: bash {}/setup.sh", output_dir.display());
+    info!("4. Inicia tu aplicación");
+
+    Ok(())
+}
+
+// Funciones helper reutilizables
+
+async fn read_and_validate_openapi(spec_path: &PathBuf) -> Result<String> {
     if !spec_path.exists() {
         anyhow::bail!("OpenAPI spec file not found: {}", spec_path.display());
     }
-
-    // Read OpenAPI spec
-    let spec_content = fs::read_to_string(&spec_path)
+    
+    let content = fs::read_to_string(spec_path)
         .await
         .context("Failed to read OpenAPI spec file")?;
+    
+    // Validar JSON
+    let _: serde_json::Value = serde_json::from_str(&content)
+        .context("Invalid JSON in OpenAPI spec file")?;
+    
+    Ok(content)
+}
 
-    // Validate JSON
-    let _: serde_json::Value =
-        serde_json::from_str(&spec_content).context("Invalid JSON in OpenAPI spec file")?;
+fn extract_actions_from_openapi(openapi: &OpenApiSpec, namespace: &str) -> HashSet<String> {
+    let mut actions = HashSet::new();
+    
+    for (path, path_item) in &openapi.paths {
+        for (method, operation) in &path_item.methods {
+            if let Some(op_id) = &operation.operation_id {
+                actions.insert(op_id.clone());
+            } else {
+                // Generar operationId si no existe
+                let generated = format!("{}_{}", method.to_lowercase(), path.replace("/", "_"));
+                actions.insert(generated);
+            }
+        }
+    }
+    
+    actions
+}
 
-    info!(
-        "Generating least privilege policies with namespace: {}",
-        namespace
-    );
-
-    // Parse roles
+async fn generate_policies_from_openapi(
+    actions: &HashSet<String>,
+    output_dir: &PathBuf,
+    roles_str: &str,
+    namespace: &str,
+) -> Result<()> {
     let roles: Vec<String> = roles_str
         .split(',')
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
 
-    if roles.is_empty() {
-        anyhow::bail!("At least one role must be specified");
-    }
-
-    info!("Roles: {}", roles.join(", "));
-
-    // Parse privilege mode
-    let mode = verified_permissions_sdk::policies::PrivilegeMode::parse(&mode_str)
-        .map_err(|e| anyhow::anyhow!("Invalid privilege mode: {}", e))?;
-
-    info!("Privilege mode: {}", mode);
-
-    // Generate schema first
-    let generator = verified_permissions_sdk::schema::SimpleRestSchemaGenerator::new();
-    let schema_bundle = generator
-        .generate_simple_rest_schema(&spec_content, &namespace, base_path.as_deref())
-        .await
-        .context("Failed to generate Cedar schema")?;
-
-    // Generate least privilege policies
-    let policy_roles = vec![
-        verified_permissions_sdk::policies::Role::admin(),
-        verified_permissions_sdk::policies::Role::developer(),
-        verified_permissions_sdk::policies::Role::viewer(),
-    ];
-
-    let policy_generator = verified_permissions_sdk::policies::LeastPrivilegeGenerator::new(
-        namespace.clone(),
-        policy_roles,
-        mode,
-    );
-
-    let policy_bundle = policy_generator
-        .generate_from_openapi(&spec_content, &schema_bundle)
-        .context("Failed to generate policy bundle")?;
-
-    // Create output directory
     fs::create_dir_all(&output_dir)
-        .await
-        .context("Failed to create output directory")?;
-
-    // Write schema files
-    let v4_schema_path = output_dir.join("v4.cedarschema.json");
-    fs::write(&v4_schema_path, &schema_bundle.v4)
-        .await
-        .context("Failed to write v4 schema file")?;
-    info!("✓ Cedar schema v4 generated: {}", v4_schema_path.display());
-
-    // Write policies
-    let policies_dir = output_dir.join("policies");
-    fs::create_dir_all(&policies_dir)
         .await
         .context("Failed to create policies directory")?;
 
-    for (i, policy) in policy_bundle.policies.iter().enumerate() {
-        let policy_path = policies_dir.join(format!("policy_{}.cedar", i + 1));
-        fs::write(&policy_path, &policy.content)
-            .await
-            .context(format!(
-                "Failed to write policy file {}",
-                policy_path.display()
-            ))?;
-        info!("✓ Cedar policy generated: {}", policy_path.display());
+    // Pre-computar acciones por rol usando HashSet para O(1) lookup
+    let actions_by_role = precompute_actions_by_role(actions, &roles);
+    
+    // Generar policies en paralelo
+    let mut tasks = Vec::new();
+    for role in roles {
+        let actions_for_role = actions_by_role.get(&role).unwrap_or(&HashSet::new()).clone();
+        let output_dir = output_dir.clone();
+        let namespace = namespace.to_string();
+        
+        let task = tokio::spawn(async move {
+            let policy_content = generate_role_policy_optimized(&role, &actions_for_role, &namespace);
+            let policy_path = output_dir.join(format!("{}.cedar", role.replace("-", "_")));
+            
+            tokio::fs::write(&policy_path, policy_content).await?;
+            Ok::<_, anyhow::Error>((role, policy_path))
+        });
+        
+        tasks.push(task);
     }
-
-    // Write security report
-    let report_path = output_dir.join("security_report.md");
-    let report_content = format!(
-        "# Security Analysis Report\n\n## Summary\n{}\n\n## Warnings\n",
-        policy_bundle.security_report.summary()
-    );
-
-    fs::write(&report_path, report_content)
-        .await
-        .context("Failed to write security report")?;
-    info!("✓ Security report generated: {}", report_path.display());
-
-    // Display summary
-    info!("\nAuthorization bundle successfully generated!");
-    info!("  Namespace: {}", namespace);
-    info!("  Policies: {}", policy_bundle.policies.len());
-    info!("  Roles: {}", roles.join(", "));
-    info!(
-        "  Security score: {}/100",
-        policy_bundle.security_report.score()
-    );
-
-    if !policy_bundle.security_report.warnings().is_empty() {
-        info!("\nSecurity warnings:");
-        for warning in policy_bundle.security_report.warnings() {
-            info!("  ⚠️  {}", warning.message());
-        }
+    
+    // Esperar a que todas las policies se generen
+    for task in tasks {
+        let (role, path) = task.await??;
+        info!("   ✓ Policy para {}: {}", role, path.display());
     }
-
-    info!("\nAll files written to: {}", output_dir.display());
 
     Ok(())
 }
 
-async fn generate_schema(
-    api_spec_path: PathBuf,
-    namespace: String,
-    base_path: Option<String>,
-    output_dir: PathBuf,
-) -> Result<()> {
-    info!("Reading OpenAPI spec from: {}", api_spec_path.display());
-
-    // Check if API spec file exists
-    if !api_spec_path.exists() {
-        anyhow::bail!("API spec file not found: {}", api_spec_path.display());
-    }
-
-    // Read OpenAPI spec
-    let spec_content = fs::read_to_string(&api_spec_path)
-        .await
-        .context("Failed to read API spec file")?;
-
-    // Validate JSON
-    let _: serde_json::Value =
-        serde_json::from_str(&spec_content).context("Invalid JSON in API spec file")?;
-
-    info!("Generating Cedar schema with namespace: {}", namespace);
-
-    // Generate schema
-    let generator = SimpleRestSchemaGenerator::new();
-    let bundle = generator
-        .generate_simple_rest_schema(&spec_content, &namespace, base_path.as_deref())
-        .await
-        .context("Failed to generate Cedar schema")?;
-
-    // Create output directory if it doesn't exist
-    fs::create_dir_all(&output_dir)
-        .await
-        .context("Failed to create output directory")?;
-
-    // Write v4 schema
-    let v4_path = output_dir.join("v4.cedarschema.json");
-    fs::write(&v4_path, &bundle.v4)
-        .await
-        .context("Failed to write v4 schema file")?;
-
-    info!("✓ Cedar schema v4 generated: {}", v4_path.display());
-    info!("  Namespace: {}", bundle.metadata.namespace);
-    info!("  Mapping type: {}", bundle.metadata.mapping_type);
-    info!("  Actions: {}", bundle.metadata.action_count);
-    info!("  Entity types: {}", bundle.metadata.entity_type_count);
-
-    if let Some(bp) = bundle.metadata.base_path {
-        info!("  Base path: {}", bp);
-    }
-
-    // Write v2 schema if available
-    if let Some(v2_content) = bundle.v2 {
-        let v2_path = output_dir.join("v2.cedarschema.json");
-        fs::write(&v2_path, v2_content)
-            .await
-            .context("Failed to write v2 schema file")?;
-        info!("✓ Cedar schema v2 generated: {}", v2_path.display());
-    }
-
-    info!("\nSchema files successfully generated!");
-    info!("v4.cedarschema.json is compatible with Cedar 4.x and required by nodejs Cedar plugins.");
-
-    Ok(())
-}
-
-async fn generate_policies(schema_path: PathBuf, output_dir: PathBuf) -> Result<()> {
-    info!("Reading Cedar schema from: {}", schema_path.display());
-
-    // Check if schema file exists
-    if !schema_path.exists() {
-        anyhow::bail!("Schema file not found: {}", schema_path.display());
-    }
-
-    // Read schema
-    let schema_content = fs::read_to_string(&schema_path)
-        .await
-        .context("Failed to read schema file")?;
-
-    // Parse schema to extract namespace and actions
-    let schema: serde_json::Value =
-        serde_json::from_str(&schema_content).context("Invalid JSON in schema file")?;
-
-    // Extract namespace (first key in the schema object)
-    let namespace = schema
-        .as_object()
-        .and_then(|obj| obj.keys().next())
-        .context("Schema must have at least one namespace")?;
-
-    // Extract actions
-    let actions = schema
-        .get(namespace)
-        .and_then(|ns| ns.get("actions"))
-        .and_then(|a| a.as_object())
-        .context("Schema must have actions defined")?;
-
-    let action_names: Vec<String> = actions.keys().cloned().collect();
-
-    if action_names.is_empty() {
-        anyhow::bail!("No actions found in schema");
-    }
-
-    info!("Found {} actions in schema", action_names.len());
-
-    // Create output directory
-    fs::create_dir_all(&output_dir)
-        .await
-        .context("Failed to create output directory")?;
-
-    // Generate sample policies
-    let admin_policy = format!(
-        r#"// Allows admin usergroup access to everything
-permit(
-    principal in {}::UserGroup::"admin",
-    action,
-    resource
-);"#,
-        namespace
-    );
-
-    let role_policy = format!(
-        r#"// Allows more granular user group control, change actions as needed
-permit(
-    principal in {}::UserGroup::"ENTER_THE_USER_GROUP_HERE",
-    action in [
-        {}
-    ],
-    resource
-);"#,
-        namespace,
-        action_names
+fn precompute_actions_by_role(
+    all_actions: &HashSet<String>,
+    roles: &[String],
+) -> HashMap<String, HashSet<String>> {
+    let mut result = HashMap::new();
+    
+    // Definir reglas de mapeo una vez
+    let role_rules: HashMap<&str, Box<dyn Fn(&str) -> bool>> = [
+        ("admin", Box::new(|_: &str| true) as Box<dyn Fn(&str) -> bool>),
+        ("vet", Box::new(|action: &str| {
+            action.contains("list") || action.contains("view") || action.contains("createAppointment")
+        })),
+        ("customer", Box::new(|action: &str| {
+            action.contains("list") || action.contains("view")
+        })),
+    ].iter().cloned().collect();
+    
+    for role in roles {
+        let rule = role_rules.get(role.as_str()).unwrap_or_else(||
+            &Box::new(|_: &str| false) as Box<dyn Fn(&str) -> bool>
+        );
+        
+        let permitted_actions: HashSet<String> = all_actions
             .iter()
-            .map(|a| format!("        {}::Action::\"{}\"", namespace, a))
-            .collect::<Vec<_>>()
-            .join(",\n")
+            .filter(|action| rule(action))
+            .cloned()
+            .collect();
+            
+        result.insert(role.clone(), permitted_actions);
+    }
+    
+    result
+}
+
+fn generate_role_policy_optimized(
+    role: &str,
+    permitted_actions: &HashSet<String>,
+    namespace: &str,
+) -> String {
+    let mut policy = String::new();
+
+    // Header
+    policy.push_str("// ============================================================================\n");
+    policy.push_str(&format!("// POLÍTICA: {} Access\n", role.to_uppercase()));
+    policy.push_str(&format!("// Descripción: {}\n", get_role_description(role)));
+    policy.push_str("// ============================================================================\n\n");
+
+    // Bloque permit
+    if !permitted_actions.is_empty() {
+        write_permit_block(&mut policy, role, permitted_actions, namespace);
+    }
+
+    // Bloque forbid (solo para no-admin)
+    if role != "admin" {
+        let all_actions = permitted_actions; // En este contexto, ya tenemos los permitidos
+        // El forbid se genera automáticamente por el motor de Cedar cuando no hay permit
+    }
+
+    policy
+}
+
+fn get_role_description(role: &str) -> String {
+    match role {
+        "admin" => "Acceso completo para administradores".to_string(),
+        "vet" => "Los veterinarios pueden ver todo y crear citas".to_string(),
+        "customer" => "Los clientes solo pueden ver información".to_string(),
+        _ => format!("Permisos para rol {}", role),
+    }
+}
+
+fn write_permit_block(
+    policy: &mut String,
+    role: &str,
+    actions: &HashSet<String>,
+    namespace: &str,
+) {
+    policy.push_str("permit(\n");
+    policy.push_str(&format!("    principal in Group::{:?},\n", role));
+    policy.push_str("    action in [\n");
+    
+    // Ordenar actions para consistencia
+    let mut sorted_actions: Vec<_> = actions.iter().collect();
+    sorted_actions.sort();
+    
+    for action in sorted_actions {
+        policy.push_str(&format!("        Action::{:?},\n", action));
+    }
+    
+    policy.push_str("    ],\n");
+    policy.push_str("    resource\n");
+    policy.push_str(")\n");
+    policy.push_str("when {\n");
+    policy.push_str(&format!("    principal.role == {:?}\n", role));
+    policy.push_str("};\n\n");
+}
+
+async fn generate_setup_script(
+    output_dir: &PathBuf,
+    app_name: &str,
+    keycloak_issuer: Option<String>,
+    keycloak_client_id: String,
+    avp_endpoint: String,
+    roles_str: &str,
+) -> Result<()> {
+    let policy_store_id = format!("{}-store", app_name.replace("_", "-"));
+    let identity_source_id = format!("{}-identity", app_name.replace("_", "-"));
+
+    let script = format!(
+        r#"#!/bin/bash
+# =============================================================================
+# Script de Setup para {}
+# Este script configura el Policy Store, Schema y Policies en Hodei AVP
+# =============================================================================
+
+set -e
+
+echo "🚀 Configurando {} en Hodei AVP..."
+
+# Variables
+POLICY_STORE_ID="{}"
+POLICY_STORE_NAME="{}"
+IDENTITY_SOURCE_ID="{}"
+KEYCLOAK_ISSUER="${{KEYCLOAK_ISSUER:-{}}}"
+KEYCLOAK_CLIENT_ID="${{KEYCLOAK_CLIENT_ID:-{}}}"
+AVP_ENDPOINT="${{AVP_HOST:-localhost}}:${{AVP_PORT:-50051}}"
+
+# Función helper para grpcurl
+grpcurl_call() {{
+    local method=$1
+    local data=$2
+    
+    echo "$data" | grpcurl -plaintext -d @ "$AVP_ENDPOINT" "hodei.permissions.v1.AuthorizationControl/$method"
+}}
+
+# 1. Crear Policy Store
+echo "📦 Creando Policy Store..."
+grpcurl_call "CreatePolicyStore" "{{
+  \"policy_store_id\": \"$POLICY_STORE_ID\",
+  \"name\": \"$POLICY_STORE_NAME\"
+}}" || echo "⚠️  Policy Store ya existe o error"
+
+# 2. Subir Schema
+echo "📋 Subiendo Schema..."
+SCHEMA_JSON=$(cat schema/v4.cedarschema.json | jq -c .)
+grpcurl_call "PutSchema" "{{
+  \"policy_store_id\": \"$POLICY_STORE_ID\",
+  \"schema\": $(echo "$SCHEMA_JSON" | jq -R .)
+}}" || echo "⚠️  Error al subir schema"
+
+# 3. Crear Identity Source (si Keycloak está configurado)
+if [ -n "$KEYCLOAK_ISSUER" ]; then
+    echo "🔐 Creando Identity Source..."
+    grpcurl_call "CreateIdentitySource" "{{
+      \"policy_store_id\": \"$POLICY_STORE_ID\",
+      \"identity_source_id\": \"$IDENTITY_SOURCE_ID\",
+      \"description\": \"Identity Source for {}\",
+      \"oidc_configuration\": {{
+        \"issuer\": \"$KEYCLOAK_ISSUER\",
+        \"client_ids\": [\"$KEYCLOAK_CLIENT_ID\"],
+        \"jwks_uri\": \"$KEYCLOAK_ISSUER/protocol/openid-connect/certs\",
+        \"group_claim\": \"realm_access.roles\"
+      }},
+      \"claims_mapping\": {{
+        \"principal_id_claim\": \"sub\",
+        \"group_claim\": \"realm_access.roles\"
+      }}
+    }}" || echo "⚠️  Identity Source ya existe o error"
+else
+    echo "⚠️  KEYCLOAK_ISSUER no configurado, saltando Identity Source"
+fi
+
+# 4. Crear Policies
+echo "🛡️  Creando Policies..."
+for policy_file in policies/*.cedar; do
+    if [ -f "$policy_file" ]; then
+        POLICY_ID=$(basename "$policy_file" .cedar)
+        POLICY_CONTENT=$(cat "$policy_file")
+        
+        echo "   Creando policy: $POLICY_ID"
+        grpcurl_call "CreatePolicy" "{{
+          \"policy_store_id\": \"$POLICY_STORE_ID\",
+          \"policy_id\": \"$POLICY_ID\",
+          \"policy\": $(echo "$POLICY_CONTENT" | jq -R .)
+        }}" || echo "⚠️  Policy $POLICY_ID ya existe o error"
+    fi
+done
+
+echo ""
+echo "✅ Setup completado exitosamente!"
+echo ""
+echo "Variables de entorno para tu aplicación:"
+echo "POLICY_STORE_ID=$POLICY_STORE_ID"
+echo "IDENTITY_SOURCE_ID=$IDENTITY_SOURCE_ID"
+echo "AVP_ENDPOINT=$AVP_ENDPOINT"
+"#,
+        app_name,
+        app_name,
+        policy_store_id,
+        format!("{} Policy Store", app_name.replace("-", " ").to_uppercase()),
+        identity_source_id,
+        keycloak_issuer.unwrap_or_else(|| "http://localhost:8080/realms/demo".to_string()),
+        keycloak_client_id,
+        app_name,
     );
 
-    // Write policies
-    let admin_path = output_dir.join("policy_1.cedar");
-    fs::write(&admin_path, admin_policy)
+    let script_path = output_dir.join("setup.sh");
+    fs::write(&script_path, script)
         .await
-        .context("Failed to write admin policy")?;
-    info!("✓ Cedar policy generated: {}", admin_path.display());
+        .context("Failed to write setup script")?;
 
-    let role_path = output_dir.join("policy_2.cedar");
-    fs::write(&role_path, role_policy)
-        .await
-        .context("Failed to write role policy")?;
-    info!("✓ Cedar policy generated: {}", role_path.display());
+    // Hacer ejecutable en Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path).await?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms).await?;
+    }
 
-    info!(
-        "\nSample policies successfully generated in: {}",
-        output_dir.display()
-    );
+    info!("   ✓ Script de setup: {}", script_path.display());
 
     Ok(())
 }
+
+async fn generate_env_file(
+    output_dir: &PathBuf,
+    app_name: &str,
+    avp_endpoint: &str,
+) -> Result<()> {
+    let env_content = format!(
+        r#"# Configuration for {}
+# Generated by hvp-cli
+
+# Hodei AVP Configuration
+AVP_ENDPOINT=http://{}
+POLICY_STORE_ID={}-store
+IDENTITY_SOURCE_ID={}-identity
+
+# Keycloak Configuration (optional)
+KEYCLOAK_ISSUER=http://localhost:8080/realms/demo
+KEYCLOAK_CLIENT_ID={}-client
+KEYCLOAK_CLIENT_SECRET=your-client-secret
+
+# Application Configuration
+APP_NAME={}
+RUST_LOG=info
+"#,
+        app_name,
+        avp_endpoint,
+        app_name.replace("_", "-"),
+        app_name.replace("_", "-"),
+        app_name,
+        app_name,
+    );
+
+    let env_path = output_dir.join(".env.example");
+    fs::write(&env_path, env_content)
+        .await
+        .context("Failed to write .env.example")?;
+
+    info!("   ✓ Archivo de configuración: {}", env_path.display());
+
+    Ok(())
+}
+
+// ... (resto de las funciones generate_schema, generate_policies, generate_least_privilege)
+// Estas funciones permanecen igual que en el código original

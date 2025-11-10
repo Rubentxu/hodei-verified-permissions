@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Pet Store</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-brand">
+                <h1>🐾 Pet Store</h1>
+            </div>
+            <div class="nav-links">
+                {% if user %}
+                    <a href="/dashboard">Dashboard</a>
+                    <a href="/pets">Mascotas</a>
+                    <a href="/appointments">Citas</a>
+                    <span class="user-info">
+                        👤 {{ user.username }} ({{ user.role }})
+                    </span>
+                    <a href="/logout" class="btn-logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {% if auth_status %}
+            <!-- Caja de comprobación de autorización -->
+            <div class="auth-checker {% if auth_status.decision == 'Allow' %}auth-allowed{% else %}auth-denied{% endif %}">
+                <div class="auth-header">
+                    <h3>🔒 Verificación de Autorización</h3>
+                    <span class="auth-decision {% if auth_status.decision == 'Allow' %}decision-allow{% else %}decision-deny{% endif %}">
+                        {{ auth_status.decision }}
+                    </span>
+                </div>
+                <div class="auth-details">
+                    <div class="auth-row">
+                        <strong>Principal:</strong> {{ auth_status.principal }}
+                    </div>
+                    <div class="auth-row">
+                        <strong>Action:</strong> {{ auth_status.action }}
+                    </div>
+                    <div class="auth-row">
+                        <strong>Resource:</strong> {{ auth_status.resource }}
+                    </div>
+                    <div class="auth-row">
+                        <strong>Tiempo:</strong> {{ auth_status.processing_time_ms }}ms
+                    </div>
+                    <div class="auth-row">
+                        <strong>Timestamp:</strong> {{ auth_status.timestamp }}
+                    </div>
+                </div>
+                <details class="auth-policies">
+                    <summary>Políticas evaluadas ({{ auth_status.policies_evaluated.len() }})</summary>
+                    <ul>
+                        {% for policy in auth_status.policies_evaluated %}
+                            <li>{{ policy }}</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            </div>
+        {% endif %}
+
+        {{ content|safe }}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Pet Store Demo - Powered by Hodei Verified Permissions</p>
+    </footer>
+</body>
+</html>

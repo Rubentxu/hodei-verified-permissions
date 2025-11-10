@@ -114,7 +114,7 @@ impl AuthorizationControl for AuthorizationControlService {
             name: store.name,
             description: store.description,
             status: store.status.to_string(),
-            version: store.version,
+
             author: store.author,
             tags: store.tags,
             identity_source_ids: store.identity_source_ids,
@@ -142,7 +142,7 @@ impl AuthorizationControl for AuthorizationControlService {
                 name: store.name,
                 description: store.description,
                 status: store.status.to_string(),
-                version: store.version,
+
                 author: store.author,
                 tags: store.tags,
                 identity_source_ids: store.identity_source_ids,

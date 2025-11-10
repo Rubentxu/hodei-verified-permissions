@@ -53,6 +53,9 @@ Thumbs.db
 .windsurf/
 .kilocode/
 .claude/
+.kilocodemodes
+AGENTS.md
+
 
 # ficheros de bloqueo de dependencias
 Cargo.lock
